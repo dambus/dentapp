@@ -26,3 +26,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+docs/Docker_output.md
+docs/supabase_status.md
+*supabase_status*.md
+*Docker_output*.md
