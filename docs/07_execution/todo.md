@@ -124,6 +124,22 @@ Status legend:
   - [x] Task 3: Add patient record sections to patient detail page
   - [x] Task 4: Create patient create/edit form foundation
   - [x] Task 5: Add patient form validation and UX refinement
+  - [x] Task 6: Define patient persistence plan and Supabase migration draft
+  - [x] Task 7: Create initial Supabase migration for patient tables
+  - [x] Task 8: Review patient migration manually
+  - [x] Task 9: Run patient migration against local/development Supabase
+  - [x] Task 10: Add patient RLS helper functions and policies
+  - [x] Task 11: Create audit log schema and strategy before real patient writes
+  - [x] Task 12: Configure Supabase client for frontend data access
+  - [x] Task 13: Create patient service abstraction
+  - [x] Task 14: Replace direct demo patient reads with service abstraction
+  - [ ] Task 15: Test patient CRUD with fake/demo database data
+  - [ ] Task 16: Implement audit logging for patient create/update/archive flows
+  - [x] Task 17: Configure local `.env.local` values for local Supabase connection testing
+  - [ ] Task 18: Create fake/demo database seed data for safe local CRUD testing
+  - [ ] Task 19: Test authenticated RLS behavior with demo users and roles
+  - [ ] Task 20: Implement Supabase-backed patient reads behind the patient service
+  - [ ] Task 21: Implement patient create/update with audit logging
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -141,6 +157,17 @@ Status legend:
 - [x] Fill `docs/00_project/open_questions.md`
 - [x] Fill `docs/08_codex/codex_task_template.md`
 - [x] Fill `docs/08_codex/codex_review_checklist.md`
+- [x] Add patient RLS helper functions and policies
+- [x] Create audit log schema and strategy
+- [x] Configure Supabase client
+- [x] Configure local `.env.local` values for local Supabase
+- [x] Create patient service abstraction
+- [x] Test Supabase connection safely without real patient data
+- [ ] Create fake/demo database seed data for safe local CRUD testing
+- [ ] Test authenticated RLS behavior with demo users and roles
+- [ ] Implement Supabase-backed patient reads behind the patient service
+- [ ] Implement audit logging for patient create/update/archive flows later
+- [ ] Test patient CRUD with fake/demo database data later
 
 
 

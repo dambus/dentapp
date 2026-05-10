@@ -416,3 +416,183 @@ Impact:
 Patient form validation lives in `src/features/patients/patientFormValidation.ts`. This can be replaced or expanded later when real persistence, server-side validation, and production validation requirements are implemented.
 
 Status: Accepted
+
+---
+
+## Decision 021 — Plan Patient Persistence Before Supabase CRUD
+
+Date: 2026-05-10
+
+Decision:
+
+Plan patient persistence, RLS assumptions, audit requirements, and migration structure before implementing Supabase CRUD for patients.
+
+Reason:
+
+Patient data is sensitive clinical and personal data. The project needs clear table boundaries, role assumptions, audit expectations, and field mapping before real persistence is introduced.
+
+Impact:
+
+`docs/05_technical/patient_persistence_plan.md` defines the proposed patient persistence direction. No Supabase client, SQL migration, RLS policies, or real saves are implemented until future scoped tasks.
+
+Status: Accepted
+
+---
+
+## Decision 022 — Initial Patient Migration Foundation
+
+Date: 2026-05-10
+
+Decision:
+
+Create the first patient migration with minimal `clinics` and `profiles` foundation tables, enable RLS on the new tables, defer detailed RLS policies to a dedicated migration, and keep future `clinical_notes` references as nullable UUID fields until related tables exist.
+
+Reason:
+
+Patient tables require `clinic_id` for multi-tenant scoping and profile references for future audit ownership. Creating the minimal foundation keeps the migration executable without introducing the full future schema. Deferring policies avoids unsafe broad access before auth/profile helper functions are finalized.
+
+Impact:
+
+The initial migration can create `patients`, `patient_medical_records`, and `clinical_notes` coherently. Future migrations must expand auth/profile behavior, add RLS helper functions and policies, and replace nullable future-reference UUIDs with foreign keys after visits and treatment plan tables are introduced.
+
+Status: Accepted
+
+---
+
+## Decision 023 — Patient Migration Review Result
+
+Date: 2026-05-10
+
+Decision:
+
+Approve the initial patient migration for local or development Supabase execution in a future scoped task, without adding RLS policies in the same migration.
+
+Reason:
+
+The migration order, foreign key dependencies, table constraints, timestamps, triggers, indexes, and RLS enablement were reviewed and found suitable for a clean Supabase project. Keeping detailed RLS policies separate preserves reviewability and avoids introducing broad access rules before helper functions and role behavior are finalized.
+
+Impact:
+
+The next database task can run the reviewed migration in a local or development Supabase environment. A dedicated follow-up migration is still required for RLS helper functions and patient access policies before frontend CRUD or real patient persistence is enabled.
+
+Status: Accepted
+
+---
+
+## Decision 024 — Local Supabase Migration Validation
+
+Date: 2026-05-10
+
+Decision:
+
+Use local Supabase with Docker Desktop and WSL2 support to validate database migrations before remote development or production use.
+
+Reason:
+
+Patient data tables, RLS enablement, and future policy changes should be verified in an isolated local environment before they are applied to shared or production Supabase projects.
+
+Impact:
+
+Database migrations should be checked locally with Supabase CLI flows such as `npx.cmd supabase start` and `npx.cmd supabase db reset` before remote use. The `supabase/seed.sql` warning is acceptable until seed data is intentionally created.
+
+Status: Accepted
+
+---
+
+## Decision 025 — Initial Patient RLS Policy Scope
+
+Date: 2026-05-10
+
+Decision:
+
+Use active-profile, clinic-scoped, role-based RLS policies for the first patient persistence foundation. For MVP simplicity, doctors and specialists may read patient-related records clinic-wide until assignment-based access relationships exist. Inventory responsible users have no patient access by default. Patient-related hard deletes are not allowed through RLS policies.
+
+Reason:
+
+The current schema has clinics, profiles, patients, patient medical records, and clinical notes, but it does not yet have appointments, visits, treatment plans, or assignment tables that can safely define relevant-patient access. A conservative clinic-and-role policy keeps patient data protected while avoiding premature assignment logic.
+
+Impact:
+
+Future migrations may narrow doctor and specialist access to assigned patients or cases after the required relationship tables exist. Patient removal should use archive or soft-delete workflows, not hard deletes. Inventory-related patient visibility must be explicitly designed later if material usage requires limited patient references.
+
+Status: Accepted
+
+---
+
+## Decision 026 — Initial Audit Log Access And Write Strategy
+
+Date: 2026-05-10
+
+Decision:
+
+Create `audit_logs` as an append-only table. Initially, only `owner_admin` users can read audit logs for their own clinic. Direct authenticated insert access is deferred until patient persistence has a controlled audit write path through the service layer, a validated security-definer function, narrowly scoped triggers, or a hybrid approach.
+
+Reason:
+
+Audit logs are high-sensitivity records and should be trustworthy. Allowing broad client-side insert, update, or delete access before the patient service layer exists could create misleading, incomplete, or mutable audit history.
+
+Impact:
+
+The initial audit migration creates the table, indexes, RLS, and owner/admin read policy only. Future patient persistence work must explicitly implement audit writes for patient create, update, archive/restore, medical record update, and clinical note actions before real patient mutations are enabled.
+
+Status: Accepted
+
+---
+
+## Decision 027 — Centralized Frontend Supabase Client
+
+Date: 2026-05-10
+
+Decision:
+
+Centralize the browser Supabase client in `src/lib/supabaseClient.ts` and use only frontend-safe Vite environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+
+Reason:
+
+Supabase access should be created once and reused through future service-layer code instead of scattering client construction through UI components. The frontend bundle can safely use the anon key with RLS, but must never include a service role key.
+
+Impact:
+
+Future data-access code should import the centralized `supabase` client from `src/lib/supabaseClient.ts`. Service role keys must remain server-side only and must not be added to `.env.example`, frontend code, or Vite variables.
+
+Status: Accepted
+
+---
+
+## Decision 028 — Local Frontend Supabase Environment
+
+Date: 2026-05-10
+
+Decision:
+
+Store local frontend Supabase configuration in `.env.local`, which is ignored by Git. The frontend uses only the local Supabase Project URL and browser-safe Publishable/anon key. Secret or service-role style keys must never be used in browser code or committed documentation.
+
+Reason:
+
+Local frontend connection testing needs real local Supabase values, but those values should stay outside version control. Browser access must rely on the public anon/publishable key plus RLS, not privileged credentials.
+
+Impact:
+
+Developers should create local env values in `.env.local` for local testing. `.env.example` remains limited to variable names only. Future connection tests and service-layer work must continue using the centralized frontend client and must not introduce service role keys into frontend code.
+
+Status: Accepted
+
+---
+
+## Decision 029 — Patient Service Boundary Before Supabase Reads
+
+Date: 2026-05-10
+
+Decision:
+
+Patient pages should access patient data through `src/features/patients/patientService.ts` before switching from demo data to Supabase-backed data.
+
+Reason:
+
+The Patients module needs a stable data-access boundary so UI pages are not coupled directly to raw demo data or future Supabase query details. This keeps the current demo behavior intact while making the later Supabase migration smaller and easier to review.
+
+Impact:
+
+`PatientsPage`, `PatientDetailPage`, and `PatientEditPage` should call patient service functions. The service remains demo-backed until a future scoped task replaces its internals with Supabase reads and later mutations.
+
+Status: Accepted

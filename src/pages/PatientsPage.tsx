@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Badge, Button, Card, CardContent, EmptyState } from '../components/ui'
-import { demoPatients } from '../features/patients/demoPatients'
 import {
   formatDemoCurrency,
   formatPatientDate,
@@ -13,6 +12,7 @@ import {
   patientStatusBadgeVariants,
   patientStatusLabels,
 } from '../features/patients/patientDisplay'
+import { getPatients, searchPatients } from '../features/patients/patientService'
 import type {
   DemoPatient,
   PatientStatus,
@@ -21,33 +21,56 @@ import { getPatientDetailPath, routePaths } from '../routes/routePaths'
 
 type StatusFilter = PatientStatus | 'all'
 
-function matchesSearch(patient: DemoPatient, normalizedSearch: string) {
-  if (!normalizedSearch) {
-    return true
-  }
-
-  return [
-    patient.firstName,
-    patient.lastName,
-    patient.phone,
-    patient.email,
-  ].some((value) => value.toLowerCase().includes(normalizedSearch))
-}
-
 export function PatientsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [patients, setPatients] = useState<DemoPatient[]>([])
+  const [matchingPatients, setMatchingPatients] = useState<DemoPatient[]>([])
+
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadPatients() {
+      const loadedPatients = await getPatients()
+
+      if (isCurrent) {
+        setPatients(loadedPatients)
+      }
+    }
+
+    void loadPatients()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadMatchingPatients() {
+      const searchResults = await searchPatients(search)
+
+      if (isCurrent) {
+        setMatchingPatients(searchResults)
+      }
+    }
+
+    void loadMatchingPatients()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [search])
 
   const filteredPatients = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase()
-
-    return demoPatients.filter((patient) => {
+    return matchingPatients.filter((patient) => {
       const statusMatches =
         statusFilter === 'all' || patient.status === statusFilter
 
-      return statusMatches && matchesSearch(patient, normalizedSearch)
+      return statusMatches
     })
-  }, [search, statusFilter])
+  }, [matchingPatients, statusFilter])
 
   const hasActiveFilters = search.trim() !== '' || statusFilter !== 'all'
 
@@ -111,7 +134,7 @@ export function PatientsPage() {
 
           <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
             <span>
-              Showing {filteredPatients.length} of {demoPatients.length} demo
+              Showing {filteredPatients.length} of {patients.length} demo
               patients
             </span>
             {hasActiveFilters ? (

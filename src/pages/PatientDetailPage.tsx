@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -13,7 +14,6 @@ import {
   CardTitle,
   EmptyState,
 } from '../components/ui'
-import { findDemoPatientById } from '../features/patients/demoPatients'
 import {
   formatDemoCurrency,
   formatPatientDate,
@@ -23,7 +23,8 @@ import {
   patientStatusBadgeVariants,
   patientStatusLabels,
 } from '../features/patients/patientDisplay'
-import type { DemoTimelineEvent } from '../features/patients/types'
+import { getPatientById } from '../features/patients/patientService'
+import type { DemoPatient, DemoTimelineEvent } from '../features/patients/types'
 import { getPatientEditPath, routePaths } from '../routes/routePaths'
 
 const futureModulePlaceholders = [
@@ -89,7 +90,31 @@ function TimelineEventItem({ event }: TimelineEventProps) {
 export function PatientDetailPage() {
   const { patientId } = useParams()
   const navigate = useNavigate()
-  const patient = findDemoPatientById(patientId)
+  const [patient, setPatient] = useState<DemoPatient | undefined>()
+  const [hasLoadedPatient, setHasLoadedPatient] = useState(false)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadPatient() {
+      const loadedPatient = await getPatientById(patientId)
+
+      if (isCurrent) {
+        setPatient(loadedPatient)
+        setHasLoadedPatient(true)
+      }
+    }
+
+    void loadPatient()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [patientId])
+
+  if (!hasLoadedPatient) {
+    return null
+  }
 
   if (!patient) {
     return (

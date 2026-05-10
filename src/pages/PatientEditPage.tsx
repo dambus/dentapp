@@ -1,17 +1,43 @@
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Badge, Button, EmptyState } from '../components/ui'
-import { findDemoPatientById } from '../features/patients/demoPatients'
 import { PatientForm } from '../features/patients/PatientForm'
 import { getPatientFormValuesFromDemoPatient } from '../features/patients/patientFormValues'
+import { getPatientById } from '../features/patients/patientService'
+import type { DemoPatient } from '../features/patients/types'
 import { getPatientDetailPath, routePaths } from '../routes/routePaths'
 
 export function PatientEditPage() {
   const { patientId } = useParams()
   const navigate = useNavigate()
-  const patient = findDemoPatientById(patientId)
+  const [patient, setPatient] = useState<DemoPatient | undefined>()
+  const [hasLoadedPatient, setHasLoadedPatient] = useState(false)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadPatient() {
+      const loadedPatient = await getPatientById(patientId)
+
+      if (isCurrent) {
+        setPatient(loadedPatient)
+        setHasLoadedPatient(true)
+      }
+    }
+
+    void loadPatient()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [patientId])
+
+  if (!hasLoadedPatient) {
+    return null
+  }
 
   if (!patient) {
     return (
