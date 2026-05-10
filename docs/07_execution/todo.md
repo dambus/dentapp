@@ -118,7 +118,11 @@ Status legend:
   - [x] Task 5: Create basic shared UI components
   - [x] Task 6: Add role-aware navigation placeholder
   - [x] Task 7: Run build and cleanup
-- [ ] Phase 2: Patients and records
+- [~] Phase 2: Patients and records
+  - [x] Task 1: Create demo patient model and patient list page
+  - [x] Task 2: Create patient profile detail page with demo data
+  - [x] Task 3: Add patient record sections to patient detail page
+  - [x] Task 4: Create patient create/edit form foundation
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger

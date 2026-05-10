@@ -316,3 +316,83 @@ Impact:
 The demo role is centralized in `src/lib/demoAuth.ts`, navigation visibility rules live in `src/routes/navigationConfig.ts`, and `SidebarNav` filters items by the current demo role. This is frontend-only UX scaffolding and is not security enforcement.
 
 Status: Accepted
+
+---
+
+## Decision 016 — Frontend Demo Patient Data Before Supabase Integration
+
+Date: 2026-05-10
+
+Decision:
+
+Start Phase 2 Patients work with frontend-only fake demo patient data before connecting Supabase or creating real patient records.
+
+Reason:
+
+The patient list UI, search behavior, and app shell integration can be validated safely before database schema, RLS, authentication, and patient record permissions are implemented.
+
+Impact:
+
+Demo patient types and fake records live under `src/features/patients/`. These records must remain obviously fictional and must be replaced by Supabase-backed data only in a future scoped task.
+
+Status: Accepted
+
+---
+
+## Decision 017 — Read-Only Demo Patient Profile First
+
+Date: 2026-05-10
+
+Decision:
+
+Start patient profile work with a read-only demo detail page that uses the existing fake patient dataset.
+
+Reason:
+
+The profile overview structure can be validated before patient create/edit flows, medical record editing, permissions, Supabase queries, and audit behavior are implemented.
+
+Impact:
+
+`/patients/:patientId` renders a demo-only profile from local fake data. Unknown demo patient IDs are handled with a clear empty state. Real persistence, protected routes, and patient modification workflows remain future scoped tasks.
+
+Status: Accepted
+
+---
+
+## Decision 018 — Read-Only Demo Patient Record Sections Before Editing
+
+Date: 2026-05-10
+
+Decision:
+
+Add patient record sections as read-only demo profile cards before implementing editing, document upload, timeline logic, or Supabase persistence.
+
+Reason:
+
+The patient profile needs a stable information structure before introducing sensitive medical record editing, permission enforcement, audit logging, and database-backed workflows.
+
+Impact:
+
+The demo patient type includes frontend-only summary fields for clinical summary, warnings, anamnesis, dental history, treatment plan context, visit context, documents placeholder, and timeline placeholder. These fields remain fake/demo-only and must be replaced by permission-aware backend data in future scoped tasks.
+
+Status: Accepted
+
+---
+
+## Decision 019 — Frontend-Only Patient Form Foundation Before Persistence
+
+Date: 2026-05-10
+
+Decision:
+
+Start patient create/edit work with controlled frontend-only forms that do not persist data.
+
+Reason:
+
+DentApp needs to validate patient data-entry layout and workflow before adding validation libraries, Supabase persistence, permission enforcement, RLS, and audit behavior for sensitive patient changes.
+
+Impact:
+
+`/patients/new` and `/patients/:patientId/edit` render form foundations. Edit mode is prefilled from fake demo data. Submitting shows a demo-only message and does not mutate demo data, write to localStorage, or call a backend.
+
+Status: Accepted

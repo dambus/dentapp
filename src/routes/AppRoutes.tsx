@@ -7,6 +7,9 @@ import { DashboardPage } from '../pages/DashboardPage'
 import { InventoryPage } from '../pages/InventoryPage'
 import { LoginPage } from '../pages/LoginPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
+import { PatientCreatePage } from '../pages/PatientCreatePage'
+import { PatientDetailPage } from '../pages/PatientDetailPage'
+import { PatientEditPage } from '../pages/PatientEditPage'
 import { PatientsPage } from '../pages/PatientsPage'
 import { PaymentsPage } from '../pages/PaymentsPage'
 import { ReportsPage } from '../pages/ReportsPage'
@@ -23,6 +26,12 @@ export function AppRoutes() {
         <Route path={routePaths.dashboard} element={<DashboardPage />} />
         <Route path={routePaths.calendar} element={<CalendarPage />} />
         <Route path={routePaths.patients} element={<PatientsPage />} />
+        <Route path={routePaths.patientCreate} element={<PatientCreatePage />} />
+        <Route
+          path={routePaths.patientDetail}
+          element={<PatientDetailPage />}
+        />
+        <Route path={routePaths.patientEdit} element={<PatientEditPage />} />
         <Route
           path={routePaths.treatmentPlans}
           element={<TreatmentPlansPage />}
