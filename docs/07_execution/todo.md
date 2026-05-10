@@ -1,0 +1,145 @@
+﻿# DentApp — Todo
+
+This file tracks active and upcoming project tasks.
+
+Status legend:
+
+- `[ ]` Not started
+- `[~]` In progress
+- `[x]` Done
+- `[!]` Blocked / needs decision
+
+---
+
+## 1. Project Foundation
+
+- [x] Create Vite React TypeScript project
+- [x] Create documentation folder structure
+- [x] Create initial empty documentation files
+- [x] Fill product vision document
+- [x] Fill project charter document
+- [x] Fill decisions log
+- [x] Fill open questions log
+- [ ] Create glossary
+
+---
+
+## 2. Codex/Cursor Setup
+
+- [x] Create `docs/08_codex/codex_project_context.md`
+- [x] Create `docs/08_codex/codex_rules.md`
+- [x] Create `docs/08_codex/codex_task_template.md`
+- [x] Create `docs/08_codex/codex_review_checklist.md`
+- [ ] Create `docs/08_codex/codex_prompt_library.md`
+
+---
+
+## 3. Product Discovery
+
+- [x] Create discovery interview checklist
+- [x] Create clinic workflow observation template
+- [ ] Define pilot observation process
+- [ ] Define interview questions for owner
+- [ ] Define interview questions for doctors
+- [ ] Define interview questions for assistants
+- [ ] Define interview questions for reception/admin
+- [ ] Define interview questions for inventory responsible person
+- [ ] Create pilot feedback log structure
+
+---
+
+## 4. Product Definition
+
+- [x] Define MVP scope
+- [ ] Define out-of-scope list
+- [ ] Define product roadmap
+- [ ] Define feature backlog
+- [x] Define user roles
+- [x] Define permissions matrix
+- [ ] Define key user workflows
+
+---
+
+## 5. Domain Modeling
+
+- [x] Define dental terminology glossary
+- [x] Define patient record model
+- [x] Define odontogram model
+- [x] Define treatment plan model
+- [x] Define payment and debt model
+- [x] Define doctor commission model
+- [x] Define inventory model
+- [ ] Define material request model
+
+---
+
+## 6. UX/UI Planning
+
+- [x] Define UX principles
+- [x] Define information architecture
+- [x] Define screen map
+- [ ] Define main user flows
+- [x] Define design system direction
+- [x] Define component inventory
+
+---
+
+## 7. Technical Planning
+
+- [ ] Define technical architecture
+- [ ] Define database schema v1
+- [ ] Define Supabase storage strategy
+- [ ] Define auth and roles model
+- [x] Define RLS policy approach
+- [ ] Define API/service layer approach
+- [x] Define deployment strategy
+- [x] Define backup and recovery strategy
+
+---
+
+## 8. Compliance Planning
+
+- [ ] Research Serbian dental/medical record requirements
+- [ ] Define data protection principles
+- [ ] Define audit log policy
+- [ ] Define retention policy
+- [ ] Define print/export requirements
+- [ ] Define consent template requirements
+
+---
+
+## 9. Implementation Phases
+
+- [~] Phase 1: App foundation
+  - [x] Task 1: Install and configure Tailwind CSS
+  - [x] Task 2: Create source folder structure and continue app foundation cleanup
+  - [x] Task 3: Install and configure React Router
+  - [ ] Task 4: Create AppShell, SidebarNav, TopBar, Page, and PageHeader
+- [ ] Phase 2: Patients and records
+- [ ] Phase 3: Odontogram and treatment plans
+- [ ] Phase 4: Scheduling and visits
+- [ ] Phase 5: Payments and patient ledger
+- [ ] Phase 6: Doctor commissions
+- [ ] Phase 7: Inventory and material requests
+- [ ] Phase 8: Pilot testing and stabilization
+
+---
+
+## 10. Current Immediate Next Tasks
+
+- [x] Fill `docs/00_project/product_vision.md`
+- [x] Fill `docs/00_project/project_charter.md`
+- [x] Fill `docs/00_project/decisions.md`
+- [x] Fill `docs/00_project/open_questions.md`
+- [x] Fill `docs/08_codex/codex_task_template.md`
+- [x] Fill `docs/08_codex/codex_review_checklist.md`
+
+
+
+
+
+
+
+
+
+
