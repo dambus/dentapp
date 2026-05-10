@@ -123,6 +123,7 @@ Status legend:
   - [x] Task 2: Create patient profile detail page with demo data
   - [x] Task 3: Add patient record sections to patient detail page
   - [x] Task 4: Create patient create/edit form foundation
+  - [x] Task 5: Add patient form validation and UX refinement
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger

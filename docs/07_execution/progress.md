@@ -78,16 +78,21 @@ This file tracks completed work and important project progress.
 - Added a New patient action on the Patients page and an Edit patient action on the Patient Detail page.
 - Kept save behavior explicitly demo-only and non-persistent with no runtime mutation, no localStorage, and no Supabase integration.
 - Confirmed build and lint succeed after adding the patient form foundation.
+- Added simple custom frontend validation for `PatientForm` without adding a form library.
+- Added field-level validation messages for required first name, last name, phone, status, optional email format, and future date of birth.
+- Improved PatientForm required field indicators, invalid field styling, and demo-only submit feedback.
+- Preserved non-persistent submit behavior: valid submit shows a demo-only message, invalid submit shows validation errors and no success message.
+- Confirmed build and lint succeed after patient form validation and UX refinement.
 
 ### Current Project State
 
-Phase 1 — App Foundation is complete. Phase 2 — Patients and records has started with frontend-only Patients list, Patient Detail, read-only patient record section, and patient form foundation tasks.
+Phase 1 — App Foundation is complete. Phase 2 — Patients and records has started with frontend-only Patients list, Patient Detail, read-only patient record section, patient form foundation, and basic form validation tasks.
 
 Tailwind CSS is configured and verified with a temporary DentApp screen. No business features have been implemented yet.
 
 The required Phase 1 source folder structure now exists. Initial React Router routes, placeholder pages, app shell, role-aware sidebar navigation placeholder, top bar, shared page layout components, and basic shared UI components are configured.
 
-The Patients page now renders fake demo patient data with local search and status filtering. Demo patient profiles can be opened through `/patients/:patientId` and show read-only overview and structured patient record sections from the same fake dataset. Frontend-only create/edit form routes exist for layout and workflow validation, but they do not persist data. Protected routes, real authentication, Supabase integration, document upload, and real patient records have not been implemented yet.
+The Patients page now renders fake demo patient data with local search and status filtering. Demo patient profiles can be opened through `/patients/:patientId` and show read-only overview and structured patient record sections from the same fake dataset. Frontend-only create/edit form routes exist for layout, workflow, and basic validation testing, but they do not persist data. Protected routes, real authentication, Supabase integration, document upload, and real patient records have not been implemented yet.
 
 ### Current Stack Decision
 
@@ -108,7 +113,7 @@ Initial stack:
 
 - `npm run build` succeeds.
 - `npm run lint` succeeds.
-- `npm run dev` serves the configured app shell, placeholder routes, demo Patients list, demo Patient Detail route, read-only demo patient record sections, and frontend-only patient create/edit form routes locally.
+- `npm run dev` serves the configured app shell, placeholder routes, demo Patients list, demo Patient Detail route, read-only demo patient record sections, and frontend-only patient create/edit form routes with basic validation locally.
 
 ### Key Product Decisions So Far
 

@@ -396,3 +396,23 @@ Impact:
 `/patients/new` and `/patients/:patientId/edit` render form foundations. Edit mode is prefilled from fake demo data. Submitting shows a demo-only message and does not mutate demo data, write to localStorage, or call a backend.
 
 Status: Accepted
+
+---
+
+## Decision 020 — Custom Patient Form Validation During Demo Phase
+
+Date: 2026-05-10
+
+Decision:
+
+Use simple custom TypeScript validation for the frontend-only PatientForm during the demo foundation phase.
+
+Reason:
+
+The current task only needs basic required-field, email, and date checks. Adding React Hook Form or Zod before real persistence, API/service contracts, and full validation rules are scoped would add unnecessary dependency and abstraction cost.
+
+Impact:
+
+Patient form validation lives in `src/features/patients/patientFormValidation.ts`. This can be replaced or expanded later when real persistence, server-side validation, and production validation requirements are implemented.
+
+Status: Accepted

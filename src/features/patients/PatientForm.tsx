@@ -2,7 +2,13 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 
 import { Badge, Button, Card, CardContent } from '../../components/ui'
+import { classNames } from '../../lib/classNames'
 import type { PatientFormValues } from './patientFormValues'
+import {
+  hasPatientFormErrors,
+  validatePatientForm,
+  type PatientFormErrors,
+} from './patientFormValidation'
 import type { PatientStatus } from './types'
 
 export type PatientFormMode = 'create' | 'edit'
@@ -24,6 +30,36 @@ const defaultValues: PatientFormValues = {
   summary: '',
 }
 
+const inputBaseClasses =
+  'mt-2 w-full rounded-md border bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100'
+
+function getInputClasses(hasError: boolean) {
+  return classNames(
+    inputBaseClasses,
+    hasError ? 'border-red-300 focus:border-red-600 focus:ring-red-100' : 'border-slate-300',
+  )
+}
+
+function RequiredMark() {
+  return (
+    <span className="ml-1 text-red-700" aria-label="required">
+      *
+    </span>
+  )
+}
+
+type FieldErrorProps = {
+  message?: string
+}
+
+function FieldError({ message }: FieldErrorProps) {
+  if (!message) {
+    return null
+  }
+
+  return <p className="mt-2 text-sm font-medium text-red-700">{message}</p>
+}
+
 function getInitialValues(patient?: Partial<PatientFormValues>) {
   return {
     ...defaultValues,
@@ -39,6 +75,7 @@ export function PatientForm({
   const [values, setValues] = useState<PatientFormValues>(() =>
     getInitialValues(initialValues),
   )
+  const [errors, setErrors] = useState<PatientFormErrors>({})
   const [demoMessageVisible, setDemoMessageVisible] = useState(false)
 
   function updateField<Field extends keyof PatientFormValues>(
@@ -49,10 +86,28 @@ export function PatientForm({
       ...currentValues,
       [field]: value,
     }))
+    setErrors((currentErrors) => {
+      if (!currentErrors[field]) {
+        return currentErrors
+      }
+
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[field]
+      return nextErrors
+    })
+    setDemoMessageVisible(false)
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const validationErrors = validatePatientForm(values)
+    setErrors(validationErrors)
+
+    if (hasPatientFormErrors(validationErrors)) {
+      setDemoMessageVisible(false)
+      return
+    }
+
     setDemoMessageVisible(true)
   }
 
@@ -66,7 +121,8 @@ export function PatientForm({
                 Basic patient information
               </h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Frontend-only form foundation. These values are not saved yet.
+                Fields marked with <span className="text-red-700">*</span> are
+                required. These values are not saved yet.
               </p>
             </div>
             <Badge variant="info">Demo only</Badge>
@@ -76,9 +132,11 @@ export function PatientForm({
             <label className="block">
               <span className="text-sm font-medium text-slate-700">
                 First name
+                <RequiredMark />
               </span>
               <input
-                className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                aria-invalid={Boolean(errors.firstName)}
+                className={getInputClasses(Boolean(errors.firstName))}
                 onChange={(event) =>
                   updateField('firstName', event.target.value)
                 }
@@ -86,14 +144,17 @@ export function PatientForm({
                 type="text"
                 value={values.firstName}
               />
+              <FieldError message={errors.firstName} />
             </label>
 
             <label className="block">
               <span className="text-sm font-medium text-slate-700">
                 Last name
+                <RequiredMark />
               </span>
               <input
-                className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                aria-invalid={Boolean(errors.lastName)}
+                className={getInputClasses(Boolean(errors.lastName))}
                 onChange={(event) =>
                   updateField('lastName', event.target.value)
                 }
@@ -101,28 +162,36 @@ export function PatientForm({
                 type="text"
                 value={values.lastName}
               />
+              <FieldError message={errors.lastName} />
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">Phone</span>
+              <span className="text-sm font-medium text-slate-700">
+                Phone
+                <RequiredMark />
+              </span>
               <input
-                className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                aria-invalid={Boolean(errors.phone)}
+                className={getInputClasses(Boolean(errors.phone))}
                 onChange={(event) => updateField('phone', event.target.value)}
                 placeholder="+381 60 000 0000"
                 type="tel"
                 value={values.phone}
               />
+              <FieldError message={errors.phone} />
             </label>
 
             <label className="block">
               <span className="text-sm font-medium text-slate-700">Email</span>
               <input
-                className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                aria-invalid={Boolean(errors.email)}
+                className={getInputClasses(Boolean(errors.email))}
                 onChange={(event) => updateField('email', event.target.value)}
                 placeholder="demo.patient@example.test"
-                type="email"
+                type="text"
                 value={values.email}
               />
+              <FieldError message={errors.email} />
             </label>
 
             <label className="block">
@@ -130,19 +199,25 @@ export function PatientForm({
                 Date of birth
               </span>
               <input
-                className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                aria-invalid={Boolean(errors.dateOfBirth)}
+                className={getInputClasses(Boolean(errors.dateOfBirth))}
                 onChange={(event) =>
                   updateField('dateOfBirth', event.target.value)
                 }
                 type="date"
                 value={values.dateOfBirth}
               />
+              <FieldError message={errors.dateOfBirth} />
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">Status</span>
+              <span className="text-sm font-medium text-slate-700">
+                Status
+                <RequiredMark />
+              </span>
               <select
-                className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                aria-invalid={Boolean(errors.status)}
+                className={getInputClasses(Boolean(errors.status))}
                 onChange={(event) =>
                   updateField('status', event.target.value as PatientStatus)
                 }
@@ -152,6 +227,7 @@ export function PatientForm({
                 <option value="inactive">Inactive</option>
                 <option value="archived">Archived</option>
               </select>
+              <FieldError message={errors.status} />
             </label>
           </div>
 
@@ -160,7 +236,7 @@ export function PatientForm({
               Important warning
             </span>
             <input
-              className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              className={getInputClasses(false)}
               onChange={(event) =>
                 updateField('importantWarning', event.target.value)
               }
@@ -175,7 +251,7 @@ export function PatientForm({
               Notes or summary
             </span>
             <textarea
-              className="mt-2 min-h-28 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              className={classNames(getInputClasses(false), 'min-h-28')}
               onChange={(event) => updateField('summary', event.target.value)}
               placeholder="Demo summary for UI testing only"
               value={values.summary}
@@ -205,9 +281,7 @@ export function PatientForm({
             <Button variant="secondary" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit">
-              {mode === 'create' ? 'Preview save' : 'Preview update'}
-            </Button>
+            <Button type="submit">Submit demo form</Button>
           </div>
         </CardContent>
       </Card>
