@@ -256,3 +256,63 @@ Impact:
 Initial route paths are centralized in `src/routes/routePaths.ts`, route composition lives in `src/routes/AppRoutes.tsx`, and `src/App.tsx` renders the router through `BrowserRouter`.
 
 Status: Accepted
+
+---
+
+## Decision 013 — Custom Phase 1 App Shell
+
+Date: 2026-05-10
+
+Decision:
+
+Use a simple custom Tailwind-based app shell for Phase 1 before introducing any external UI component library.
+
+Reason:
+
+The current foundation only needs stable layout, navigation, and page structure. A custom shell avoids premature dependency and design system commitments while keeping the interface aligned with DentApp's healthcare/business UX direction.
+
+Impact:
+
+`AppShell`, `SidebarNav`, and `TopBar` live under `src/layouts/`, while reusable page layout primitives live under `src/components/layout/`. Main routes render inside the shell, and `/login` remains outside it until real authentication is implemented.
+
+Status: Accepted
+
+---
+
+## Decision 014 — Custom Tailwind UI Components First
+
+Date: 2026-05-10
+
+Decision:
+
+Use simple custom Tailwind-based shared UI components during Phase 1 before evaluating external UI libraries.
+
+Reason:
+
+DentApp currently needs only a small reusable foundation for buttons, cards, badges, and basic feedback states. Custom components keep the dependency surface small and allow the visual language to follow the product's healthcare/business direction before committing to a larger UI library.
+
+Impact:
+
+Initial shared UI components live under `src/components/ui/` and are exported from `src/components/ui/index.ts`. A small local `classNames` helper is used instead of adding a class name utility dependency.
+
+Status: Accepted
+
+---
+
+## Decision 015 — Temporary Demo Role for Phase 1 Navigation
+
+Date: 2026-05-10
+
+Decision:
+
+Use a hardcoded temporary demo role, `owner_admin`, for Phase 1 navigation filtering until real authentication and user profiles are implemented.
+
+Reason:
+
+The app shell needs to be prepared for role-aware navigation without introducing Supabase Auth, protected routes, or permission enforcement before their scoped implementation tasks.
+
+Impact:
+
+The demo role is centralized in `src/lib/demoAuth.ts`, navigation visibility rules live in `src/routes/navigationConfig.ts`, and `SidebarNav` filters items by the current demo role. This is frontend-only UX scaffolding and is not security enforcement.
+
+Status: Accepted

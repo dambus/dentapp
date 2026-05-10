@@ -110,11 +110,14 @@ Status legend:
 
 ## 9. Implementation Phases
 
-- [~] Phase 1: App foundation
+- [x] Phase 1: App foundation
   - [x] Task 1: Install and configure Tailwind CSS
   - [x] Task 2: Create source folder structure and continue app foundation cleanup
   - [x] Task 3: Install and configure React Router
-  - [ ] Task 4: Create AppShell, SidebarNav, TopBar, Page, and PageHeader
+  - [x] Task 4: Create AppShell, SidebarNav, TopBar, Page, and PageHeader
+  - [x] Task 5: Create basic shared UI components
+  - [x] Task 6: Add role-aware navigation placeholder
+  - [x] Task 7: Run build and cleanup
 - [ ] Phase 2: Patients and records
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits

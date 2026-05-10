@@ -40,16 +40,34 @@ This file tracks completed work and important project progress.
 - Created placeholder route pages for login, dashboard, calendar, patients, treatment plans, payments, doctor commissions, inventory, reports, settings, and not found.
 - Preserved Tailwind styling on all placeholder routes.
 - Confirmed build, lint, and local route checks succeed after routing setup.
+- Created the first custom app shell with `AppShell`, `SidebarNav`, and `TopBar`.
+- Created shared layout components `Page` and `PageHeader` under `src/components/layout/`.
+- Wrapped main application routes with `AppShell` while keeping `/login` outside the shell.
+- Added sidebar navigation for Dashboard, Calendar, Patients, Treatment Plans, Payments, Commissions, Inventory, Reports, and Settings.
+- Updated placeholder pages to use the shared `Page` and `PageHeader` layout foundation.
+- Confirmed build, lint, and local route checks succeed after app shell setup.
+- Created basic shared UI components under `src/components/ui/`: `Button`, `Card`, `Badge`, `EmptyState`, `LoadingState`, and `ErrorState`.
+- Added `src/components/ui/index.ts` for shared UI exports.
+- Added a tiny internal `classNames` helper under `src/lib/classNames.ts` to keep component variant classes readable without adding a dependency.
+- Updated the placeholder page foundation to use the new shared `Card`, `Badge`, and `Button` components.
+- Confirmed build, lint, and local route checks succeed after basic UI component setup.
+- Created centralized navigation configuration in `src/routes/navigationConfig.ts`.
+- Added typed navigation role support in `src/types/navigation.ts`.
+- Added a clearly temporary centralized demo auth placeholder in `src/lib/demoAuth.ts` with `DEMO_ROLE` set to `owner_admin`.
+- Updated `SidebarNav` to filter visible navigation items by the current demo role.
+- Updated `TopBar` to read the demo role and temporary auth status from the centralized demo auth placeholder.
+- Removed obsolete `.gitkeep` files from folders that now contain real source files.
+- Confirmed build, lint, and local route checks succeed after role-aware navigation and final foundation cleanup.
 
 ### Current Project State
 
-The project is in Phase 1 — App Foundation.
+Phase 1 — App Foundation is complete.
 
 Tailwind CSS is configured and verified with a temporary DentApp screen. No business features have been implemented yet.
 
-The required Phase 1 source folder structure now exists. Initial React Router routes and placeholder pages are configured. App shell, navigation, protected routes, and business modules have not been implemented yet.
+The required Phase 1 source folder structure now exists. Initial React Router routes, placeholder pages, app shell, role-aware sidebar navigation placeholder, top bar, shared page layout components, and basic shared UI components are configured. Protected routes, real authentication, and business modules have not been implemented yet.
 
-The next focus is to continue Phase 1 foundation work without adding business features.
+The next focus is to begin Phase 2 only when the next scoped implementation task is defined.
 
 ### Current Stack Decision
 
@@ -60,6 +78,7 @@ Initial stack:
 - TypeScript
 - Tailwind CSS configured
 - React Router configured
+- Temporary demo role navigation configured
 - Supabase planned
 - PostgreSQL planned
 - Supabase Auth planned
@@ -69,7 +88,7 @@ Initial stack:
 
 - `npm run build` succeeds.
 - `npm run lint` succeeds.
-- `npm run dev` serves the configured placeholder routes locally.
+- `npm run dev` serves the configured app shell and placeholder routes locally.
 
 ### Key Product Decisions So Far
 
@@ -92,7 +111,7 @@ Initial stack:
 4. Define UX screen map.
 5. Define implementation roadmap.
 6. Prepare Phase 1 implementation checklist.
-7. Continue Phase 1 with app shell, sidebar navigation, top bar, and page layout components.
+7. Prepare the next scoped implementation task before starting Phase 2.
 
 ---
 
