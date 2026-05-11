@@ -596,3 +596,123 @@ Impact:
 `PatientsPage`, `PatientDetailPage`, and `PatientEditPage` should call patient service functions. The service remains demo-backed until a future scoped task replaces its internals with Supabase reads and later mutations.
 
 Status: Accepted
+
+---
+
+## Decision 030 — Local Seed Data Must Be Fake-Only
+
+Date: 2026-05-11
+
+Decision:
+
+Use fake/demo-only records in `supabase/seed.sql` for local database development and RLS testing preparation. Do not include real patient data.
+
+Reason:
+
+DentApp is healthcare-related and must avoid any real personal or medical data in local development fixtures, repository history, and documentation.
+
+Impact:
+
+Local database reset seeds only fictional clinic and patient-domain records. Auth/profile seeding tied to `auth.users` remains a separate future task for authenticated RLS flow testing.
+
+Status: Accepted
+
+---
+
+## Decision 031 — Local RLS Testing Uses Fake Auth Users And Profiles
+
+Date: 2026-05-11
+
+Decision:
+
+For local RLS validation, use fake local Supabase Auth users and matching `profiles` records linked to the demo clinic, then run authenticated role-based checks through the local Supabase API.
+
+Reason:
+
+RLS logic depends on `auth.uid()` and profile role/clinic lookup. Authenticated API checks with fake users provide reliable role behavior verification without introducing real identities or production data.
+
+Impact:
+
+Local testing uses fake users such as `owner.demo@example.test` and other role equivalents. This validates current patient and audit visibility policies before connecting frontend patient reads to Supabase. Frontend auth UI remains out of scope.
+
+Status: Accepted
+
+---
+
+## Decision 032 — Patient Data Source Defaults To Demo With Opt-In Supabase Reads
+
+Date: 2026-05-11
+
+Decision:
+
+Use a patient data source boundary in `patientService` with `VITE_PATIENT_DATA_SOURCE=demo|supabase`. Default to `demo` when unset, and enable Supabase-backed reads only when explicitly set to `supabase`.
+
+Reason:
+
+Current app scope does not include login/auth UI yet, while patient table access is protected by RLS and authenticated session requirements. Demo default avoids breaking current pages and keeps safe local workflow continuity.
+
+Impact:
+
+Patient list/detail/edit pages continue to work in demo mode by default. Supabase read paths are implemented and can be tested in controlled local environments. When Supabase mode is enabled but no authenticated browser session exists, patientService safely falls back to demo data.
+
+Status: Accepted
+
+---
+
+## Decision 033 — Basic Login/Logout Before Protected Routes
+
+Date: 2026-05-11
+
+Decision:
+
+Implement basic Supabase Auth login/logout UI before introducing protected routes and full profile/role-based route guards.
+
+Reason:
+
+The team needs a simple browser-authenticated session flow first so local RLS-backed reads can be tested safely with fake demo users. This reduces integration risk by validating session handling before route protection complexity is introduced.
+
+Impact:
+
+`/login` now supports `signInWithPassword` for local demo users and app chrome can show signed-in/signed-out session state with logout. Protected routes remain deferred, and profile/role loading from `profiles` is a follow-up task.
+
+Status: Accepted
+
+---
+
+## Decision 034 — Profile Role Is Primary Chrome Role Source
+
+Date: 2026-05-11
+
+Decision:
+
+Use the authenticated Supabase `profiles.role` as the primary role source for app chrome behavior (top bar role display and sidebar navigation filtering), with temporary fallback to the demo role when session/profile is unavailable.
+
+Reason:
+
+Role-aware navigation should reflect authenticated profile permissions as early as possible, but the app still needs safe behavior during signed-out state, initial auth/profile loading, and local setup gaps.
+
+Impact:
+
+Profile loading is centralized through a shared hook used by `AppShell` and passed to chrome components. This avoids duplicate profile requests and keeps role behavior consistent across top bar and sidebar while protected routes remain a later task.
+
+Status: Accepted
+
+---
+
+## Decision 035 — Protected Routes Require Auth Session And Active Profile
+
+Date: 2026-05-11
+
+Decision:
+
+Main application routes require both an authenticated Supabase session and an active DentApp profile. Signed-out users are redirected to `/login`. Signed-in users without an active profile see a clear ProfileRequiredPage instead of accessing app features.
+
+Reason:
+
+The pilot application is for internal use only and all features require a valid profile/role context. Protecting both auth and profile ensures users cannot access incomplete states or features without proper setup.
+
+Impact:
+
+A ProtectedRoute wrapper guards all routes inside the app shell. Loading states show while checking auth/profile. Login page redirects already-signed-in users to dashboard for better UX. Fine-grained role-specific route guards are deferred to a later phase.
+
+Status: Accepted

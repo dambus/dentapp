@@ -1,11 +1,18 @@
 import { NavLink } from 'react-router-dom'
 
+import type { CurrentProfileResult } from '../features/auth/useCurrentProfile'
 import { currentDemoUser } from '../lib/demoAuth'
 import { getNavigationItemsForRole } from '../routes/navigationConfig'
 import { routePaths } from '../routes/routePaths'
 
-export function SidebarNav() {
-  const visibleNavigationItems = getNavigationItemsForRole(currentDemoUser.role)
+type SidebarNavProps = {
+  currentProfile: CurrentProfileResult
+}
+
+export function SidebarNav({ currentProfile }: SidebarNavProps) {
+  const { profile } = currentProfile
+  const navigationRole = profile?.role ?? currentDemoUser.role
+  const visibleNavigationItems = getNavigationItemsForRole(navigationRole)
 
   return (
     <aside className="border-b border-slate-200 bg-white lg:sticky lg:top-0 lg:h-screen lg:w-72 lg:border-r lg:border-b-0">

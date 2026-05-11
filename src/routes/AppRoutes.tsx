@@ -15,6 +15,7 @@ import { PaymentsPage } from '../pages/PaymentsPage'
 import { ReportsPage } from '../pages/ReportsPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { TreatmentPlansPage } from '../pages/TreatmentPlansPage'
+import { ProtectedRoute } from './ProtectedRoute'
 import { routePaths } from './routePaths'
 
 export function AppRoutes() {
@@ -22,7 +23,13 @@ export function AppRoutes() {
     <Routes>
       <Route path={routePaths.login} element={<LoginPage />} />
 
-      <Route element={<AppShell />}>
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppShell />
+          </ProtectedRoute>
+        }
+      >
         <Route path={routePaths.dashboard} element={<DashboardPage />} />
         <Route path={routePaths.calendar} element={<CalendarPage />} />
         <Route path={routePaths.patients} element={<PatientsPage />} />

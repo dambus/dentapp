@@ -173,6 +173,154 @@ This file tracks completed work and important project progress.
 - Completed Phase 2 Task 14: patient service abstraction created while preserving demo behavior.
 - Kept frontend behavior unchanged with no patient CRUD persistence, no seed data, and no real patient data.
 
+## 2026-05-11
+
+### Completed
+
+- Created `supabase/seed.sql` for local development-only fake/demo data.
+- Seeded one demo clinic: `DentApp Demo Clinic` with active status.
+- Seeded five fake demo patients linked to the demo clinic, covering active, inactive, and archived statuses.
+- Included both demo warning and no-warning patient examples.
+- Seeded fake demo `patient_medical_records` rows for selected patients.
+- Seeded fake demo `clinical_notes` rows for selected patients.
+- Chose the safer seed approach for now: no `auth.users` or `profiles` inserts in `seed.sql`.
+- Ran `npx.cmd supabase db reset` successfully with no seed warning.
+- Verified seeded counts in local database:
+	- `clinics`: 1
+	- `patients`: 5
+	- `patient_medical_records`: 3
+	- `clinical_notes`: 3
+- Verified demo-safety checks:
+	- no non-demo patient emails outside `@example.test`
+	- no patient/record/note text entries without `demo` marker
+- Kept frontend behavior unchanged: no patient UI Supabase reads/writes were added.
+- Created six local fake/demo Supabase Auth users for role-based RLS testing:
+	- `owner.demo@example.test`
+	- `doctor.demo@example.test`
+	- `specialist.demo@example.test`
+	- `assistant.demo@example.test`
+	- `reception.demo@example.test`
+	- `inventory.demo@example.test`
+- Added six matching active `profiles` rows linked to the seeded demo clinic.
+- Chose Option B for this task: create local auth users through local Supabase Auth admin API and map them to local application profiles.
+- Added `supabase/snippets/testPatientRlsByRole.mjs` to run authenticated role-by-role RLS checks using local demo users.
+- Seeded one demo `audit_logs` row (`demo.rls.seed`) to verify owner/admin-only audit visibility.
+- Ran authenticated RLS tests for all required roles and verified policy behavior:
+	- `owner_admin`: can view clinic, clinic profiles, patients, medical records, clinical notes, and audit logs; can insert/update patients and create clinical notes.
+	- `doctor`: can view own profile, patients, medical records, and clinical notes; cannot read audit logs; can insert/update patients and create clinical notes.
+	- `specialist`: can view own profile, patients, medical records, and clinical notes; cannot read audit logs; cannot create/update patients; can create clinical notes.
+	- `assistant`: can view own profile, patients, and medical records; cannot read clinical notes or audit logs; cannot create clinical notes or patients.
+	- `reception_admin`: can view own profile and patients; cannot read medical records, clinical notes, or audit logs; can insert/update patients; cannot create clinical notes.
+	- `inventory_responsible`: can view own profile and clinic row only; cannot read patients, medical records, clinical notes, or audit logs; cannot create patients or clinical notes.
+- Verified setup counts after provisioning:
+	- demo auth users: 6
+	- demo profiles: 6
+	- demo audit rows for RLS checks: 1
+- Noted local test artifacts from write-policy checks:
+	- test-created patients: 3
+	- test-created clinical notes: 3
+- Limitation: there are intentionally no delete policies for patient and clinical note tables, so test-created rows are not removed by authenticated clients; local cleanup should use `npx.cmd supabase db reset`.
+- Kept frontend behavior unchanged: no login UI, protected routes, or Supabase-backed patient page reads were added.
+- Implemented a patient data source boundary in `src/features/patients/patientService.ts`.
+- Added opt-in Supabase-backed patient read support behind `VITE_PATIENT_DATA_SOURCE`.
+- Kept demo mode as the safe default when the flag is missing or not set to `supabase`.
+- Added lazy Supabase client loading to avoid demo-mode runtime failures when Supabase env keys are not configured.
+- Added Supabase-backed read functions in patient service:
+	- `getPatients()` reads from `patients`, filters `deleted_at is null`, and orders by `last_name`, `first_name`.
+	- `getPatientById(patientId)` reads one patient and also fetches related `patient_medical_records` and latest `clinical_notes` entry for detail placeholders.
+	- `searchPatients(query)` in Supabase mode currently uses client-side filtering on fetched patient rows (first name, last name, phone, email) for local MVP simplicity.
+- Added snake_case to camelCase row mapping from Supabase patient tables to the existing frontend `DemoPatient` shape.
+- Added safe fallback behavior for Supabase mode:
+	- if Supabase client/env is unavailable, fallback to demo data,
+	- if no authenticated Supabase session exists, fallback to demo data,
+	- if Supabase read errors occur, fallback to demo data.
+- No patient writes were implemented.
+- No login/auth UI was implemented.
+- No service role key usage was introduced.
+- Updated `.env.example` with `VITE_PATIENT_DATA_SOURCE=demo`.
+- Verification commands completed after implementation:
+	- `npm run build` passes,
+	- `npm run lint` passes,
+	- `npm run dev` route checks in default mode return HTTP 200 for `/patients`, patient detail, and patient edit routes,
+	- `npm run dev` with `VITE_PATIENT_DATA_SOURCE=supabase` also starts successfully and route checks return HTTP 200.
+- Runtime limitation remains expected: without login/auth UI and active browser auth session, Supabase mode falls back to demo data because RLS requires authenticated sessions.
+- Kept UI behavior unchanged: patients list, search, detail loading, invalid patient handling, and edit prefill continue to work.
+- Implemented basic Supabase Auth login UI in `src/pages/LoginPage.tsx`.
+- Added email/password login form with loading state, clear error handling, and local/demo-only messaging.
+- Added minimal auth helper foundation under `src/features/auth/`:
+	- `authService.ts` for `signIn`, `signOut`, current session read, and auth state subscription.
+	- `useAuthSession.ts` hook for session-aware UI state.
+	- `types.ts` for auth helper typing.
+- Implemented logout action and auth session display in `src/layouts/TopBar.tsx`.
+- TopBar now shows signed-in user email when session exists, signed-out state when no session exists, and `Log out` / `Log in` controls accordingly.
+- Preserved existing demo role placeholder (`src/lib/demoAuth.ts`) and did not implement profile-role replacement yet.
+- Did not implement protected routes in this task.
+- Did not implement signup, password reset, user management, or patient writes.
+- Confirmed no service role key usage in frontend auth implementation.
+- Updated runtime env example with patient data source flag retained (`VITE_PATIENT_DATA_SOURCE=demo`).
+- Verification completed:
+	- `npm run build` passes.
+	- `npm run lint` passes.
+	- `/login` loads and renders the new auth form.
+	- Invalid credentials show a clear `Invalid login credentials` error.
+	- Valid local demo user login works in browser.
+	- TopBar shows signed-in email after login.
+	- Logout works and TopBar returns to signed-out state.
+	- App still loads when signed out.
+	- Patient pages still work in demo mode.
+- Optional Supabase patient mode check (`VITE_PATIENT_DATA_SOURCE=supabase`) was run with authenticated local demo user:
+	- login succeeded,
+	- `/patients` loaded,
+	- current local result showed `0` patients returned in UI for that authenticated flow.
+- Current observed limitation for follow-up: authenticated in-app patient read flow still needs profile/session alignment verification in browser context before replacing demo role with loaded profile role.
+- Implemented Supabase profile loading in app auth foundation:
+	- Added `src/features/auth/profileService.ts` to load current profile by `auth_user_id`.
+	- Added `src/features/auth/useCurrentProfile.ts` to combine auth session state with profile-loading state.
+	- Extended auth types with profile-related types in `src/features/auth/types.ts`.
+- Replaced demo-role placeholder usage in app chrome with profile-first role source:
+	- `TopBar` now shows profile role when available and retains demo fallback when profile/session is missing.
+	- `SidebarNav` now filters visible navigation using loaded profile role, with demo fallback.
+	- Hoisted profile loading to `AppShell` and passed it to chrome components to avoid duplicate profile fetches.
+- Validated role-aware runtime behavior in browser:
+	- `owner.demo@example.test` resolves to `owner_admin` and sees full navigation.
+	- `inventory.demo@example.test` resolves to `inventory_responsible` and sees restricted navigation.
+	- Sign-out returns to signed-out state with demo fallback role messaging.
+- Final Supabase patient read diagnosis:
+	- Authenticated owner flow in `VITE_PATIENT_DATA_SOURCE=supabase` resolves to seeded patient rows after profile/session context settles.
+	- Observed temporary `Showing 0 of 0` before async profile and patient fetch completion on first render.
+	- Local database includes additional test-created rows from prior RLS write checks; seeded-only counts require `npx.cmd supabase db reset`.
+- Verification completed after Task 19 updates:
+	- `npm run build` passes.
+	- `npm run lint` passes.
+	- Browser checks confirm profile role load, role-based nav filtering, and Supabase-backed patient list visibility for authenticated owner flow.
+- Implemented protected route foundation to require auth session and active profile:
+	- Created `src/routes/ProtectedRoute.tsx` to guard main app routes.
+	- Signed-out users are redirected to `/login` when accessing protected routes.
+	- Signed-in users without active profile see `ProfileRequiredPage` message.
+	- Loading state shown while checking auth/profile status.
+	- `/login` remains public.
+- Enhanced LoginPage behavior:
+	- Already signed-in users with active profile are redirected to dashboard.
+	- Loading states shown while checking profile status.
+	- Updated description to reflect protected routes.
+- Wrapped main app routes with ProtectedRoute in `AppRoutes.tsx`.
+- Created ProfileRequiredPage for signed-in users without active profile.
+- Manual verification completed:
+	- Signed-out: accessing `/` redirects to `/login`.
+	- Signed-out: accessing `/patients` redirects to `/login`.
+	- Login works with valid demo user credentials.
+	- Signed-in with active profile: can access `/` and `/patients`.
+	- Signed-in: TopBar shows profile role and email.
+	- Signed-in: Sidebar filters navigation by profile role.
+	- Signed-in: accessing `/login` redirects to dashboard.
+	- Signed-in: logout works and redirects to `/login`.
+	- Role-based navigation confirmed with inventory_responsible role (restricted nav).
+- Verification completed:
+	- `npm run build` passes.
+	- `npm run lint` passes.
+	- Protected routes block unsigned access.
+	- Profile requirement enforced.
+	- Role-based navigation works with protected routes.
 ### Current Project State
 
 Phase 1 — App Foundation is complete. Phase 2 — Patients and records has started with frontend-only Patients list, Patient Detail, read-only patient record section, patient form foundation, basic form validation, patient persistence planning, initial patient migration draft, patient migration review, local Supabase migration validation, initial patient RLS policy, audit log foundation, Supabase client foundation, local frontend Supabase connection testing, and patient service abstraction tasks.
@@ -219,11 +367,11 @@ Initial stack:
 
 ### Next Recommended Work
 
-1. Create fake/demo database seed data later for safe CRUD testing.
-2. Test authenticated RLS behavior later with demo users and roles.
-3. Implement Supabase-backed patient reads behind the existing service abstraction.
-4. Replace demo patient reads later through the service abstraction.
-5. Implement patient create/update with audit logging later.
+1. Load profile and role from Supabase after login and replace the demo role placeholder in app chrome.
+2. Verify and fix authenticated Supabase patient reads in browser flow so seeded rows are visible under expected roles.
+3. Add protected routes later after profile/session loading is stable.
+4. Implement patient create/update with audit logging later.
+5. Keep the local authenticated RLS script as a regression check when policies change.
 
 ---
 

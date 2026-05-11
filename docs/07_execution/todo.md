@@ -136,10 +136,16 @@ Status legend:
   - [ ] Task 15: Test patient CRUD with fake/demo database data
   - [ ] Task 16: Implement audit logging for patient create/update/archive flows
   - [x] Task 17: Configure local `.env.local` values for local Supabase connection testing
-  - [ ] Task 18: Create fake/demo database seed data for safe local CRUD testing
-  - [ ] Task 19: Test authenticated RLS behavior with demo users and roles
-  - [ ] Task 20: Implement Supabase-backed patient reads behind the patient service
+  - [x] Task 18: Create fake/demo database seed data for safe local CRUD testing
+  - [x] Task 19: Test authenticated RLS behavior with demo users and roles
+  - [x] Task 20: Implement Supabase-backed patient reads behind the patient service
   - [ ] Task 21: Implement patient create/update with audit logging
+  - [x] Task 22: Implement basic Supabase Auth login/logout UI
+  - [x] Task 23: Load profile/role from Supabase after login and replace demo role placeholder
+  - [x] Task 24: Add protected routes after profile/session loading is stable
+  - [ ] Task 25: Implement patient create/update with audit logging
+  - [ ] Task 26: Test patient CRUD with protected routes and role-based access
+  - [ ] Task 27: Add fine-grained role-specific route guards (optional, later phase)
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -163,11 +169,17 @@ Status legend:
 - [x] Configure local `.env.local` values for local Supabase
 - [x] Create patient service abstraction
 - [x] Test Supabase connection safely without real patient data
-- [ ] Create fake/demo database seed data for safe local CRUD testing
-- [ ] Test authenticated RLS behavior with demo users and roles
-- [ ] Implement Supabase-backed patient reads behind the patient service
-- [ ] Implement audit logging for patient create/update/archive flows later
-- [ ] Test patient CRUD with fake/demo database data later
+- [x] Create fake/demo database seed data for safe local CRUD testing
+- [x] Test authenticated RLS behavior with demo users and roles
+- [x] Implement Supabase-backed patient reads behind the patient service
+- [x] Implement login/auth UI for authenticated browser sessions
+- [x] Test Supabase patient reads in app flow with authenticated demo users and resolve current browser-flow empty result
+- [x] Load profile/role from Supabase and replace demo role placeholder in TopBar/navigation
+- [x] Add protected routes after auth/profile loading
+- [ ] Implement patient create/update with audit logging
+- [ ] Test patient CRUD with protected routes through patient service integration
+- [ ] Add fine-grained role-specific route guards (later phase)
+- [ ] Test Supabase patient mode with protected routes for different roles
 
 
 
