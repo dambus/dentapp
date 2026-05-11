@@ -140,9 +140,9 @@ Status legend:
   - [x] Task 19: Load current profile and replace demo role placeholder
   - [x] Task 20: Add protected route foundation after profile/session loading
   - [x] Task 21: Diagnose and fix Supabase-mode patient reads in browser flow
-  - [ ] Task 22: Define controlled audit insert strategy/RPC
-  - [ ] Task 23: Implement patient create/update service layer
-  - [ ] Task 24: Connect patient create/edit forms to service writes
+  - [x] Task 22: Define controlled audit insert strategy/RPC
+  - [x] Task 23: Implement patient create/update service layer
+  - [ ] Task 24: Connect patient create/edit forms to service writes (submit behavior integration)
   - [ ] Task 25: Add fine-grained role-specific route guards (optional, later phase)
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
@@ -155,7 +155,6 @@ Status legend:
 
 ## 10. Current Immediate Next Tasks
 
-- [ ] Define controlled audit insert strategy/RPC
 - [ ] Implement patient create/update service layer
 - [ ] Connect patient create/edit forms to service writes
 - [ ] Add fine-grained role-specific route guards (later phase)

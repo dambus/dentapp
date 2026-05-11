@@ -341,23 +341,67 @@ This file tracks completed work and important project progress.
 - Known data note remains:
 	- Local patient counts may exceed seeded-only values because role test script intentionally creates test rows.
 	- Run `npx.cmd supabase db reset` to return to seeded-only counts.
+- Implemented controlled audit insert strategy / RPC (Task 22):
+	- Created migration `supabase/migrations/20260511111000_create_audit_insert_function.sql`.
+	- Added `public.create_audit_log(p_action text, p_entity_type text, p_entity_id uuid default null, p_old_values jsonb default null, p_new_values jsonb default null, p_metadata jsonb default null)`.
+	- Function uses authenticated context only (`auth.uid()`, `current_profile_id()`, `current_clinic_id()`) and does not accept caller-provided clinic/actor ids.
+	- Function validates non-empty `action` and `entity_type`, inserts append-only audit row, and returns inserted audit log id.
+	- Function is `security definer` with `set search_path = public` and execute is granted only to `authenticated`.
+	- No direct `audit_logs` write policies were added.
+	- No `UPDATE` or `DELETE` policies were added.
+- Task 22 verification completed:
+	- Ran `npx.cmd supabase db reset`; all migrations applied successfully.
+	- Verified function exists (`create_audit_log`).
+	- Verified `audit_logs` policies remain read-only (`Owner admins can view clinic audit logs`).
+	- Verified no `INSERT`/`UPDATE`/`DELETE` policies exist on `audit_logs`.
+	- Added local script `supabase/snippets/testAuditInsert.mjs` for role-based RPC checks.
+	- Verified owner and doctor can call `create_audit_log` successfully for own clinic context.
+	- Verified doctor cannot read `audit_logs` (count `0` through RLS).
+	- Verified unauthenticated RPC call fails with `Authenticated session is required for audit log creation.`
+	- Re-ran `node supabase/snippets/testPatientRlsByRole.mjs`; role behavior remained valid.
+- Implemented patient create/update service layer (Task 23):
+	- Added `createPatient(input)` function to `src/features/patients/patientService.ts`.
+	- Added `updatePatient(patientId, input)` function to `src/features/patients/patientService.ts`.
+	- Both functions support Supabase-backed persistence with RLS enforcement (no service role key).
+	- Both functions validate input (firstName, lastName, phone, status required).
+	- Both functions enforce demo mode non-persistence (throw error for non-Supabase data source).
+	- Both functions check authenticated profile context (return clear error if no active profile).
+	- Both functions perform mutations through RLS-protected Supabase queries.
+	- Both functions call `create_audit_log` RPC after successful mutations:
+		- `createPatient` calls with action `patient.created`, entity_type `patient`, new_values set, old_values null.
+		- `updatePatient` fetches old_values before mutation, calls with action `patient.updated`, old_values and new_values set.
+	- Both functions return structured `PatientWriteResult` with `ok` flag, `patientId`, and error message.
+	- Added helper functions for input validation, form-to-database row mapping, and audit log creation.
+	- Added `supabase/snippets/testPatientWriteService.mjs` for role-based write and audit verification:
+		- Tests owner_admin can create and update patients.
+		- Tests doctor can create and update patients.
+		- Tests reception_admin can create and update patients.
+		- Tests specialist, assistant, inventory_responsible cannot create/update (RLS denied).
+		- Verifies audit logs created for allowed writes.
+		- Verifies owner can read audit logs, others cannot.
+	- Build succeeds: `npm run build` → 111 modules, 286.87 kB (gzip 86.28 kB).
+	- Lint succeeds: `npm run lint` → no errors.
+	- Demo mode behavior confirmed: attempts to persist in demo mode return clear error message.
+	- Supabase mode ready for service-layer usage before UI form integration.
 ### Current Project State
 
 Phase 1 — App Foundation is complete.
 
-Phase 2 foundation through Task 20 is complete and verified:
+Phase 2 foundation through Task 23 is complete and verified:
 
 - local fake/demo seed data exists,
 - local fake auth users and role-based RLS checks are in place,
 - Supabase-backed patient reads are implemented behind patientService data-source boundary,
 - basic login/logout UI is implemented,
 - current profile loading and role-based chrome behavior are implemented,
-- protected routes require authenticated session plus active profile.
+- protected routes require authenticated session plus active profile,
+- controlled audit insert RPC is implemented for append-only audit writes,
+- patient create/update service functions are implemented with audit integration.
 
-Current known issue:
+Current known limitation:
 
-- In browser Supabase mode (`VITE_PATIENT_DATA_SOURCE=supabase`), owner flow currently shows `0` patients in Patients UI while authenticated RLS script checks confirm owner can read patients.
-- This requires dedicated diagnosis/fix before patient write integration.
+- Local row counts may differ from seeded-only counts after role test scripts create additional test rows.
+- Use `npx.cmd supabase db reset` to return to seeded-only baseline.
 
 ### Current Stack Decision
 
@@ -395,11 +439,9 @@ Initial stack:
 
 ### Next Recommended Work
 
-1. Diagnose and fix Supabase-mode patient reads in browser flow.
-2. Define controlled audit insert strategy/RPC.
-3. Implement patient create/update service layer.
-4. Connect patient create/edit forms to service writes.
-5. Add fine-grained role-specific route guards later.
+1. Implement patient create/update service layer using controlled audit RPC.
+2. Connect patient create/edit forms to service writes.
+3. Add fine-grained role-specific route guards later.
 
 ---
 

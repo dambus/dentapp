@@ -1,5 +1,6 @@
 import { demoPatients } from './demoPatients'
-import type { DemoPatient } from './types'
+import type { DemoPatient, PatientStatus } from './types'
+import type { PatientFormValues } from './patientFormValues'
 
 type PatientDataSource = 'demo' | 'supabase'
 
@@ -389,4 +390,426 @@ export async function searchPatients(query: string): Promise<DemoPatient[]> {
   return clonePatients(
     demoPatients.filter((patient) => matchesSearch(patient, normalizedSearch)),
   )
+}
+
+// Patient write service layer and audit integration
+
+type PatientWriteResult = {
+  ok: boolean
+  patientId?: string
+  message: string | null
+  error?: string
+}
+
+type PatientCreateInput = Omit<PatientFormValues, 'summary'>
+
+type PatientUpdateInput = Partial<PatientCreateInput>
+
+interface PatientInsertRow {
+  first_name: string
+  last_name: string
+  phone: string
+  email: string | null
+  date_of_birth: string | null
+  status: PatientStatus
+  important_note: string | null
+  clinic_id: string
+  created_by: string
+  updated_by: string
+}
+
+interface PatientUpdateRow {
+  first_name?: string
+  last_name?: string
+  phone?: string
+  email?: string | null
+  date_of_birth?: string | null
+  status?: PatientStatus
+  important_note?: string | null
+  updated_by: string
+}
+
+function validatePatientCreateInput(input: PatientCreateInput): string | null {
+  const firstName = input.firstName?.trim()
+  const lastName = input.lastName?.trim()
+  const phone = input.phone?.trim()
+  const status = input.status
+
+  if (!firstName) {
+    return 'Patient first name is required.'
+  }
+
+  if (!lastName) {
+    return 'Patient last name is required.'
+  }
+
+  if (!phone) {
+    return 'Patient phone number is required.'
+  }
+
+  if (!status) {
+    return 'Patient status is required.'
+  }
+
+  return null
+}
+
+function mapFormValuesToDatabaseRow(
+  input: PatientCreateInput,
+  clinicId: string,
+  currentProfileId: string,
+): PatientInsertRow {
+  return {
+    first_name: input.firstName,
+    last_name: input.lastName,
+    phone: input.phone,
+    email: input.email?.trim() ? input.email : null,
+    date_of_birth: input.dateOfBirth ?? null,
+    status: input.status,
+    important_note: input.importantWarning?.trim() ?? null,
+    clinic_id: clinicId,
+    created_by: currentProfileId,
+    updated_by: currentProfileId,
+  }
+}
+
+function mapFormValuesToUpdateRow(
+  input: PatientUpdateInput,
+  currentProfileId: string,
+): PatientUpdateRow {
+  const updateRow: PatientUpdateRow = {
+    updated_by: currentProfileId,
+  }
+
+  if (input.firstName !== undefined) {
+    updateRow.first_name = input.firstName
+  }
+
+  if (input.lastName !== undefined) {
+    updateRow.last_name = input.lastName
+  }
+
+  if (input.phone !== undefined) {
+    updateRow.phone = input.phone
+  }
+
+  if (input.email !== undefined) {
+    updateRow.email = input.email?.trim() ? input.email : null
+  }
+
+  if (input.dateOfBirth !== undefined) {
+    updateRow.date_of_birth = input.dateOfBirth ?? null
+  }
+
+  if (input.status !== undefined) {
+    updateRow.status = input.status
+  }
+
+  if (input.importantWarning !== undefined) {
+    updateRow.important_note = input.importantWarning?.trim() ?? null
+  }
+
+  return updateRow
+}
+
+async function createPatientAuditLog(
+  patientId: string,
+  newValues: Record<string, unknown>,
+): Promise<string | null> {
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    console.warn(
+      '[patientService] Unable to create audit log: Supabase client unavailable.',
+    )
+
+    return null
+  }
+
+  const { data, error } = await supabase.rpc('create_audit_log', {
+    p_action: 'patient.created',
+    p_entity_type: 'patient',
+    p_entity_id: patientId,
+    p_old_values: null,
+    p_new_values: newValues,
+    p_metadata: null,
+  })
+
+  if (error) {
+    console.warn('[patientService] Failed to create audit log for patient create:', error)
+
+    return null
+  }
+
+  console.info('[patientService] Audit log created for patient create:', data)
+
+  return data
+}
+
+async function updatePatientAuditLog(
+  patientId: string,
+  oldValues: Record<string, unknown> | null,
+  newValues: Record<string, unknown>,
+): Promise<string | null> {
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    console.warn(
+      '[patientService] Unable to create audit log: Supabase client unavailable.',
+    )
+
+    return null
+  }
+
+  const { data, error } = await supabase.rpc('create_audit_log', {
+    p_action: 'patient.updated',
+    p_entity_type: 'patient',
+    p_entity_id: patientId,
+    p_old_values: oldValues,
+    p_new_values: newValues,
+    p_metadata: null,
+  })
+
+  if (error) {
+    console.warn('[patientService] Failed to create audit log for patient update:', error)
+
+    return null
+  }
+
+  console.info('[patientService] Audit log created for patient update:', data)
+
+  return data
+}
+
+export async function createPatient(
+  input: PatientCreateInput,
+): Promise<PatientWriteResult> {
+  // Demo mode check
+  if (patientDataSource !== 'supabase') {
+    return {
+      ok: false,
+      message: null,
+      error: 'Supabase persistence is not enabled in demo mode. Configure VITE_PATIENT_DATA_SOURCE=supabase to enable patient creation.',
+    }
+  }
+
+  // Input validation
+  const validationError = validatePatientCreateInput(input)
+
+  if (validationError) {
+    return {
+      ok: false,
+      message: null,
+      error: validationError,
+    }
+  }
+
+  // Get Supabase client and profile context
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    return {
+      ok: false,
+      message: null,
+      error: 'Supabase client is not available.',
+    }
+  }
+
+  const profileContext = await getCurrentSupabaseProfileContext()
+
+  if (!profileContext || profileContext.status !== 'active') {
+    return {
+      ok: false,
+      message: null,
+      error: 'Active profile context is required to create patients.',
+    }
+  }
+
+  // Map form values to database row
+  const insertRow = mapFormValuesToDatabaseRow(
+    input,
+    profileContext.clinic_id,
+    profileContext.id,
+  )
+
+  // Insert patient into Supabase
+  const { data: insertData, error: insertError } = await supabase
+    .from('patients')
+    .insert([insertRow])
+    .select('id, first_name, last_name, phone, email, date_of_birth, status, important_note')
+    .single()
+
+  if (insertError) {
+    const errorMessage = insertError.message || 'Failed to create patient.'
+
+    return {
+      ok: false,
+      message: null,
+      error: errorMessage,
+    }
+  }
+
+  if (!insertData) {
+    return {
+      ok: false,
+      message: null,
+      error: 'Patient was created but no data was returned.',
+    }
+  }
+
+  const patientId = insertData.id as string
+
+  // Create audit log
+  const auditValues = {
+    id: patientId,
+    first_name: insertData.first_name,
+    last_name: insertData.last_name,
+    phone: insertData.phone,
+    email: insertData.email,
+    date_of_birth: insertData.date_of_birth,
+    status: insertData.status,
+    important_note: insertData.important_note,
+  }
+
+  await createPatientAuditLog(patientId, auditValues)
+
+  return {
+    ok: true,
+    patientId,
+    message: null,
+  }
+}
+
+export async function updatePatient(
+  patientId: string,
+  input: PatientUpdateInput,
+): Promise<PatientWriteResult> {
+  // Demo mode check
+  if (patientDataSource !== 'supabase') {
+    return {
+      ok: false,
+      message: null,
+      error: 'Supabase persistence is not enabled in demo mode. Configure VITE_PATIENT_DATA_SOURCE=supabase to enable patient updates.',
+    }
+  }
+
+  // Validate patientId
+  if (!patientId?.trim()) {
+    return {
+      ok: false,
+      message: null,
+      error: 'Patient ID is required to update a patient.',
+    }
+  }
+
+  // Get Supabase client and profile context
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    return {
+      ok: false,
+      message: null,
+      error: 'Supabase client is not available.',
+    }
+  }
+
+  const profileContext = await getCurrentSupabaseProfileContext()
+
+  if (!profileContext || profileContext.status !== 'active') {
+    return {
+      ok: false,
+      message: null,
+      error: 'Active profile context is required to update patients.',
+    }
+  }
+
+  // Fetch current patient data for audit old_values
+  const { data: currentPatient, error: fetchError } = await supabase
+    .from('patients')
+    .select(
+      'id, first_name, last_name, phone, email, date_of_birth, status, important_note, clinic_id',
+    )
+    .eq('id', patientId)
+    .eq('clinic_id', profileContext.clinic_id)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (fetchError) {
+    return {
+      ok: false,
+      message: null,
+      error: 'Failed to fetch current patient data for update.',
+    }
+  }
+
+  if (!currentPatient) {
+    return {
+      ok: false,
+      message: null,
+      error: 'Patient not found or you do not have permission to update it.',
+    }
+  }
+
+  // Map form values to update row
+  const updateRow = mapFormValuesToUpdateRow(input, profileContext.id)
+
+  // Update patient
+  const { data: updateData, error: updateError } = await supabase
+    .from('patients')
+    .update(updateRow)
+    .eq('id', patientId)
+    .eq('clinic_id', profileContext.clinic_id)
+    .is('deleted_at', null)
+    .select(
+      'id, first_name, last_name, phone, email, date_of_birth, status, important_note',
+    )
+    .single()
+
+  if (updateError) {
+    const errorMessage = updateError.message || 'Failed to update patient.'
+
+    return {
+      ok: false,
+      message: null,
+      error: errorMessage,
+    }
+  }
+
+  if (!updateData) {
+    return {
+      ok: false,
+      message: null,
+      error: 'Patient was updated but no data was returned.',
+    }
+  }
+
+  // Build old and new values for audit
+  const oldAuditValues = {
+    first_name: currentPatient.first_name,
+    last_name: currentPatient.last_name,
+    phone: currentPatient.phone,
+    email: currentPatient.email,
+    date_of_birth: currentPatient.date_of_birth,
+    status: currentPatient.status,
+    important_note: currentPatient.important_note,
+  }
+
+  const newAuditValues = {
+    first_name: updateData.first_name,
+    last_name: updateData.last_name,
+    phone: updateData.phone,
+    email: updateData.email,
+    date_of_birth: updateData.date_of_birth,
+    status: updateData.status,
+    important_note: updateData.important_note,
+  }
+
+  // Create audit log
+  await updatePatientAuditLog(patientId, oldAuditValues, newAuditValues)
+
+  return {
+    ok: true,
+    patientId,
+    message: null,
+  }
 }

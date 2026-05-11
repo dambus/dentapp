@@ -68,27 +68,29 @@ Future limited audit views may be considered, but they must be explicitly scoped
 
 ## 4. Write Strategy
 
-Direct authenticated insert access is deferred for now.
+Controlled insert now uses `public.create_audit_log(...)`.
 
-Reason:
+Current strategy:
 
-Audit logs should be trustworthy. Allowing broad client-side insert access too early could let ordinary users create misleading or incomplete audit rows.
-
-Initial strategy:
-
-- create the `audit_logs` table,
-- enable RLS,
+- keep `audit_logs` direct insert blocked by policy (no direct insert policy),
+- keep RLS enabled,
 - allow owner/admin read access only,
-- defer audit insertion until patient persistence service work is implemented.
+- allow authenticated callers to insert only through controlled RPC,
+- derive clinic and actor from authenticated profile context (not from frontend payload).
 
-Future audit writes should use one of these controlled approaches:
+Function behavior summary:
 
-- service-layer writes after successful Supabase mutations,
-- a controlled `security definer` function with strict validation,
-- database triggers for narrow, high-value changes,
-- a hybrid approach that combines service context with database enforcement.
+- requires authenticated session (`auth.uid()`),
+- requires active profile,
+- derives `clinic_id` from `public.current_clinic_id()`,
+- derives `actor_profile_id` from `public.current_profile_id()`,
+- derives `actor_auth_user_id` from `auth.uid()`,
+- validates `action` and `entity_type` are non-empty,
+- inserts append-only row and returns inserted audit log id.
 
-Automatic triggers are intentionally not added in the initial audit schema task.
+Implementation note:
+
+`public.create_audit_log(...)` is `security definer` with `set search_path = public`. This is used so direct table insert policy is not needed while still enforcing profile-context checks inside the function.
 
 ---
 
@@ -98,6 +100,7 @@ Audit logs should not be edited or deleted through normal application flows.
 
 Initial database policy:
 
+- no direct insert policy,
 - no update policy,
 - no delete policy,
 - no hard delete workflow.
@@ -161,13 +164,12 @@ Before real patient CRUD is enabled, the patient service layer should define aud
 
 The service layer should set:
 
-- current clinic,
-- actor profile,
-- actor auth user,
 - action,
 - entity type,
 - entity id,
 - before/after values where appropriate.
+
+Clinic and actor identity are already derived in the controlled RPC and must not be caller-provided.
 
 Database triggers can be added later for critical tables if service-layer audit logging is not sufficient.
 

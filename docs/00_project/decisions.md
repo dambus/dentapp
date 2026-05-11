@@ -756,3 +756,52 @@ Impact:
 `PatientsPage` now gates Supabase-mode fetch timing on auth/profile readiness and displays clear loading feedback. This improves perceived correctness and reduces false-positive read issue reports while preserving existing RLS/data-source behavior.
 
 Status: Accepted
+
+---
+
+## Decision 038 — Audit Logs Use Controlled RPC Inserts
+
+Date: 2026-05-11
+
+Decision:
+
+Audit log writes must go through `public.create_audit_log(...)` instead of direct `audit_logs` insert policies.
+
+Reason:
+
+Audit rows must be trustworthy and clinic-scoped. Direct client insert policies would make it easier to spoof actor/clinic fields or submit inconsistent audit payloads.
+
+Impact:
+
+`create_audit_log` derives actor and clinic from authenticated profile context (`auth.uid()`, `current_profile_id()`, `current_clinic_id()`), keeps append-only behavior, and returns inserted audit id. `audit_logs` remains without direct insert/update/delete policies, and owner/admin read restriction remains unchanged.
+
+Status: Accepted
+
+---
+
+## Decision 039 — Patient Writes Through Service Layer With Audit RPC
+
+Date: 2026-05-11
+
+Decision:
+
+Patient create and update operations must go through the patient service layer (`patientService.ts`), respect RLS through authenticated session/RLC context (no service role key), and call `create_audit_log` RPC after successful mutations.
+
+Reason:
+
+Patient data is sensitive and audit logging must be reliable. Using the service layer for all mutations ensures consistent RLS enforcement, centralized error handling, and mandatory audit trail creation. RPC-based audit logging ensures clinic and actor context cannot be spoofed by frontend code.
+
+Impact:
+
+Added `createPatient(input)` and `updatePatient(patientId, input)` functions to `src/features/patients/patientService.ts`. Both functions:
+- Validate input (firstName, lastName, phone, status required)
+- Enforce demo mode non-persistence (throw error if `VITE_PATIENT_DATA_SOURCE !== 'supabase'`)
+- Check authenticated profile context (returns clear error if no active profile)
+- Perform inserts/updates through RLS-protected Supabase queries (anon key only, no service role)
+- Call `create_audit_log` RPC with appropriate action and old/new values for audit trail
+- Return structured result with success flag, patient ID, and error messages
+
+Demo mode remains non-persistent. UI form integration is deferred to a follow-up task.
+
+Status: Accepted
+
