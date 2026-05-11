@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
-import { Badge, Button, Card, CardContent, EmptyState } from '../components/ui'
+import { useCurrentProfile } from '../features/auth/useCurrentProfile'
+import { Badge, Button, Card, CardContent, EmptyState, LoadingState } from '../components/ui'
 import {
   formatDemoCurrency,
   formatPatientDate,
@@ -12,7 +13,7 @@ import {
   patientStatusBadgeVariants,
   patientStatusLabels,
 } from '../features/patients/patientDisplay'
-import { getPatients, searchPatients } from '../features/patients/patientService'
+import { getPatients } from '../features/patients/patientService'
 import type {
   DemoPatient,
   PatientStatus,
@@ -22,19 +23,35 @@ import { getPatientDetailPath, routePaths } from '../routes/routePaths'
 type StatusFilter = PatientStatus | 'all'
 
 export function PatientsPage() {
+  const currentProfile = useCurrentProfile()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [patients, setPatients] = useState<DemoPatient[]>([])
-  const [matchingPatients, setMatchingPatients] = useState<DemoPatient[]>([])
+  const [isPatientsLoading, setIsPatientsLoading] = useState(true)
+
+  const isSupabasePatientMode =
+    import.meta.env.VITE_PATIENT_DATA_SOURCE?.toLowerCase() === 'supabase'
 
   useEffect(() => {
     let isCurrent = true
 
     async function loadPatients() {
+      if (isSupabasePatientMode && (currentProfile.isAuthLoading || currentProfile.isLoading)) {
+        if (isCurrent) {
+          setIsPatientsLoading(true)
+        }
+        return
+      }
+
+      if (isCurrent) {
+        setIsPatientsLoading(true)
+      }
+
       const loadedPatients = await getPatients()
 
       if (isCurrent) {
         setPatients(loadedPatients)
+        setIsPatientsLoading(false)
       }
     }
 
@@ -43,36 +60,50 @@ export function PatientsPage() {
     return () => {
       isCurrent = false
     }
-  }, [])
+  }, [
+    currentProfile.isAuthLoading,
+    currentProfile.isLoading,
+    currentProfile.profile?.id,
+    currentProfile.profile?.status,
+    currentProfile.session?.user.id,
+    isSupabasePatientMode,
+  ])
 
-  useEffect(() => {
-    let isCurrent = true
+  const normalizedSearch = search.trim().toLowerCase()
 
-    async function loadMatchingPatients() {
-      const searchResults = await searchPatients(search)
-
-      if (isCurrent) {
-        setMatchingPatients(searchResults)
-      }
+  const searchMatchedPatients = useMemo(() => {
+    if (!normalizedSearch) {
+      return patients
     }
 
-    void loadMatchingPatients()
-
-    return () => {
-      isCurrent = false
-    }
-  }, [search])
+    return patients.filter((patient) => {
+      return [
+        patient.firstName,
+        patient.lastName,
+        patient.phone,
+        patient.email,
+      ].some((value) => value.toLowerCase().includes(normalizedSearch))
+    })
+  }, [normalizedSearch, patients])
 
   const filteredPatients = useMemo(() => {
-    return matchingPatients.filter((patient) => {
+    return searchMatchedPatients.filter((patient) => {
       const statusMatches =
         statusFilter === 'all' || patient.status === statusFilter
 
       return statusMatches
     })
-  }, [matchingPatients, statusFilter])
+  }, [searchMatchedPatients, statusFilter])
 
   const hasActiveFilters = search.trim() !== '' || statusFilter !== 'all'
+  const dataModeLabel = isSupabasePatientMode ? 'Supabase mode' : 'Demo mode'
+  const patientLabel = isSupabasePatientMode ? 'patients' : 'demo patients'
+  const emptyStateTitle = isSupabasePatientMode
+    ? 'No patients found'
+    : 'No demo patients found'
+  const emptyStateDescription = isSupabasePatientMode
+    ? 'Adjust the search term or status filter to show Supabase patient records.'
+    : 'Adjust the search term or status filter to show fake demo patient records.'
 
   function clearFilters() {
     setSearch('')
@@ -86,7 +117,7 @@ export function PatientsPage() {
         description="Search and review fake demo patients for the Phase 2 frontend foundation. Supabase, real patient records, and create/edit flows are not connected yet."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="info">Fake demo data</Badge>
+            <Badge variant="info">{dataModeLabel}</Badge>
             <Link
               className="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-800"
               to={routePaths.patientCreate}
@@ -133,10 +164,13 @@ export function PatientsPage() {
           </div>
 
           <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
-            <span>
-              Showing {filteredPatients.length} of {patients.length} demo
-              patients
-            </span>
+            {isPatientsLoading ? (
+              <span>Loading patient list...</span>
+            ) : (
+              <span>
+                Showing {filteredPatients.length} of {patients.length} {patientLabel}
+              </span>
+            )}
             {hasActiveFilters ? (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
                 Clear filters
@@ -146,7 +180,11 @@ export function PatientsPage() {
         </CardContent>
       </Card>
 
-      {filteredPatients.length > 0 ? (
+      {isPatientsLoading ? (
+        <LoadingState label="Loading patients..." />
+      ) : null}
+
+      {!isPatientsLoading && filteredPatients.length > 0 ? (
         <>
           <Card className="hidden overflow-hidden md:block">
             <div className="overflow-x-auto">
@@ -293,10 +331,12 @@ export function PatientsPage() {
             ))}
           </div>
         </>
-      ) : (
+      ) : null}
+
+      {!isPatientsLoading && filteredPatients.length === 0 ? (
         <EmptyState
-          title="No demo patients found"
-          description="Adjust the search term or status filter to show fake demo patient records."
+          title={emptyStateTitle}
+          description={emptyStateDescription}
           action={
             hasActiveFilters ? (
               <Button variant="secondary" onClick={clearFilters}>
@@ -305,7 +345,7 @@ export function PatientsPage() {
             ) : undefined
           }
         />
-      )}
+      ) : null}
     </Page>
   )
 }

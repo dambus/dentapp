@@ -133,19 +133,17 @@ Status legend:
   - [x] Task 12: Configure Supabase client for frontend data access
   - [x] Task 13: Create patient service abstraction
   - [x] Task 14: Replace direct demo patient reads with service abstraction
-  - [ ] Task 15: Test patient CRUD with fake/demo database data
-  - [ ] Task 16: Implement audit logging for patient create/update/archive flows
-  - [x] Task 17: Configure local `.env.local` values for local Supabase connection testing
-  - [x] Task 18: Create fake/demo database seed data for safe local CRUD testing
-  - [x] Task 19: Test authenticated RLS behavior with demo users and roles
-  - [x] Task 20: Implement Supabase-backed patient reads behind the patient service
-  - [ ] Task 21: Implement patient create/update with audit logging
-  - [x] Task 22: Implement basic Supabase Auth login/logout UI
-  - [x] Task 23: Load profile/role from Supabase after login and replace demo role placeholder
-  - [x] Task 24: Add protected routes after profile/session loading is stable
-  - [ ] Task 25: Implement patient create/update with audit logging
-  - [ ] Task 26: Test patient CRUD with protected routes and role-based access
-  - [ ] Task 27: Add fine-grained role-specific route guards (optional, later phase)
+  - [x] Task 15: Create local demo seed data
+  - [x] Task 16: Create demo auth users and complete RLS role testing
+  - [x] Task 17: Implement Supabase-backed patient reads behind patientService data-source boundary
+  - [x] Task 18: Implement basic login/logout UI
+  - [x] Task 19: Load current profile and replace demo role placeholder
+  - [x] Task 20: Add protected route foundation after profile/session loading
+  - [x] Task 21: Diagnose and fix Supabase-mode patient reads in browser flow
+  - [ ] Task 22: Define controlled audit insert strategy/RPC
+  - [ ] Task 23: Implement patient create/update service layer
+  - [ ] Task 24: Connect patient create/edit forms to service writes
+  - [ ] Task 25: Add fine-grained role-specific route guards (optional, later phase)
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -157,29 +155,10 @@ Status legend:
 
 ## 10. Current Immediate Next Tasks
 
-- [x] Fill `docs/00_project/product_vision.md`
-- [x] Fill `docs/00_project/project_charter.md`
-- [x] Fill `docs/00_project/decisions.md`
-- [x] Fill `docs/00_project/open_questions.md`
-- [x] Fill `docs/08_codex/codex_task_template.md`
-- [x] Fill `docs/08_codex/codex_review_checklist.md`
-- [x] Add patient RLS helper functions and policies
-- [x] Create audit log schema and strategy
-- [x] Configure Supabase client
-- [x] Configure local `.env.local` values for local Supabase
-- [x] Create patient service abstraction
-- [x] Test Supabase connection safely without real patient data
-- [x] Create fake/demo database seed data for safe local CRUD testing
-- [x] Test authenticated RLS behavior with demo users and roles
-- [x] Implement Supabase-backed patient reads behind the patient service
-- [x] Implement login/auth UI for authenticated browser sessions
-- [x] Test Supabase patient reads in app flow with authenticated demo users and resolve current browser-flow empty result
-- [x] Load profile/role from Supabase and replace demo role placeholder in TopBar/navigation
-- [x] Add protected routes after auth/profile loading
-- [ ] Implement patient create/update with audit logging
-- [ ] Test patient CRUD with protected routes through patient service integration
+- [ ] Define controlled audit insert strategy/RPC
+- [ ] Implement patient create/update service layer
+- [ ] Connect patient create/edit forms to service writes
 - [ ] Add fine-grained role-specific route guards (later phase)
-- [ ] Test Supabase patient mode with protected routes for different roles
 
 
 

@@ -716,3 +716,43 @@ Impact:
 A ProtectedRoute wrapper guards all routes inside the app shell. Loading states show while checking auth/profile. Login page redirects already-signed-in users to dashboard for better UX. Fine-grained role-specific route guards are deferred to a later phase.
 
 Status: Accepted
+
+---
+
+## Decision 036 — Resolve Browser Supabase Read Gap Before Patient Writes
+
+Date: 2026-05-11
+
+Decision:
+
+Before implementing patient create/update writes, first diagnose and fix the browser Supabase-mode patient read gap where owner session shows `0` patients in UI despite authenticated RLS script reads succeeding.
+
+Reason:
+
+Patient writes should be built on a verified end-to-end authenticated read baseline. Resolving this mismatch first reduces risk and avoids compounding service/write diagnostics with unresolved read-path behavior.
+
+Impact:
+
+Near-term execution order is: (1) read-path diagnosis/fix, (2) controlled audit insert strategy/RPC, (3) patient write service implementation, and (4) form-to-write integration. Fine-grained role-specific route guards remain a later, optional hardening step.
+
+Status: Accepted
+
+---
+
+## Decision 037 — Supabase Patient Reads Wait For Auth/Profile Readiness In UI
+
+Date: 2026-05-11
+
+Decision:
+
+In browser Supabase mode, patient list UI should wait for auth/profile readiness before executing and presenting patient read results, and should show an explicit loading state instead of a temporary `0/0` summary.
+
+Reason:
+
+The previous behavior could briefly show `Showing 0 of 0` while async reads were still in flight, which looked like a real read/RLS failure despite successful row fetch shortly after.
+
+Impact:
+
+`PatientsPage` now gates Supabase-mode fetch timing on auth/profile readiness and displays clear loading feedback. This improves perceived correctness and reduces false-positive read issue reports while preserving existing RLS/data-source behavior.
+
+Status: Accepted

@@ -321,15 +321,43 @@ This file tracks completed work and important project progress.
 	- Protected routes block unsigned access.
 	- Profile requirement enforced.
 	- Role-based navigation works with protected routes.
+- Diagnosed Supabase-mode browser patient read issue (Task 21B):
+	- Root cause: `/patients` briefly rendered `Showing 0 of 0` while async patient fetch was still in flight.
+	- In Supabase mode this looked like an access/data failure even though authenticated reads completed shortly after and returned rows.
+	- Additional contributor: patient fetch was not explicitly gated on auth/profile readiness in page-level UI state.
+- Implemented Task 21B fix in `PatientsPage`:
+	- Added explicit patient loading state so list summary does not show misleading `0/0` before fetch completion.
+	- In Supabase mode, patient fetch now waits for auth/profile loading to settle before reading.
+	- Consolidated list/search behavior to avoid redundant async search fetches during initial load.
+	- Added data mode badge text (`Demo mode` / `Supabase mode`) and mode-aware empty-state messaging.
+- Runtime verification after Task 21B:
+	- Supabase mode (`VITE_PATIENT_DATA_SOURCE=supabase`), owner session: `/patients` shows local Supabase rows (`17` at test time; includes local test artifacts).
+	- Demo mode (default): `/patients` shows demo rows (`5` of `5`).
+	- Logout still returns to `/login`; protected-route redirect still works when signed out.
+	- Inventory user nav remains restricted (no Patients link in sidebar).
+	- `node supabase/snippets/testPatientRlsByRole.mjs` still passes for all 6 roles.
+	- `npm run build` passes.
+	- `npm run lint` passes.
+- Known data note remains:
+	- Local patient counts may exceed seeded-only values because role test script intentionally creates test rows.
+	- Run `npx.cmd supabase db reset` to return to seeded-only counts.
 ### Current Project State
 
-Phase 1 — App Foundation is complete. Phase 2 — Patients and records has started with frontend-only Patients list, Patient Detail, read-only patient record section, patient form foundation, basic form validation, patient persistence planning, initial patient migration draft, patient migration review, local Supabase migration validation, initial patient RLS policy, audit log foundation, Supabase client foundation, local frontend Supabase connection testing, and patient service abstraction tasks.
+Phase 1 — App Foundation is complete.
 
-Tailwind CSS is configured and verified with a temporary DentApp screen. No business features have been implemented yet.
+Phase 2 foundation through Task 20 is complete and verified:
 
-The required Phase 1 source folder structure now exists. Initial React Router routes, placeholder pages, app shell, role-aware sidebar navigation placeholder, top bar, shared page layout components, and basic shared UI components are configured.
+- local fake/demo seed data exists,
+- local fake auth users and role-based RLS checks are in place,
+- Supabase-backed patient reads are implemented behind patientService data-source boundary,
+- basic login/logout UI is implemented,
+- current profile loading and role-based chrome behavior are implemented,
+- protected routes require authenticated session plus active profile.
 
-The Patients page now renders fake demo patient data through a demo-backed patient service abstraction with local search and status filtering. Demo patient profiles can be opened through `/patients/:patientId` and show read-only overview and structured patient record sections from the same fake dataset. Frontend-only create/edit form routes exist for layout, workflow, and basic validation testing, but they do not persist data. A technical patient persistence plan exists. The initial patient table migration, first patient RLS helper/policy migration, and audit log foundation migration have been reviewed and validated locally with Docker Desktop and local Supabase. The Supabase frontend client is configured and can connect to local Supabase, but it is not yet used by patient UI. Protected routes, real authentication UI, document upload, audit log writes, Supabase-backed patient reads/writes, and real patient records have not been implemented yet.
+Current known issue:
+
+- In browser Supabase mode (`VITE_PATIENT_DATA_SOURCE=supabase`), owner flow currently shows `0` patients in Patients UI while authenticated RLS script checks confirm owner can read patients.
+- This requires dedicated diagnosis/fix before patient write integration.
 
 ### Current Stack Decision
 
@@ -350,7 +378,7 @@ Initial stack:
 
 - `npm run build` succeeds.
 - `npm run lint` succeeds.
-- `npm run dev` serves the configured app shell, placeholder routes, demo Patients list, demo Patient Detail route, read-only demo patient record sections, and frontend-only patient create/edit form routes with basic validation locally.
+- `npm run dev` serves login, protected routes, role-based chrome behavior, and current patient module flows.
 
 ### Key Product Decisions So Far
 
@@ -367,11 +395,11 @@ Initial stack:
 
 ### Next Recommended Work
 
-1. Load profile and role from Supabase after login and replace the demo role placeholder in app chrome.
-2. Verify and fix authenticated Supabase patient reads in browser flow so seeded rows are visible under expected roles.
-3. Add protected routes later after profile/session loading is stable.
-4. Implement patient create/update with audit logging later.
-5. Keep the local authenticated RLS script as a regression check when policies change.
+1. Diagnose and fix Supabase-mode patient reads in browser flow.
+2. Define controlled audit insert strategy/RPC.
+3. Implement patient create/update service layer.
+4. Connect patient create/edit forms to service writes.
+5. Add fine-grained role-specific route guards later.
 
 ---
 
