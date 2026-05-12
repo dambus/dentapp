@@ -308,9 +308,13 @@ history views.
 
 ## 11. Treatment Plans
 
+Task 30 adds the first implemented treatment plan schema. It is intentionally
+an MVP foundation and does not include visits, performed services, payments,
+service catalog foreign keys, signatures, or drag-and-drop planning.
+
 ### treatment_plans
 
-Possible fields:
+Implemented fields:
 
 - id
 - clinic_id
@@ -318,67 +322,62 @@ Possible fields:
 - title
 - description
 - status
-- responsible_doctor_id
-- created_by
-- proposed_at
+- proposed_total
 - accepted_at
 - completed_at
-- archived_at
+- created_by
+- updated_by
 - created_at
 - updated_at
 - deleted_at
 
-Status examples:
+Implemented status values:
 
 - draft
 - proposed
 - accepted
-- partially_accepted
 - in_progress
 - completed
 - paused
 - rejected
 - archived
 
+`deleted_at` is used for soft archive. No hard delete policy is exposed.
+
 ### treatment_plan_items
 
-Possible fields:
+Implemented fields:
 
 - id
 - clinic_id
 - treatment_plan_id
 - patient_id
 - tooth_number
-- region
-- diagnosis
-- service_id
-- service_name_snapshot
-- responsible_doctor_id
-- estimated_price
-- estimated_duration_minutes
-- priority
+- title
+- description
+- service_code
 - status
-- planned_date
-- completed_at
-- notes
+- estimated_price
+- sort_order
+- created_by
+- updated_by
 - created_at
 - updated_at
 - deleted_at
 
 Notes:
 
-service_name_snapshot is useful because service names can change later.
+`tooth_number` is text and does not require a matching odontogram row. This
+allows a plan item to reference a tooth before detailed odontogram data exists.
+`service_code` is text only for MVP; service catalog integration is deferred.
 
-Item status examples:
+Implemented item status values:
 
-- proposed
-- accepted
-- rejected
-- deferred
 - planned
-- scheduled
+- accepted
 - in_progress
 - completed
+- skipped
 - cancelled
 - archived
 

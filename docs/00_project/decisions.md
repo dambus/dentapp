@@ -973,3 +973,23 @@ Odontogram writes go through `odontogramService`, not direct page-level Supabase
 
 Status: Accepted
 
+---
+
+## Decision 048 — Treatment Plan MVP Uses Plans And Plan Items
+
+Date: 2026-05-12
+
+Decision:
+
+Treatment plan foundation uses two MVP tables: `treatment_plans` and `treatment_plan_items`. Treatment plan items may reference `tooth_number` directly as text. Service catalog, performed service, visit, payment, and ledger integration are deferred.
+
+Reason:
+
+This keeps the first treatment planning workflow useful without coupling it to modules that are not implemented yet. Direct tooth-number text supports simple FDI references and future odontogram linking without requiring an odontogram row.
+
+Impact:
+
+Plan and item create/update/archive writes go through `treatmentPlanService`, respect RLS, use soft archive through `status = archived` and `deleted_at`, and call controlled audit RPC actions for plan/item create, update, and archive. UI integration is inline on patient detail for the MVP.
+
+Status: Accepted
+

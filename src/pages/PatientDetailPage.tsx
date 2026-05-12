@@ -31,6 +31,7 @@ import {
   getPatientById,
   restorePatient,
 } from '../features/patients/patientService'
+import { TreatmentPlansSection } from '../features/patients/TreatmentPlansSection'
 import type { DemoPatient, DemoTimelineEvent } from '../features/patients/types'
 import {
   getPatientEditPath,
@@ -40,7 +41,6 @@ import {
 import type { AppRole } from '../types/navigation'
 
 const futureModulePlaceholders = [
-  'Treatment Plans',
   'Visits',
   'Payments',
   'Documents',
@@ -67,6 +67,20 @@ const odontogramViewRoles: AppRole[] = [
 ]
 
 const odontogramEditRoles: AppRole[] = [
+  'owner_admin',
+  'doctor',
+  'specialist',
+]
+
+const treatmentPlanReadRoles: AppRole[] = [
+  'owner_admin',
+  'doctor',
+  'specialist',
+  'assistant',
+  'reception_admin',
+]
+
+const treatmentPlanWriteRoles: AppRole[] = [
   'owner_admin',
   'doctor',
   'specialist',
@@ -172,7 +186,10 @@ export function PatientDetailPage() {
           title="Patient not found"
           description="The requested demo patient profile does not exist in the local fake dataset."
           actions={
-            <Button variant="secondary" onClick={() => navigate(routePaths.patients)}>
+            <Button
+              variant="secondary"
+              onClick={() => navigate(routePaths.patients)}
+            >
               Back to patients
             </Button>
           }
@@ -209,6 +226,12 @@ export function PatientDetailPage() {
     : false
   const canEditOdontogram = currentProfile.profile
     ? odontogramEditRoles.includes(currentProfile.profile.role)
+    : false
+  const canViewTreatmentPlans = currentProfile.profile
+    ? treatmentPlanReadRoles.includes(currentProfile.profile.role)
+    : false
+  const canManageTreatmentPlans = currentProfile.profile
+    ? treatmentPlanWriteRoles.includes(currentProfile.profile.role)
     : false
   const canArchiveOrRestore = currentProfile.profile
     ? patientArchiveRoles.includes(currentProfile.profile.role)
@@ -631,6 +654,14 @@ export function PatientDetailPage() {
         <ClinicalNotesSection
           patientId={patient.id}
           canManageNotes={canViewClinicalNotes}
+          isPatientArchived={isArchived}
+        />
+      ) : null}
+
+      {canViewTreatmentPlans ? (
+        <TreatmentPlansSection
+          patientId={patient.id}
+          canManageTreatmentPlans={canManageTreatmentPlans}
           isPatientArchived={isArchived}
         />
       ) : null}

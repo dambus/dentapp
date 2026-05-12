@@ -123,7 +123,13 @@ Patient-related actions should include:
 - `clinical_note.updated`,
 - `clinical_note.archived`,
 - `odontogram.tooth_status.saved`,
-- `odontogram.tooth_status.cleared`.
+- `odontogram.tooth_status.cleared`,
+- `treatment_plan.created`,
+- `treatment_plan.updated`,
+- `treatment_plan.archived`,
+- `treatment_plan_item.created`,
+- `treatment_plan_item.updated`,
+- `treatment_plan_item.archived`.
 
 Future financial and operational actions should include:
 
@@ -164,7 +170,9 @@ Before real patient CRUD is enabled, the patient service layer should define aud
 - patient medical record update,
 - clinical note creation,
 - clinical note update/archive,
-- odontogram tooth status save/clear.
+- odontogram tooth status save/clear,
+- treatment plan creation/update/archive,
+- treatment plan item creation/update/archive.
 
 The service layer should set:
 

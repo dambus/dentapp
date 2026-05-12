@@ -822,6 +822,41 @@ Initial stack:
 
 ---
 
+### Completed (Task 30)
+
+- Added treatment plan foundation tables and RLS in `20260512133000_create_treatment_plans.sql`.
+- Added `treatmentPlanService` functions for patient treatment plan and item reads, create/update/archive writes, demo-mode handling, validation, Supabase mapping, and controlled audit RPC calls.
+- Added inline Treatment Plans UI on patient detail with plan create/edit/archive and item create/edit/archive forms.
+- Added treatment plan read/write role behavior in the UI:
+	- owner_admin, doctor, specialist can create/update/archive,
+	- assistant and reception_admin can read only,
+	- inventory_responsible remains denied by patient route and RLS.
+- Added `testTreatmentPlanCrud.mjs` to verify treatment plan/item RLS, soft archive behavior, hard-delete denial, and audit rows.
+- Fixed the previously missing medical-record edit route guard registration so the existing route path is available to the router and role matrix.
+- Kept demo mode non-persistent with `Demo mode only. No treatment plan changes were saved.`
+
+### Verification (Task 30)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- `npx.cmd supabase db reset` applied all migrations and seed; the command ended with a storage container health warning, but `npx.cmd supabase status` confirmed the local API and database were running.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes with local Supabase env variables.
+- `node .\supabase\snippets\testAuditInsert.mjs` passes.
+- `node .\supabase\snippets\testPatientRlsByRole.mjs` passes.
+- `node .\supabase\snippets\testPatientWriteService.mjs` passes.
+- `node .\supabase\snippets\testPatientMedicalRecordWrite.mjs` passes.
+- `node .\supabase\snippets\testPatientArchiveRestore.mjs` passes after correcting a one-command local env typo.
+- `node .\supabase\snippets\testClinicalNotesCrud.mjs` passes.
+- `node .\supabase\snippets\testOdontogramCrud.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanCrud.mjs` passes:
+	- owner_admin, doctor, specialist can read/write/archive treatment plans and items,
+	- assistant and reception_admin can read but cannot write,
+	- inventory_responsible cannot read/write,
+	- audit rows are created for plan/item create, update, and archive,
+	- hard delete remains unavailable and archive preserves rows.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.

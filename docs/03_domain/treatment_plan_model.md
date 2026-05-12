@@ -398,3 +398,40 @@ Audit important actions:
 - Should plan items support phases?
 - Should laboratory cost be attached to treatment items?
 - Should treatment plan export be patient-friendly or internal-only?
+
+---
+
+## 18. MVP Implementation Notes
+
+Task 30 implements the first treatment plan foundation with two tables:
+
+- `treatment_plans`
+- `treatment_plan_items`
+
+MVP treatment plan fields include:
+
+- clinic and patient reference,
+- title,
+- description,
+- status,
+- proposed total,
+- accepted/completed timestamps,
+- created/updated actor references,
+- timestamps,
+- `deleted_at` for soft archive.
+
+MVP treatment plan item fields include:
+
+- treatment plan and patient reference,
+- optional `tooth_number` text,
+- title,
+- description,
+- optional service code text,
+- status,
+- estimated price,
+- sort order,
+- created/updated actor references,
+- timestamps,
+- `deleted_at` for soft archive.
+
+The MVP intentionally does not include service catalog links, performed services, visits, payments, signatures, phases, or exports. Those remain future scoped work.

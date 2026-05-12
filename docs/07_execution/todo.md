@@ -147,10 +147,11 @@ Status legend:
   - [x] Task 24B: Fix patient important note field mapping (form/service/detail)
   - [x] Task 24C: Fix patient write audit verification (service plus test script)
   - [x] Task 25: Add fine-grained role-specific route guards (optional, later phase)
-  - [x] Task 26: Implement patient medical record edit flow
-  - [x] Task 27: Implement patient archive/restore flow
-  - [x] Task 28: Implement clinical notes CRUD
-  - [x] Task 29: Implement odontogram foundation
+  - [x] Task 26: Patient medical record edit flow
+  - [x] Task 27: Patient archive/restore flow
+  - [x] Task 28: Clinical notes CRUD
+  - [x] Task 29: Odontogram foundation
+  - [x] Task 30: Treatment plan foundation
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -165,15 +166,11 @@ Status legend:
 - [x] Add role-specific route guards
 - [x] Implement patient medical record edit flow
 - [x] Implement patient archive/restore flow
-- [x] Implement clinical notes CRUD
-- [x] Implement odontogram foundation
-- [ ] Implement treatment plan foundation
-- [ ] Refine odontogram visual charting later
-- [ ] Add tooth surfaces later
-- [ ] Add primary teeth support later
-- [ ] Define visit workflow before visit-linked clinical notes
-- [ ] Refine clinical note filtering and history behavior
-- [ ] Refine archived patient filters/search behavior if pilot workflow needs more than the simple include-archived toggle
+- [x] Continue treatment plan foundation
+- [ ] Refine treatment plan UX and filtering
+- [ ] Define visit workflow
+- [ ] Plan performed services foundation
+- [ ] Plan payment/ledger foundation
 
 
 
