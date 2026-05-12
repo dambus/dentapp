@@ -753,6 +753,75 @@ Initial stack:
 
 ---
 
+### Completed (Task 29)
+
+- Implemented first odontogram foundation.
+- Added migration `supabase/migrations/20260512130000_create_patient_tooth_statuses.sql`.
+	- Creates `patient_tooth_statuses`.
+	- Uses FDI permanent tooth numbers only.
+	- Uses constrained MVP status values.
+	- Adds one active row per patient/tooth through a partial unique index.
+	- Adds `created_by`, `updated_by`, timestamps, and `deleted_at`.
+	- Enables RLS.
+	- Allows read for `owner_admin`, `doctor`, `specialist`, and `assistant`.
+	- Allows writes for `owner_admin`, `doctor`, and `specialist`.
+	- Does not add hard-delete policy.
+- Added `src/features/patients/odontogramService.ts` with service-layer functions:
+	- `getPatientOdontogram(patientId)`
+	- `saveToothStatus(patientId, input)`
+	- `clearToothStatus(patientId, toothNumber)`
+- Clear behavior soft-deletes the active tooth status row by setting `deleted_at`.
+- Added inline `OdontogramSection` on `PatientDetailPage`.
+	- Shows 32 permanent teeth grouped by quadrant.
+	- Shows status and note indicator per tooth.
+	- Defaults missing rows to `unknown`.
+	- Allows clinical roles to edit tooth status and optional note.
+	- Shows assistant role as read-only.
+	- Hides odontogram section from reception and inventory roles.
+- Controlled audit RPC integration added for:
+	- `odontogram.tooth_status.saved`
+	- `odontogram.tooth_status.cleared`
+	- `entity_type = patient_tooth_status`
+	- `entity_id = tooth status row id`
+	- metadata includes `patient_id` and `tooth_number`
+- Demo mode remains non-persistent:
+	- no `demoPatients` mutation,
+	- no localStorage,
+	- save/clear returns `Demo mode only. No odontogram changes were saved.`
+- Added local verification script:
+	- `supabase/snippets/testOdontogramCrud.mjs`
+
+### Verification (Task 29)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- First `npx.cmd supabase db reset` applied migrations and seed but failed at local storage container readiness.
+- Second `npx.cmd supabase db reset` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes after loading local Supabase service-role environment from `supabase status -o env`.
+- Existing scripts passed in the combined run before the odontogram script:
+	- `node .\supabase\snippets\testAuditInsert.mjs`
+	- `node .\supabase\snippets\testPatientRlsByRole.mjs`
+	- `node .\supabase\snippets\testPatientWriteService.mjs`
+	- `node .\supabase\snippets\testPatientMedicalRecordWrite.mjs`
+	- `node .\supabase\snippets\testPatientArchiveRestore.mjs`
+	- `node .\supabase\snippets\testClinicalNotesCrud.mjs`
+- `node .\supabase\snippets\testOdontogramCrud.mjs` passes after fixing the script fixture teeth:
+	- `owner_admin`, `doctor`, and `specialist` can read/write/clear tooth statuses.
+	- `assistant` can read but cannot write.
+	- `reception_admin` and `inventory_responsible` cannot read/write.
+	- allowed save/clear writes create audit rows.
+	- clear preserves a soft-deleted row.
+	- hard delete does not remove rows through RLS.
+	- owner can read audit logs; doctor cannot.
+
+### Notes (Task 29)
+
+- The odontogram is intentionally non-graphical in this task.
+- Tooth surfaces, primary teeth, procedures, treatment plan links, visits, and clinical note linking remain out of scope.
+- Manual browser checks remain recommended for owner/doctor/specialist, assistant read-only, reception hidden, and demo-mode messaging.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.

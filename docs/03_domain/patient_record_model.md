@@ -189,6 +189,36 @@ The odontogram should connect to:
 
 The patient record should show the latest odontogram state and history where needed.
 
+### 8.1 MVP Odontogram Foundation
+
+The first implemented odontogram foundation uses FDI permanent teeth only.
+
+Initial tooth list:
+
+- upper right: 18, 17, 16, 15, 14, 13, 12, 11,
+- upper left: 21, 22, 23, 24, 25, 26, 27, 28,
+- lower left: 38, 37, 36, 35, 34, 33, 32, 31,
+- lower right: 41, 42, 43, 44, 45, 46, 47, 48.
+
+MVP tooth status values:
+
+- unknown,
+- healthy,
+- missing,
+- caries,
+- filled,
+- crown,
+- implant,
+- root_treated,
+- extraction_planned,
+- watch.
+
+MVP persistence stores one active tooth status per patient/tooth in
+`patient_tooth_statuses`. Clearing a tooth status uses soft delete
+(`deleted_at`) rather than hard delete. Tooth surfaces, primary teeth,
+procedures, graphical odontogram rendering, and treatment plan links are
+future scope.
+
 ---
 
 ## 9. Treatment Plan Connection

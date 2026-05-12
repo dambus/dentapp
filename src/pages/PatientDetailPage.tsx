@@ -16,6 +16,7 @@ import {
 } from '../components/ui'
 import { useCurrentProfile } from '../features/auth/useCurrentProfile'
 import { ClinicalNotesSection } from '../features/patients/ClinicalNotesSection'
+import { OdontogramSection } from '../features/patients/OdontogramSection'
 import {
   formatDemoCurrency,
   formatPatientDate,
@@ -39,7 +40,6 @@ import {
 import type { AppRole } from '../types/navigation'
 
 const futureModulePlaceholders = [
-  'Odontogram',
   'Treatment Plans',
   'Visits',
   'Payments',
@@ -54,6 +54,19 @@ const medicalRecordEditRoles: AppRole[] = [
 ]
 
 const clinicalNoteRoles: AppRole[] = [
+  'owner_admin',
+  'doctor',
+  'specialist',
+]
+
+const odontogramViewRoles: AppRole[] = [
+  'owner_admin',
+  'doctor',
+  'specialist',
+  'assistant',
+]
+
+const odontogramEditRoles: AppRole[] = [
   'owner_admin',
   'doctor',
   'specialist',
@@ -190,6 +203,12 @@ export function PatientDetailPage() {
     : false
   const canViewClinicalNotes = currentProfile.profile
     ? clinicalNoteRoles.includes(currentProfile.profile.role)
+    : false
+  const canViewOdontogram = currentProfile.profile
+    ? odontogramViewRoles.includes(currentProfile.profile.role)
+    : false
+  const canEditOdontogram = currentProfile.profile
+    ? odontogramEditRoles.includes(currentProfile.profile.role)
     : false
   const canArchiveOrRestore = currentProfile.profile
     ? patientArchiveRoles.includes(currentProfile.profile.role)
@@ -599,6 +618,14 @@ export function PatientDetailPage() {
           </dl>
         </RecordSection>
       </div>
+
+      {canViewOdontogram ? (
+        <OdontogramSection
+          patientId={patient.id}
+          canEditOdontogram={canEditOdontogram}
+          isPatientArchived={isArchived}
+        />
+      ) : null}
 
       {canViewClinicalNotes ? (
         <ClinicalNotesSection

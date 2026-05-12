@@ -273,6 +273,37 @@ Entry type examples:
 - note
 - warning
 
+### patient_tooth_statuses (MVP foundation)
+
+The first implemented odontogram table is intentionally simpler than the
+future `odontogram_entries` direction.
+
+Fields:
+
+- id,
+- clinic_id,
+- patient_id,
+- tooth_number,
+- status,
+- note,
+- created_by,
+- updated_by,
+- created_at,
+- updated_at,
+- deleted_at.
+
+MVP constraints:
+
+- FDI permanent teeth only,
+- one active row per patient/tooth,
+- status limited to the initial MVP status list,
+- clear uses `deleted_at`,
+- hard delete is not exposed through application policies.
+
+Future work may replace or extend this with richer odontogram entries for
+surfaces, procedures, diagnosis, treatment plan links, performed services, and
+history views.
+
 ---
 
 ## 11. Treatment Plans

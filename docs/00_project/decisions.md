@@ -951,3 +951,25 @@ Clinical note writes go through `clinicalNotesService`, not direct page-level Su
 
 Status: Accepted
 
+---
+
+## Decision 047 — Odontogram MVP Uses FDI Tooth Status Rows
+
+Date: 2026-05-12
+
+Decision:
+
+The first odontogram foundation uses `patient_tooth_statuses`, storing one active status row per patient and FDI permanent tooth. Initial status values are limited to `unknown`, `healthy`, `missing`, `caries`, `filled`, `crown`, `implant`, `root_treated`, `extraction_planned`, and `watch`.
+
+Clearing a tooth status soft-deletes the active row by setting `deleted_at`. Hard delete is intentionally not implemented.
+
+Reason:
+
+The pilot needs a structured odontogram foundation before treatment plans, procedures, surfaces, and graphical charting. A simple tooth-status table gives useful clinical state while keeping the model auditable and easy to revise.
+
+Impact:
+
+Odontogram writes go through `odontogramService`, not direct page-level Supabase calls. The service uses authenticated Supabase access, RLS, and controlled `create_audit_log` RPC calls for `odontogram.tooth_status.saved` and `odontogram.tooth_status.cleared`. The patient detail page renders an inline, non-graphical odontogram section. Demo mode remains non-persistent.
+
+Status: Accepted
+
