@@ -14,6 +14,7 @@ import {
   CardTitle,
   EmptyState,
 } from '../components/ui'
+import { useCurrentProfile } from '../features/auth/useCurrentProfile'
 import {
   formatDemoCurrency,
   formatPatientDate,
@@ -25,7 +26,12 @@ import {
 } from '../features/patients/patientDisplay'
 import { getPatientById } from '../features/patients/patientService'
 import type { DemoPatient, DemoTimelineEvent } from '../features/patients/types'
-import { getPatientEditPath, routePaths } from '../routes/routePaths'
+import {
+  getPatientEditPath,
+  getPatientMedicalRecordEditPath,
+  routePaths,
+} from '../routes/routePaths'
+import type { AppRole } from '../types/navigation'
 
 const futureModulePlaceholders = [
   'Odontogram',
@@ -35,6 +41,15 @@ const futureModulePlaceholders = [
   'Documents',
   'Timeline',
 ]
+
+const medicalRecordEditRoles: AppRole[] = [
+  'owner_admin',
+  'doctor',
+  'specialist',
+]
+
+const isSupabasePatientMode =
+  import.meta.env.VITE_PATIENT_DATA_SOURCE?.toLowerCase() === 'supabase'
 
 type DetailItemProps = {
   label: string
@@ -90,6 +105,7 @@ function TimelineEventItem({ event }: TimelineEventProps) {
 export function PatientDetailPage() {
   const { patientId } = useParams()
   const navigate = useNavigate()
+  const currentProfile = useCurrentProfile()
   const [patient, setPatient] = useState<DemoPatient | undefined>()
   const [hasLoadedPatient, setHasLoadedPatient] = useState(false)
 
@@ -145,6 +161,9 @@ export function PatientDetailPage() {
   const importantNoteLabel = patient.importantNote ?? 'No important note recorded.'
   const activePlanLabel = patient.activeTreatmentPlan ?? 'No active plan'
   const hasMedicalWarnings = patient.medicalWarnings.length > 0
+  const canEditMedicalRecord = currentProfile.profile
+    ? medicalRecordEditRoles.includes(currentProfile.profile.role)
+    : false
 
   return (
     <Page>
@@ -153,10 +172,22 @@ export function PatientDetailPage() {
         description="Patient profile overview. Demo mode remains non-persistent; Supabase mode supports patient create and basic profile updates."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="info">Fake demo data</Badge>
+            <Badge variant="info">
+              {isSupabasePatientMode ? 'Supabase mode' : 'Fake demo data'}
+            </Badge>
             <Button onClick={() => navigate(getPatientEditPath(patient.id))}>
               Edit patient
             </Button>
+            {canEditMedicalRecord ? (
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  navigate(getPatientMedicalRecordEditPath(patient.id))
+                }
+              >
+                Edit medical record
+              </Button>
+            ) : null}
             <Button
               variant="secondary"
               onClick={() => navigate(routePaths.patients)}
@@ -339,7 +370,7 @@ export function PatientDetailPage() {
 
         <RecordSection
           title="Medical warnings"
-          description="Demo-safe flags that will later be permission-aware."
+          description="Clinical warning summary from the patient medical record."
         >
           {hasMedicalWarnings ? (
             <div className="flex flex-wrap gap-2">
@@ -356,7 +387,7 @@ export function PatientDetailPage() {
 
         <RecordSection
           title="Anamnesis summary"
-          description="Placeholder for structured medical history."
+          description="Structured medical history summary."
         >
           <p className="text-sm leading-6 text-slate-700">
             {patient.anamnesisSummary}
@@ -364,11 +395,38 @@ export function PatientDetailPage() {
         </RecordSection>
 
         <RecordSection
+          title="Allergies"
+          description="Allergy information from the medical record."
+        >
+          <p className="text-sm leading-6 text-slate-700">
+            {patient.allergies || 'No allergies recorded.'}
+          </p>
+        </RecordSection>
+
+        <RecordSection
+          title="Current medications"
+          description="Medication information from the medical record."
+        >
+          <p className="text-sm leading-6 text-slate-700">
+            {patient.currentMedications || 'No current medications recorded.'}
+          </p>
+        </RecordSection>
+
+        <RecordSection
           title="Dental history"
-          description="Placeholder for previous dental context."
+          description="Previous dental context from the medical record."
         >
           <p className="text-sm leading-6 text-slate-700">
             {patient.dentalHistorySummary}
+          </p>
+        </RecordSection>
+
+        <RecordSection
+          title="Risk notes"
+          description="Clinical risk notes from the medical record."
+        >
+          <p className="text-sm leading-6 text-slate-700">
+            {patient.riskNotes || 'No risk notes recorded.'}
           </p>
         </RecordSection>
 

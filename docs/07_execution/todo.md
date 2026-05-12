@@ -146,7 +146,8 @@ Status legend:
   - [x] Task 24A: Fix patient write service test credentials
   - [x] Task 24B: Fix patient important note field mapping (form/service/detail)
   - [x] Task 24C: Fix patient write audit verification (service plus test script)
-  - [ ] Task 25: Add fine-grained role-specific route guards (optional, later phase)
+  - [x] Task 25: Add fine-grained role-specific route guards (optional, later phase)
+  - [x] Task 26: Implement patient medical record edit flow
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -158,10 +159,12 @@ Status legend:
 
 ## 10. Current Immediate Next Tasks
 
-- [ ] Add role-specific route guards
-- [ ] Implement patient medical record edit flow
+- [x] Add role-specific route guards
+- [x] Implement patient medical record edit flow
 - [ ] Implement patient archive/restore flow
-- [ ] Continue treatment plan foundation
+- [ ] Implement clinical notes CRUD
+- [ ] Implement odontogram foundation
+- [ ] Implement treatment plan foundation
 
 
 

@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
 import { AppShell } from '../layouts/AppShell'
@@ -10,13 +11,27 @@ import { NotFoundPage } from '../pages/NotFoundPage'
 import { PatientCreatePage } from '../pages/PatientCreatePage'
 import { PatientDetailPage } from '../pages/PatientDetailPage'
 import { PatientEditPage } from '../pages/PatientEditPage'
+import { PatientMedicalRecordEditPage } from '../pages/PatientMedicalRecordEditPage'
 import { PatientsPage } from '../pages/PatientsPage'
 import { PaymentsPage } from '../pages/PaymentsPage'
 import { ReportsPage } from '../pages/ReportsPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { TreatmentPlansPage } from '../pages/TreatmentPlansPage'
 import { ProtectedRoute } from './ProtectedRoute'
+import { RoleGuard } from './RoleGuard'
+import { routeAllowedRoles } from './routeAccessConfig'
 import { routePaths } from './routePaths'
+
+function withRoleGuard(
+  path: Exclude<keyof typeof routePaths, 'login'>,
+  element: ReactElement,
+) {
+  return (
+    <RoleGuard allowedRoles={routeAllowedRoles[routePaths[path]]}>
+      {element}
+    </RoleGuard>
+  )
+}
 
 export function AppRoutes() {
   return (
@@ -30,24 +45,61 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path={routePaths.dashboard} element={<DashboardPage />} />
-        <Route path={routePaths.calendar} element={<CalendarPage />} />
-        <Route path={routePaths.patients} element={<PatientsPage />} />
-        <Route path={routePaths.patientCreate} element={<PatientCreatePage />} />
+        <Route
+          path={routePaths.dashboard}
+          element={withRoleGuard('dashboard', <DashboardPage />)}
+        />
+        <Route
+          path={routePaths.calendar}
+          element={withRoleGuard('calendar', <CalendarPage />)}
+        />
+        <Route
+          path={routePaths.patients}
+          element={withRoleGuard('patients', <PatientsPage />)}
+        />
+        <Route
+          path={routePaths.patientCreate}
+          element={withRoleGuard('patientCreate', <PatientCreatePage />)}
+        />
         <Route
           path={routePaths.patientDetail}
-          element={<PatientDetailPage />}
+          element={withRoleGuard('patientDetail', <PatientDetailPage />)}
         />
-        <Route path={routePaths.patientEdit} element={<PatientEditPage />} />
+        <Route
+          path={routePaths.patientEdit}
+          element={withRoleGuard('patientEdit', <PatientEditPage />)}
+        />
+        <Route
+          path={routePaths.patientMedicalRecordEdit}
+          element={withRoleGuard(
+            'patientMedicalRecordEdit',
+            <PatientMedicalRecordEditPage />,
+          )}
+        />
         <Route
           path={routePaths.treatmentPlans}
-          element={<TreatmentPlansPage />}
+          element={withRoleGuard('treatmentPlans', <TreatmentPlansPage />)}
         />
-        <Route path={routePaths.payments} element={<PaymentsPage />} />
-        <Route path={routePaths.commissions} element={<CommissionsPage />} />
-        <Route path={routePaths.inventory} element={<InventoryPage />} />
-        <Route path={routePaths.reports} element={<ReportsPage />} />
-        <Route path={routePaths.settings} element={<SettingsPage />} />
+        <Route
+          path={routePaths.payments}
+          element={withRoleGuard('payments', <PaymentsPage />)}
+        />
+        <Route
+          path={routePaths.commissions}
+          element={withRoleGuard('commissions', <CommissionsPage />)}
+        />
+        <Route
+          path={routePaths.inventory}
+          element={withRoleGuard('inventory', <InventoryPage />)}
+        />
+        <Route
+          path={routePaths.reports}
+          element={withRoleGuard('reports', <ReportsPage />)}
+        />
+        <Route
+          path={routePaths.settings}
+          element={withRoleGuard('settings', <SettingsPage />)}
+        />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

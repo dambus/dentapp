@@ -117,6 +117,7 @@ Patient-related actions should include:
 - `patient.updated`,
 - `patient.archived`,
 - `patient.restored`,
+- `patient_medical_record.created`,
 - `patient_medical_record.updated`,
 - `clinical_note.created`,
 - `clinical_note.updated`,

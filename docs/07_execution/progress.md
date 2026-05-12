@@ -537,6 +537,100 @@ Initial stack:
 - `npm run build` passes.
 - `npm run lint` passes.
 
+### Completed (Task 25)
+
+- Added fine-grained role-specific route guards for protected app routes.
+- Added centralized route permission map in `src/routes/routeAccessConfig.ts`.
+- Added reusable `RoleGuard` in `src/routes/RoleGuard.tsx`.
+- Updated `AppRoutes` so each protected page route is wrapped in role guard checks.
+- Added `PermissionDeniedPage` to handle unauthorized route access without rendering restricted page content.
+- Added explicit route-level guard coverage for patient write routes:
+	- `/patients/new`
+	- `/patients/:patientId/edit`
+- Preserved existing protected-route behavior:
+	- `/login` remains public,
+	- signed-out users still redirect to `/login`,
+	- signed-in users without active profile still see `ProfileRequiredPage`.
+- Aligned sidebar role filtering with route-guard role rules by reusing centralized role map in `navigationConfig`.
+- Kept route guards as UX-level enforcement while RLS remains the backend source of truth.
+
+### Verification (Task 25)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- `npx.cmd supabase db reset` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes.
+- `node .\supabase\snippets\testAuditInsert.mjs` passes.
+- `node .\supabase\snippets\testPatientWriteService.mjs` passes.
+- `node .\supabase\snippets\testPatientRlsByRole.mjs` passes.
+
+### Completed (Task 26)
+
+- Implemented the first patient medical record edit flow.
+- Added a separate clinical edit route:
+	- `/patients/:patientId/record/edit`
+- Added route guard access for the medical record edit route:
+	- allowed: `owner_admin`, `doctor`, `specialist`
+	- denied: `assistant`, `reception_admin`, `inventory_responsible`
+- Added `src/features/patients/patientMedicalRecordService.ts` with:
+	- `getPatientMedicalRecord(patientId)`
+	- `savePatientMedicalRecord(patientId, input)`
+- Medical record save behavior:
+	- Supabase mode fetches existing record by `patient_id`.
+	- Missing record is inserted when the user is allowed and at least one field has content.
+	- Existing record is updated when the user is allowed.
+	- Writes go through authenticated Supabase client and RLS; no service role key is used in frontend code.
+	- Audit RPC `create_audit_log` is called after successful insert/update.
+	- Audit actions:
+		- `patient_medical_record.created`
+		- `patient_medical_record.updated`
+	- Audit `entity_type`: `patient_medical_record`
+	- Audit metadata includes `patient_id`.
+- Added `PatientMedicalRecordForm` with controlled React state and textareas for:
+	- anamnesis summary,
+	- allergies,
+	- current medications,
+	- medical warnings,
+	- dental history,
+	- risk notes.
+- Validation behavior:
+	- all fields are optional for existing medical records,
+	- creating a missing medical record requires at least one field with content.
+- Added `PatientMedicalRecordEditPage` with clear loading, missing-patient, empty-record, success, error, and demo-mode states.
+- Demo mode remains non-persistent:
+	- no `demoPatients` mutation,
+	- no localStorage,
+	- submit shows `Demo mode only. No medical record changes were saved.`
+- Updated `PatientDetailPage` medical record summary so it shows the latest supported medical record fields:
+	- anamnesis summary,
+	- allergies,
+	- current medications,
+	- medical warnings,
+	- dental history,
+	- risk notes.
+- Added the "Edit medical record" action only for clinical edit roles when profile role is available.
+- Added optional local verification script:
+	- `supabase/snippets/testPatientMedicalRecordWrite.mjs`
+
+### Verification (Task 26)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- `npx.cmd supabase db reset` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes.
+- `node .\supabase\snippets\testAuditInsert.mjs` passes.
+- `node .\supabase\snippets\testPatientRlsByRole.mjs` passes.
+- `node .\supabase\snippets\testPatientWriteService.mjs` passes.
+- `node .\supabase\snippets\testPatientMedicalRecordWrite.mjs` passes:
+	- `owner_admin`, `doctor`, and `specialist` can insert/update patient medical records.
+	- `assistant`, `reception_admin`, and `inventory_responsible` cannot write patient medical records.
+	- allowed writes create `patient_medical_record.created` and `patient_medical_record.updated` audit rows.
+
+### Notes (Task 26)
+
+- Local test scripts create demo-only test rows; run `npx.cmd supabase db reset` to return to seeded-only data.
+- Manual browser checks for the new route remain recommended for final UI acceptance.
+
 ---
 
 ## Notes

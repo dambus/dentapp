@@ -18,8 +18,11 @@ type SupabasePatientRow = {
 
 type SupabaseMedicalRecordRow = {
   anamnesis_summary: string | null
+  allergies: string | null
+  current_medications: string | null
   medical_warnings: string | null
   dental_history: string | null
+  risk_notes: string | null
 }
 
 type SupabaseClinicalNoteRow = {
@@ -114,9 +117,12 @@ const mapSupabasePatientToDemoPatient = (
     anamnesisSummary:
       options?.medicalRecord?.anamnesis_summary ??
       'Demo anamnesis summary placeholder for Supabase mode.',
+    allergies: options?.medicalRecord?.allergies ?? '',
+    currentMedications: options?.medicalRecord?.current_medications ?? '',
     dentalHistorySummary:
       options?.medicalRecord?.dental_history ??
       'Demo dental history placeholder for Supabase mode.',
+    riskNotes: options?.medicalRecord?.risk_notes ?? '',
     lastClinicalNote:
       options?.latestClinicalNote?.content ??
       'No demo clinical note found for this patient yet.',
@@ -332,7 +338,9 @@ async function getPatientByIdFromSupabase(
     await Promise.all([
       supabase
         .from('patient_medical_records')
-        .select('anamnesis_summary, medical_warnings, dental_history')
+        .select(
+          'anamnesis_summary, allergies, current_medications, medical_warnings, dental_history, risk_notes',
+        )
         .eq('clinic_id', patient.clinic_id)
         .eq('patient_id', patient.id)
         .maybeSingle(),

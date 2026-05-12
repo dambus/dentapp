@@ -22,7 +22,10 @@ export type DemoPatient = {
   unpaidBalance: number
   medicalWarnings: string[]
   anamnesisSummary: string
+  allergies: string
+  currentMedications: string
   dentalHistorySummary: string
+  riskNotes: string
   lastClinicalNote: string
   activeTreatmentPlanSummary: string
   nextRecommendedStep: string

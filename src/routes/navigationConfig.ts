@@ -1,16 +1,8 @@
 import type { AppRole, NavigationItem } from '../types/navigation'
 import { routePaths } from './routePaths'
+import { routeAllowedRoles } from './routeAccessConfig'
 
-const allRoles: AppRole[] = [
-  'owner_admin',
-  'doctor',
-  'specialist',
-  'assistant',
-  'reception_admin',
-  'inventory_responsible',
-]
-
-const clinicalRoles: AppRole[] = ['owner_admin', 'doctor', 'specialist']
+const allRoles: AppRole[] = routeAllowedRoles[routePaths.dashboard]
 
 export const navigationItems: NavigationItem[] = [
   {
@@ -22,67 +14,49 @@ export const navigationItems: NavigationItem[] = [
   {
     label: 'Calendar',
     path: routePaths.calendar,
-    allowedRoles: [
-      'owner_admin',
-      'doctor',
-      'specialist',
-      'assistant',
-      'reception_admin',
-    ],
+    allowedRoles: routeAllowedRoles[routePaths.calendar],
     description: 'Scheduling workspace',
   },
   {
     label: 'Patients',
     path: routePaths.patients,
-    allowedRoles: [
-      'owner_admin',
-      'doctor',
-      'specialist',
-      'assistant',
-      'reception_admin',
-    ],
+    allowedRoles: routeAllowedRoles[routePaths.patients],
     description: 'Patient workspace',
   },
   {
     label: 'Treatment Plans',
     path: routePaths.treatmentPlans,
-    allowedRoles: clinicalRoles,
+    allowedRoles: routeAllowedRoles[routePaths.treatmentPlans],
     description: 'Treatment planning workspace',
   },
   {
     label: 'Payments',
     path: routePaths.payments,
-    allowedRoles: ['owner_admin', 'reception_admin'],
+    allowedRoles: routeAllowedRoles[routePaths.payments],
     description: 'Financial workspace',
   },
   {
     label: 'Commissions',
     path: routePaths.commissions,
-    allowedRoles: ['owner_admin'],
+    allowedRoles: routeAllowedRoles[routePaths.commissions],
     description: 'Restricted commission workspace',
   },
   {
     label: 'Inventory',
     path: routePaths.inventory,
-    allowedRoles: ['owner_admin', 'assistant', 'inventory_responsible'],
+    allowedRoles: routeAllowedRoles[routePaths.inventory],
     description: 'Materials workspace',
   },
   {
     label: 'Reports',
     path: routePaths.reports,
-    allowedRoles: [
-      'owner_admin',
-      'doctor',
-      'specialist',
-      'reception_admin',
-      'inventory_responsible',
-    ],
+    allowedRoles: routeAllowedRoles[routePaths.reports],
     description: 'Reporting workspace',
   },
   {
     label: 'Settings',
     path: routePaths.settings,
-    allowedRoles: ['owner_admin'],
+    allowedRoles: routeAllowedRoles[routePaths.settings],
     description: 'Administration workspace',
   },
 ]

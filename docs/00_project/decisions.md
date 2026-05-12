@@ -865,3 +865,43 @@ Impact:
 
 Status: Accepted
 
+---
+
+## Decision 043 — Centralized Route Role Guard Matrix With PermissionDenied Fallback
+
+Date: 2026-05-12
+
+Decision:
+
+Use a centralized protected-route role matrix (`routeAccessConfig`) and enforce it through route-level `RoleGuard` wrappers that render `PermissionDeniedPage` when a signed-in user lacks required role access.
+
+Reason:
+
+Sidebar visibility alone does not prevent direct URL navigation. A centralized route matrix keeps route-level authorization consistent with navigation role rules and reduces permission drift between sidebar and router configuration.
+
+Impact:
+
+All protected route pages are now role-guarded, including explicit write route protection for `/patients/new` and `/patients/:patientId/edit`. Existing auth/profile protection behavior remains unchanged (`/login` public, signed-out redirect to login, profile-required state for signed-in users without active profile). This remains UX-level access control; Supabase RLS remains the backend source of truth.
+
+Status: Accepted
+
+---
+
+## Decision 044 — Patient Medical Record Editing Is Clinical-Role Only
+
+Date: 2026-05-12
+
+Decision:
+
+Patient medical record editing uses a separate route, `/patients/:patientId/record/edit`, and is allowed only for `owner_admin`, `doctor`, and `specialist`.
+
+Reason:
+
+Medical record fields are clinical data. Reception users may edit basic patient profile/contact data, and assistants may view limited medical warning context through RLS, but neither role should edit structured medical records in the current MVP scope.
+
+Impact:
+
+Medical record writes go through `patientMedicalRecordService`, not page-level Supabase calls. The service uses authenticated Supabase access, RLS, and controlled `create_audit_log` RPC calls for `patient_medical_record.created` and `patient_medical_record.updated`. Demo mode remains non-persistent and does not mutate fake patient data.
+
+Status: Accepted
+
