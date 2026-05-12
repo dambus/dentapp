@@ -15,6 +15,7 @@ export type DemoPatient = {
   email: string
   dateOfBirth: string
   status: PatientStatus
+  deletedAt: string | null
   nextAppointment: string | null
   lastVisit: string | null
   activeTreatmentPlan: string | null

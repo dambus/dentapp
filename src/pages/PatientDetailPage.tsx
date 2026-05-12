@@ -24,7 +24,11 @@ import {
   patientStatusBadgeVariants,
   patientStatusLabels,
 } from '../features/patients/patientDisplay'
-import { getPatientById } from '../features/patients/patientService'
+import {
+  archivePatient,
+  getPatientById,
+  restorePatient,
+} from '../features/patients/patientService'
 import type { DemoPatient, DemoTimelineEvent } from '../features/patients/types'
 import {
   getPatientEditPath,
@@ -46,6 +50,12 @@ const medicalRecordEditRoles: AppRole[] = [
   'owner_admin',
   'doctor',
   'specialist',
+]
+
+const patientArchiveRoles: AppRole[] = [
+  'owner_admin',
+  'doctor',
+  'reception_admin',
 ]
 
 const isSupabasePatientMode =
@@ -108,6 +118,9 @@ export function PatientDetailPage() {
   const currentProfile = useCurrentProfile()
   const [patient, setPatient] = useState<DemoPatient | undefined>()
   const [hasLoadedPatient, setHasLoadedPatient] = useState(false)
+  const [isLifecycleSubmitting, setIsLifecycleSubmitting] = useState(false)
+  const [lifecycleError, setLifecycleError] = useState<string | null>(null)
+  const [lifecycleSuccess, setLifecycleSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     let isCurrent = true
@@ -157,13 +170,96 @@ export function PatientDetailPage() {
     )
   }
 
-  const patientName = getPatientFullName(patient)
-  const importantNoteLabel = patient.importantNote ?? 'No important note recorded.'
-  const activePlanLabel = patient.activeTreatmentPlan ?? 'No active plan'
-  const hasMedicalWarnings = patient.medicalWarnings.length > 0
+  const loadedPatient = patient
+  const patientName = getPatientFullName(loadedPatient)
+  const importantNoteLabel =
+    loadedPatient.importantNote ?? 'No important note recorded.'
+  const activePlanLabel = loadedPatient.activeTreatmentPlan ?? 'No active plan'
+  const hasMedicalWarnings = loadedPatient.medicalWarnings.length > 0
+  const isArchived =
+    loadedPatient.status === 'archived' || Boolean(loadedPatient.deletedAt)
   const canEditMedicalRecord = currentProfile.profile
-    ? medicalRecordEditRoles.includes(currentProfile.profile.role)
+    ? medicalRecordEditRoles.includes(currentProfile.profile.role) && !isArchived
     : false
+  const canArchiveOrRestore = currentProfile.profile
+    ? patientArchiveRoles.includes(currentProfile.profile.role)
+    : false
+
+  async function refreshPatient() {
+    const refreshedPatient = await getPatientById(loadedPatient.id)
+    setPatient(refreshedPatient)
+  }
+
+  function getLifecycleErrorMessage(
+    action: 'archive' | 'restore',
+    serviceError: string | undefined,
+  ) {
+    const normalizedError = serviceError?.toLowerCase() ?? ''
+
+    if (
+      normalizedError.includes('permission') ||
+      normalizedError.includes('row-level security') ||
+      normalizedError.includes('not allowed')
+    ) {
+      return action === 'archive'
+        ? 'You do not have permission to archive this patient.'
+        : 'You do not have permission to restore this patient.'
+    }
+
+    if (normalizedError.includes('not found')) {
+      return 'Patient could not be found.'
+    }
+
+    return action === 'archive'
+      ? 'Patient could not be archived.'
+      : 'Patient could not be restored.'
+  }
+
+  async function handleLifecycleAction(action: 'archive' | 'restore') {
+    const confirmed = window.confirm(
+      action === 'archive'
+        ? 'Archive this patient? This will hide the patient from the normal patient list.'
+        : 'Restore this patient? This will make the patient active again.',
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setLifecycleError(null)
+    setLifecycleSuccess(null)
+    setIsLifecycleSubmitting(true)
+
+    const result =
+      action === 'archive'
+        ? await archivePatient(loadedPatient.id)
+        : await restorePatient(loadedPatient.id)
+
+    setIsLifecycleSubmitting(false)
+
+    if (result.reason === 'demo_mode') {
+      setLifecycleSuccess(result.message)
+      return
+    }
+
+    if (!result.ok) {
+      setLifecycleError(getLifecycleErrorMessage(action, result.error))
+
+      if (import.meta.env.DEV && result.error) {
+        console.warn(`[PatientDetailPage] ${action}Patient failed:`, result.error)
+      }
+
+      return
+    }
+
+    setLifecycleSuccess(
+      result.message ??
+        (action === 'archive'
+          ? 'Patient was archived successfully.'
+          : 'Patient was restored successfully.'),
+    )
+    await refreshPatient()
+  }
 
   return (
     <Page>
@@ -175,9 +271,11 @@ export function PatientDetailPage() {
             <Badge variant="info">
               {isSupabasePatientMode ? 'Supabase mode' : 'Fake demo data'}
             </Badge>
-            <Button onClick={() => navigate(getPatientEditPath(patient.id))}>
-              Edit patient
-            </Button>
+            {!isArchived ? (
+              <Button onClick={() => navigate(getPatientEditPath(patient.id))}>
+                Edit patient
+              </Button>
+            ) : null}
             {canEditMedicalRecord ? (
               <Button
                 variant="secondary"
@@ -186,6 +284,23 @@ export function PatientDetailPage() {
                 }
               >
                 Edit medical record
+              </Button>
+            ) : null}
+            {canArchiveOrRestore && !isArchived ? (
+              <Button
+                variant="secondary"
+                onClick={() => void handleLifecycleAction('archive')}
+                disabled={isLifecycleSubmitting}
+              >
+                {isLifecycleSubmitting ? 'Archiving...' : 'Archive patient'}
+              </Button>
+            ) : null}
+            {canArchiveOrRestore && isArchived ? (
+              <Button
+                onClick={() => void handleLifecycleAction('restore')}
+                disabled={isLifecycleSubmitting}
+              >
+                {isLifecycleSubmitting ? 'Restoring...' : 'Restore patient'}
               </Button>
             ) : null}
             <Button
@@ -205,6 +320,9 @@ export function PatientDetailPage() {
               <Badge variant={patientStatusBadgeVariants[patient.status]}>
                 {patientStatusLabels[patient.status]}
               </Badge>
+              {isArchived ? (
+                <Badge variant="warning">Archived profile</Badge>
+              ) : null}
               {patient.importantNote ? (
                 <Badge variant="info">Important note recorded</Badge>
               ) : (
@@ -212,10 +330,20 @@ export function PatientDetailPage() {
               )}
             </div>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600">
-              This overview uses only fictional Phase 2 data and is intended to
-              validate patient profile structure before real records,
-              permissions, and audit behavior are implemented.
+              {isArchived
+                ? 'This patient is archived. Restore the profile before regular workflow updates.'
+                : 'This overview uses fictional Phase 2 data in demo mode and persisted patient data in Supabase mode.'}
             </p>
+            {lifecycleSuccess ? (
+              <p className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+                {lifecycleSuccess}
+              </p>
+            ) : null}
+            {lifecycleError ? (
+              <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+                {lifecycleError}
+              </p>
+            ) : null}
           </div>
           <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
             <div className="font-medium text-slate-950">

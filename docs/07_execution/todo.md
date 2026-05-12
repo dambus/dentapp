@@ -148,6 +148,7 @@ Status legend:
   - [x] Task 24C: Fix patient write audit verification (service plus test script)
   - [x] Task 25: Add fine-grained role-specific route guards (optional, later phase)
   - [x] Task 26: Implement patient medical record edit flow
+  - [x] Task 27: Implement patient archive/restore flow
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -161,10 +162,11 @@ Status legend:
 
 - [x] Add role-specific route guards
 - [x] Implement patient medical record edit flow
-- [ ] Implement patient archive/restore flow
+- [x] Implement patient archive/restore flow
 - [ ] Implement clinical notes CRUD
 - [ ] Implement odontogram foundation
 - [ ] Implement treatment plan foundation
+- [ ] Refine archived patient filters/search behavior if pilot workflow needs more than the simple include-archived toggle
 
 
 

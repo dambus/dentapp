@@ -14,6 +14,7 @@ type SupabasePatientRow = {
   status: string
   important_note: string | null
   clinic_id: string
+  deleted_at: string | null
 }
 
 type SupabaseMedicalRecordRow = {
@@ -108,6 +109,7 @@ const mapSupabasePatientToDemoPatient = (
     email: patient.email ?? '',
     dateOfBirth: normalizeDateOfBirth(patient.date_of_birth),
     status: mapPatientStatus(patient.status),
+    deletedAt: patient.deleted_at,
     nextAppointment: null,
     lastVisit: options?.latestClinicalNote?.created_at ?? null,
     activeTreatmentPlan: null,
@@ -222,7 +224,13 @@ async function getCurrentSupabaseProfileContext() {
   return profileData as SupabaseProfileContextRow
 }
 
-async function getPatientsFromSupabase(): Promise<DemoPatient[]> {
+type GetPatientsOptions = {
+  includeArchived?: boolean
+}
+
+async function getPatientsFromSupabase(
+  options: GetPatientsOptions = {},
+): Promise<DemoPatient[]> {
   const supabase = await getSupabaseClientSafe()
 
   if (!supabase) {
@@ -260,13 +268,18 @@ async function getPatientsFromSupabase(): Promise<DemoPatient[]> {
     },
   )
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('patients')
     .select(
-      'id, first_name, last_name, date_of_birth, phone, email, status, important_note, clinic_id',
+      'id, first_name, last_name, date_of_birth, phone, email, status, important_note, clinic_id, deleted_at',
     )
     .eq('clinic_id', profileContext.clinic_id)
-    .is('deleted_at', null)
+
+  if (!options.includeArchived) {
+    query = query.is('deleted_at', null).neq('status', 'archived')
+  }
+
+  const { data, error } = await query
     .order('last_name', { ascending: true })
     .order('first_name', { ascending: true })
 
@@ -312,11 +325,10 @@ async function getPatientByIdFromSupabase(
   const { data: patientData, error: patientError } = await supabase
     .from('patients')
     .select(
-      'id, first_name, last_name, date_of_birth, phone, email, status, important_note, clinic_id',
+      'id, first_name, last_name, date_of_birth, phone, email, status, important_note, clinic_id, deleted_at',
     )
     .eq('id', patientId)
     .eq('clinic_id', profileContext.clinic_id)
-    .is('deleted_at', null)
     .maybeSingle()
 
   if (patientError) {
@@ -361,12 +373,18 @@ async function getPatientByIdFromSupabase(
   })
 }
 
-export async function getPatients(): Promise<DemoPatient[]> {
+export async function getPatients(
+  options: GetPatientsOptions = {},
+): Promise<DemoPatient[]> {
   if (patientDataSource === 'supabase') {
-    return getPatientsFromSupabase()
+    return getPatientsFromSupabase(options)
   }
 
-  return clonePatients(demoPatients)
+  const patients = options.includeArchived
+    ? demoPatients
+    : demoPatients.filter((patient) => patient.status !== 'archived')
+
+  return clonePatients(patients)
 }
 
 export async function getPatientById(
@@ -388,7 +406,7 @@ export async function searchPatients(query: string): Promise<DemoPatient[]> {
 
   if (patientDataSource === 'supabase') {
     // Keep search simple for local MVP and avoid complex server-side OR query handling.
-    const patients = await getPatientsFromSupabase()
+    const patients = await getPatientsFromSupabase({ includeArchived: true })
 
     return clonePatients(
       patients.filter((patient) => matchesSearch(patient, normalizedSearch)),
@@ -407,6 +425,7 @@ type PatientWriteResult = {
   patientId?: string
   message: string | null
   error?: string
+  reason?: 'demo_mode' | 'permission' | 'not_found' | 'audit' | 'unknown'
 }
 
 type AuditWriteResult = {
@@ -440,6 +459,7 @@ interface PatientUpdateRow {
   date_of_birth?: string | null
   status?: PatientStatus
   important_note?: string | null
+  deleted_at?: string | null
   updated_by: string
 }
 
@@ -616,6 +636,207 @@ async function updatePatientAuditLog(
     ok: true,
     auditLogId: data,
     error: null,
+  }
+}
+
+function mapPatientRowToAuditValues(patient: {
+  id: string
+  first_name: string
+  last_name: string
+  phone: string
+  email: string | null
+  date_of_birth: string | null
+  status: string
+  important_note: string | null
+  deleted_at: string | null
+}) {
+  return {
+    id: patient.id,
+    first_name: patient.first_name,
+    last_name: patient.last_name,
+    phone: patient.phone,
+    email: patient.email,
+    date_of_birth: patient.date_of_birth,
+    status: patient.status,
+    important_note: patient.important_note,
+    deleted_at: patient.deleted_at,
+  }
+}
+
+async function createPatientLifecycleAuditLog(
+  action: 'patient.archived' | 'patient.restored',
+  patientId: string,
+  oldValues: Record<string, unknown> | null,
+  newValues: Record<string, unknown>,
+): Promise<AuditWriteResult> {
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    return {
+      ok: false,
+      auditLogId: null,
+      error: 'Supabase client unavailable for audit logging.',
+    }
+  }
+
+  const { data, error } = await supabase.rpc('create_audit_log', {
+    p_action: action,
+    p_entity_type: 'patient',
+    p_entity_id: patientId,
+    p_old_values: oldValues,
+    p_new_values: newValues,
+    p_metadata: null,
+  })
+
+  if (error) {
+    console.warn(`[patientService] Failed to create audit log for ${action}:`, error)
+
+    return {
+      ok: false,
+      auditLogId: null,
+      error: error.message ?? `Failed to create ${action} audit log.`,
+    }
+  }
+
+  return {
+    ok: true,
+    auditLogId: data,
+    error: null,
+  }
+}
+
+async function updatePatientArchiveState(
+  patientId: string,
+  action: 'archive' | 'restore',
+): Promise<PatientWriteResult> {
+  if (patientDataSource !== 'supabase') {
+    return {
+      ok: false,
+      patientId,
+      message: 'Demo mode only. No archive changes were saved.',
+      reason: 'demo_mode',
+    }
+  }
+
+  if (!patientId?.trim()) {
+    return {
+      ok: false,
+      message: null,
+      error: 'Patient ID is required.',
+      reason: 'unknown',
+    }
+  }
+
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    return {
+      ok: false,
+      message: null,
+      error: 'Supabase client is not available.',
+      reason: 'unknown',
+    }
+  }
+
+  const profileContext = await getCurrentSupabaseProfileContext()
+
+  if (!profileContext || profileContext.status !== 'active') {
+    return {
+      ok: false,
+      message: null,
+      error: 'Active profile context is required to update patient archive state.',
+      reason: 'permission',
+    }
+  }
+
+  const { data: currentPatient, error: fetchError } = await supabase
+    .from('patients')
+    .select(
+      'id, first_name, last_name, phone, email, date_of_birth, status, important_note, clinic_id, deleted_at',
+    )
+    .eq('id', patientId)
+    .eq('clinic_id', profileContext.clinic_id)
+    .maybeSingle()
+
+  if (fetchError) {
+    return {
+      ok: false,
+      message: null,
+      error: 'Patient could not be loaded for archive state update.',
+      reason: 'unknown',
+    }
+  }
+
+  if (!currentPatient) {
+    return {
+      ok: false,
+      message: null,
+      error: 'Patient not found or you do not have permission to update it.',
+      reason: 'not_found',
+    }
+  }
+
+  const nextDeletedAt = action === 'archive' ? new Date().toISOString() : null
+  const nextStatus: PatientStatus = action === 'archive' ? 'archived' : 'active'
+
+  const { data: updatedPatient, error: updateError } = await supabase
+    .from('patients')
+    .update({
+      status: nextStatus,
+      deleted_at: nextDeletedAt,
+      updated_by: profileContext.id,
+    })
+    .eq('id', patientId)
+    .eq('clinic_id', profileContext.clinic_id)
+    .select(
+      'id, first_name, last_name, phone, email, date_of_birth, status, important_note, deleted_at',
+    )
+    .single()
+
+  if (updateError || !updatedPatient) {
+    const errorMessage = updateError?.message ?? 'Patient archive state could not be updated.'
+
+    return {
+      ok: false,
+      message: null,
+      error: errorMessage,
+      reason:
+        errorMessage.toLowerCase().includes('row-level security') ||
+        errorMessage.toLowerCase().includes('permission')
+          ? 'permission'
+          : 'unknown',
+    }
+  }
+
+  const auditAction =
+    action === 'archive' ? 'patient.archived' : 'patient.restored'
+  const auditResult = await createPatientLifecycleAuditLog(
+    auditAction,
+    patientId,
+    mapPatientRowToAuditValues(currentPatient),
+    mapPatientRowToAuditValues(updatedPatient),
+  )
+
+  if (!auditResult.ok) {
+    return {
+      ok: false,
+      patientId,
+      message:
+        action === 'archive'
+          ? 'Patient was archived, but audit log could not be recorded.'
+          : 'Patient was restored, but audit log could not be recorded.',
+      error: auditResult.error ?? 'Audit log could not be recorded.',
+      reason: 'audit',
+    }
+  }
+
+  return {
+    ok: true,
+    patientId,
+    message:
+      action === 'archive'
+        ? 'Patient was archived successfully.'
+        : 'Patient was restored successfully.',
   }
 }
 
@@ -872,4 +1093,16 @@ export async function updatePatient(
     patientId,
     message: null,
   }
+}
+
+export async function archivePatient(
+  patientId: string,
+): Promise<PatientWriteResult> {
+  return updatePatientArchiveState(patientId, 'archive')
+}
+
+export async function restorePatient(
+  patientId: string,
+): Promise<PatientWriteResult> {
+  return updatePatientArchiveState(patientId, 'restore')
 }

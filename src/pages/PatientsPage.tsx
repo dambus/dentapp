@@ -26,6 +26,7 @@ export function PatientsPage() {
   const currentProfile = useCurrentProfile()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [includeArchived, setIncludeArchived] = useState(false)
   const [patients, setPatients] = useState<DemoPatient[]>([])
   const [isPatientsLoading, setIsPatientsLoading] = useState(true)
 
@@ -47,7 +48,7 @@ export function PatientsPage() {
         setIsPatientsLoading(true)
       }
 
-      const loadedPatients = await getPatients()
+      const loadedPatients = await getPatients({ includeArchived })
 
       if (isCurrent) {
         setPatients(loadedPatients)
@@ -66,6 +67,7 @@ export function PatientsPage() {
     currentProfile.profile?.id,
     currentProfile.profile?.status,
     currentProfile.session?.user.id,
+    includeArchived,
     isSupabasePatientMode,
   ])
 
@@ -95,7 +97,8 @@ export function PatientsPage() {
     })
   }, [searchMatchedPatients, statusFilter])
 
-  const hasActiveFilters = search.trim() !== '' || statusFilter !== 'all'
+  const hasActiveFilters =
+    search.trim() !== '' || statusFilter !== 'all' || includeArchived
   const dataModeLabel = isSupabasePatientMode ? 'Supabase mode' : 'Demo mode'
   const patientLabel = isSupabasePatientMode ? 'patients' : 'demo patients'
   const emptyStateTitle = isSupabasePatientMode
@@ -108,6 +111,7 @@ export function PatientsPage() {
   function clearFilters() {
     setSearch('')
     setStatusFilter('all')
+    setIncludeArchived(false)
   }
 
   return (
@@ -162,6 +166,24 @@ export function PatientsPage() {
               </select>
             </label>
           </div>
+
+          <label className="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
+            <input
+              checked={includeArchived}
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+              onChange={(event) => setIncludeArchived(event.target.checked)}
+              type="checkbox"
+            />
+            <span>
+              <span className="block text-sm font-medium text-slate-800">
+                Include archived patients
+              </span>
+              <span className="mt-1 block text-sm leading-5 text-slate-600">
+                Archived patients are hidden from the normal list and can be
+                restored from their profile page.
+              </span>
+            </span>
+          </label>
 
           <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
             {isPatientsLoading ? (

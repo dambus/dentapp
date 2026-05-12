@@ -905,3 +905,27 @@ Medical record writes go through `patientMedicalRecordService`, not page-level S
 
 Status: Accepted
 
+---
+
+## Decision 045 — Patient Archive Uses Soft Archive With Audit RPC
+
+Date: 2026-05-12
+
+Decision:
+
+Patient archive/restore uses a soft lifecycle update on the `patients` row:
+
+- archive sets `status = archived` and `deleted_at = now()`,
+- restore sets `status = active` and `deleted_at = null`,
+- hard delete and permanent deletion are intentionally not implemented.
+
+Reason:
+
+Patient records are sensitive operational and clinical records. The MVP needs a reversible administrative lifecycle flow that preserves linked data and audit history.
+
+Impact:
+
+Archive/restore is implemented through `patientService` only. The service uses authenticated Supabase access, RLS, and controlled `create_audit_log` RPC calls for `patient.archived` and `patient.restored`. The normal patient list hides archived patients by default, while patient detail can still load archived records by direct URL so authorized users can restore them. Demo mode remains non-persistent.
+
+Status: Accepted
+

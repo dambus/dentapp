@@ -631,6 +631,69 @@ Initial stack:
 - Local test scripts create demo-only test rows; run `npx.cmd supabase db reset` to return to seeded-only data.
 - Manual browser checks for the new route remain recommended for final UI acceptance.
 
+### Completed (Task 27)
+
+- Implemented patient archive/restore flow.
+- Added patient lifecycle service functions in `src/features/patients/patientService.ts`:
+	- `archivePatient(patientId)`
+	- `restorePatient(patientId)`
+- Archive behavior:
+	- sets `patients.status = 'archived'`
+	- sets `patients.deleted_at` to the archive timestamp
+	- keeps data soft-deleted/hidden from normal list behavior
+	- does not hard delete patient data
+- Restore behavior:
+	- sets `patients.status = 'active'`
+	- clears `patients.deleted_at`
+- Added controlled audit RPC integration for lifecycle changes:
+	- `patient.archived`
+	- `patient.restored`
+	- `entity_type = patient`
+	- `entity_id = patient id`
+	- old/new values include safe patient subset with status and deleted_at changes
+- Added migration `supabase/migrations/20260512120000_relax_patient_update_created_by_check.sql`.
+	- Recreated the patient update policy so allowed clinic roles can update clinic patients without being blocked by another user's `created_by` value.
+	- Kept `updated_by` constrained to the current profile when provided.
+- Updated `PatientDetailPage`:
+	- shows archived status clearly,
+	- hides regular edit actions for archived patients,
+	- shows Archive action for `owner_admin`, `doctor`, and `reception_admin` when patient is not archived,
+	- shows Restore action for `owner_admin`, `doctor`, and `reception_admin` when patient is archived,
+	- asks for confirmation before archive/restore,
+	- keeps user on patient detail after archive/restore,
+	- shows success/error states.
+- Updated patient reads:
+	- normal patient list hides archived patients by default,
+	- patient detail can load archived patients by direct URL for restore,
+	- Patients page includes a lightweight "Include archived patients" toggle.
+- Demo mode remains non-persistent:
+	- no `demoPatients` mutation,
+	- no localStorage,
+	- archive/restore shows `Demo mode only. No archive changes were saved.`
+- Added local verification script:
+	- `supabase/snippets/testPatientArchiveRestore.mjs`
+
+### Verification (Task 27)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- `npx.cmd supabase db reset` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes.
+- `node .\supabase\snippets\testAuditInsert.mjs` passes.
+- `node .\supabase\snippets\testPatientRlsByRole.mjs` passes.
+- `node .\supabase\snippets\testPatientWriteService.mjs` passes.
+- `node .\supabase\snippets\testPatientMedicalRecordWrite.mjs` passes.
+- `node .\supabase\snippets\testPatientArchiveRestore.mjs` passes:
+	- `owner_admin`, `doctor`, and `reception_admin` can archive/restore.
+	- `specialist`, `assistant`, and `inventory_responsible` cannot archive/restore.
+	- allowed archive/restore writes create audit rows.
+	- owner can read audit logs; doctor cannot.
+
+### Notes (Task 27)
+
+- Manual browser checks remain recommended for the archive/restore UI flow.
+- Local test scripts create demo-only rows; run `npx.cmd supabase db reset` to return to seeded-only data.
+
 ---
 
 ## Notes
