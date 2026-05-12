@@ -15,6 +15,7 @@ import {
   EmptyState,
 } from '../components/ui'
 import { useCurrentProfile } from '../features/auth/useCurrentProfile'
+import { ClinicalNotesSection } from '../features/patients/ClinicalNotesSection'
 import {
   formatDemoCurrency,
   formatPatientDate,
@@ -47,6 +48,12 @@ const futureModulePlaceholders = [
 ]
 
 const medicalRecordEditRoles: AppRole[] = [
+  'owner_admin',
+  'doctor',
+  'specialist',
+]
+
+const clinicalNoteRoles: AppRole[] = [
   'owner_admin',
   'doctor',
   'specialist',
@@ -180,6 +187,9 @@ export function PatientDetailPage() {
     loadedPatient.status === 'archived' || Boolean(loadedPatient.deletedAt)
   const canEditMedicalRecord = currentProfile.profile
     ? medicalRecordEditRoles.includes(currentProfile.profile.role) && !isArchived
+    : false
+  const canViewClinicalNotes = currentProfile.profile
+    ? clinicalNoteRoles.includes(currentProfile.profile.role)
     : false
   const canArchiveOrRestore = currentProfile.profile
     ? patientArchiveRoles.includes(currentProfile.profile.role)
@@ -589,6 +599,14 @@ export function PatientDetailPage() {
           </dl>
         </RecordSection>
       </div>
+
+      {canViewClinicalNotes ? (
+        <ClinicalNotesSection
+          patientId={patient.id}
+          canManageNotes={canViewClinicalNotes}
+          isPatientArchived={isArchived}
+        />
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
         <RecordSection

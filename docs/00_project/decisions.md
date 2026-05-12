@@ -929,3 +929,25 @@ Archive/restore is implemented through `patientService` only. The service uses a
 
 Status: Accepted
 
+---
+
+## Decision 046 — Clinical Notes Use Inline CRUD With Soft Archive
+
+Date: 2026-05-12
+
+Decision:
+
+Clinical notes are managed from an inline section on the patient detail page. Clinical note create, update, and archive actions are allowed only for `owner_admin`, `doctor`, and `specialist`.
+
+Clinical note archive sets `clinical_notes.deleted_at` and does not hard delete note data.
+
+Reason:
+
+Clinical notes are sensitive clinical content. Keeping the first CRUD flow inside patient detail avoids extra route complexity while preserving role-specific access and service-layer persistence. Soft archive keeps note history recoverable for audit and compliance review.
+
+Impact:
+
+Clinical note writes go through `clinicalNotesService`, not direct page-level Supabase calls. The service uses authenticated Supabase access, RLS, and controlled `create_audit_log` RPC calls for `clinical_note.created`, `clinical_note.updated`, and `clinical_note.archived`. Demo mode remains non-persistent.
+
+Status: Accepted
+

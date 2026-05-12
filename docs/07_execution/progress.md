@@ -696,6 +696,63 @@ Initial stack:
 
 ---
 
+### Completed (Task 28)
+
+- Implemented first clinical notes CRUD flow.
+- Added `src/features/patients/clinicalNotesService.ts` with service-layer functions:
+	- `getClinicalNotes(patientId)`
+	- `getClinicalNoteById(patientId, noteId)`
+	- `createClinicalNote(patientId, input)`
+	- `updateClinicalNote(patientId, noteId, input)`
+	- `archiveClinicalNote(patientId, noteId)`
+- Added inline Clinical Notes section on `PatientDetailPage`.
+	- Shows active notes only (`deleted_at is null`).
+	- Supports note type, optional tooth number, created date, and note content.
+	- Provides create/edit/archive actions only to clinical roles.
+	- Hides clinical notes entirely for non-clinical roles in the patient detail UI.
+- Clinical note write access is clinical-role only in the frontend:
+	- allowed: `owner_admin`, `doctor`, `specialist`
+	- denied actions hidden for: `assistant`, `reception_admin`, `inventory_responsible`
+- Clinical note archive uses soft archive behavior by setting `clinical_notes.deleted_at`.
+- Controlled audit RPC integration added for:
+	- `clinical_note.created`
+	- `clinical_note.updated`
+	- `clinical_note.archived`
+	- `entity_type = clinical_note`
+	- `entity_id = clinical note id`
+	- metadata includes `patient_id`
+- Demo mode remains non-persistent:
+	- no `demoPatients` mutation,
+	- no localStorage,
+	- create/update/archive returns `Demo mode only. No clinical note changes were saved.`
+- Added local verification script:
+	- `supabase/snippets/testClinicalNotesCrud.mjs`
+
+### Verification (Task 28)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- `npx.cmd supabase db reset` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes after loading local Supabase service-role environment from `supabase status -o env`.
+- `node .\supabase\snippets\testAuditInsert.mjs` passes.
+- `node .\supabase\snippets\testPatientRlsByRole.mjs` passes.
+- `node .\supabase\snippets\testPatientWriteService.mjs` passes.
+- `node .\supabase\snippets\testPatientMedicalRecordWrite.mjs` passes.
+- `node .\supabase\snippets\testPatientArchiveRestore.mjs` passes.
+- `node .\supabase\snippets\testClinicalNotesCrud.mjs` passes:
+	- `owner_admin`, `doctor`, and `specialist` can create/update/archive clinical notes.
+	- `assistant`, `reception_admin`, and `inventory_responsible` cannot create/update/archive clinical notes.
+	- allowed clinical note writes create audit rows.
+	- owner can read audit logs; doctor cannot.
+
+### Notes (Task 28)
+
+- Create/edit is implemented inline in the patient detail page rather than as separate note routes.
+- Clinical note hard delete is intentionally not implemented.
+- Visits, odontogram, treatment plans, rich text, and note attachments remain out of scope.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.
