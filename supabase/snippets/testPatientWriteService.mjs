@@ -18,8 +18,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import * as fs from 'fs';
-import * as path from 'path';
+import { DEMO_PASSWORD } from './demoAuthConstants.mjs';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
@@ -39,27 +38,27 @@ if (!supabaseServiceRoleKey) {
 const demoUsers = {
   owner: {
     email: 'owner.demo@example.test',
-    password: 'Demo@12345',
+    password: DEMO_PASSWORD,
   },
   doctor: {
     email: 'doctor.demo@example.test',
-    password: 'Demo@12345',
+    password: DEMO_PASSWORD,
   },
   reception_admin: {
     email: 'reception.demo@example.test',
-    password: 'Demo@12345',
+    password: DEMO_PASSWORD,
   },
   specialist: {
     email: 'specialist.demo@example.test',
-    password: 'Demo@12345',
+    password: DEMO_PASSWORD,
   },
   assistant: {
     email: 'assistant.demo@example.test',
-    password: 'Demo@12345',
+    password: DEMO_PASSWORD,
   },
   inventory_responsible: {
     email: 'inventory.demo@example.test',
-    password: 'Demo@12345',
+    password: DEMO_PASSWORD,
   },
 };
 
@@ -80,6 +79,65 @@ async function signInAsUser(email, password) {
   }
 
   return data.session;
+}
+
+async function createAuditLogForPatientWrite(
+  client,
+  action,
+  patientId,
+  oldValues,
+  newValues,
+) {
+  const rpcResult = await client.rpc('create_audit_log', {
+    p_action: action,
+    p_entity_type: 'patient',
+    p_entity_id: patientId,
+    p_old_values: oldValues,
+    p_new_values: newValues,
+    p_metadata: { source: 'testPatientWriteService.mjs' },
+  });
+
+  if (rpcResult.error) {
+    return {
+      success: false,
+      error: rpcResult.error.message,
+      auditLogId: null,
+    };
+  }
+
+  return {
+    success: true,
+    error: null,
+    auditLogId: rpcResult.data ?? null,
+  };
+}
+
+async function findAuditLogByEntity(action, patientId) {
+  const serviceSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+  const { data, error } = await serviceSupabase
+    .from('audit_logs')
+    .select('id, action, entity_type, entity_id, actor_profile_id, clinic_id')
+    .eq('action', action)
+    .eq('entity_type', 'patient')
+    .eq('entity_id', patientId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      success: false,
+      error: error.message,
+      auditLog: null,
+    };
+  }
+
+  return {
+    success: true,
+    error: null,
+    auditLog: data ?? null,
+  };
 }
 
 async function testPatientCreate(session, userRole) {
@@ -121,34 +179,47 @@ async function testPatientCreate(session, userRole) {
 
   const patientId = insertData?.id;
 
-  // Verify audit log was created by checking if owner can read it
-  let auditLogCreated = null;
+  // Mirror patientService behavior: create audit after successful write.
+  const auditNewValues = {
+    id: insertData.id,
+    first_name: insertData.first_name,
+    last_name: insertData.last_name,
+    phone: insertData.phone,
+    status: insertData.status,
+  };
 
-  if (userRole === 'owner_admin' || userRole === 'doctor' || userRole === 'reception_admin') {
-    // These roles can call create_audit_log RPC
-    // Audit log should be created automatically after successful insert
+  const auditInsertResult = await createAuditLogForPatientWrite(
+    supabase,
+    'patient.created',
+    patientId,
+    null,
+    auditNewValues,
+  );
 
-    // Use service role to check audit logs (since we can't easily check as current user)
-    const serviceSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+  if (!auditInsertResult.success) {
+    return {
+      success: false,
+      error: `Create succeeded but audit RPC failed: ${auditInsertResult.error}`,
+      patientId,
+      auditLogCreated: null,
+    };
+  }
 
-    const { data: auditData, error: auditError } = await serviceSupabase
-      .from('audit_logs')
-      .select('id, action, entity_type, entity_id, actor_profile_id')
-      .eq('entity_id', patientId)
-      .eq('action', 'patient.created')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+  const auditLookup = await findAuditLogByEntity('patient.created', patientId);
 
-    if (!auditError && auditData) {
-      auditLogCreated = auditData.id;
-    }
+  if (!auditLookup.success || !auditLookup.auditLog) {
+    return {
+      success: false,
+      error: 'Create succeeded but patient.created audit log was not found by action/entity/entity_id.',
+      patientId,
+      auditLogCreated: null,
+    };
   }
 
   return {
     success: true,
     patientId,
-    auditLogCreated,
+    auditLogCreated: auditLookup.auditLog.id,
   };
 }
 
@@ -161,6 +232,12 @@ async function testPatientUpdate(session, patientId, userRole) {
     },
   });
 
+  const { data: currentPatientBeforeUpdate } = await supabase
+    .from('patients')
+    .select('id, first_name, last_name, phone, email, date_of_birth, status, important_note')
+    .eq('id', patientId)
+    .maybeSingle();
+
   const updateData = {
     important_note: `Updated by ${userRole} at ${new Date().toISOString()}`,
     updated_by: null,
@@ -171,7 +248,7 @@ async function testPatientUpdate(session, patientId, userRole) {
     .from('patients')
     .update(updateData)
     .eq('id', patientId)
-    .select('id, important_note, updated_at')
+    .select('id, first_name, last_name, phone, email, date_of_birth, status, important_note, updated_at')
     .single();
 
   if (updateError) {
@@ -181,9 +258,56 @@ async function testPatientUpdate(session, patientId, userRole) {
     };
   }
 
+  const auditOldValues = currentPatientBeforeUpdate
+    ? {
+        first_name: currentPatientBeforeUpdate.first_name,
+        last_name: currentPatientBeforeUpdate.last_name,
+        phone: currentPatientBeforeUpdate.phone,
+        email: currentPatientBeforeUpdate.email,
+        date_of_birth: currentPatientBeforeUpdate.date_of_birth,
+        status: currentPatientBeforeUpdate.status,
+        important_note: currentPatientBeforeUpdate.important_note,
+      }
+    : null;
+
+  const auditNewValues = {
+    first_name: updateResult.first_name,
+    last_name: updateResult.last_name,
+    phone: updateResult.phone,
+    email: updateResult.email,
+    date_of_birth: updateResult.date_of_birth,
+    status: updateResult.status,
+    important_note: updateResult.important_note,
+  };
+
+  const auditInsertResult = await createAuditLogForPatientWrite(
+    supabase,
+    'patient.updated',
+    patientId,
+    auditOldValues,
+    auditNewValues,
+  );
+
+  if (!auditInsertResult.success) {
+    return {
+      success: false,
+      error: `Update succeeded but audit RPC failed: ${auditInsertResult.error}`,
+    };
+  }
+
+  const auditLookup = await findAuditLogByEntity('patient.updated', patientId);
+
+  if (!auditLookup.success || !auditLookup.auditLog) {
+    return {
+      success: false,
+      error: 'Update succeeded but patient.updated audit log was not found by action/entity/entity_id.',
+    };
+  }
+
   return {
     success: true,
     updated: true,
+    auditLogUpdated: auditLookup.auditLog.id,
   };
 }
 
@@ -212,6 +336,7 @@ async function countAuditLogsForUser(email, password) {
 
 async function runTests() {
   console.log('=== Patient Write Service Layer Test ===\n');
+  const failures = [];
 
   const testResults = {
     owner_admin: { canCreate: null, canUpdate: null, auditLogsCount: null },
@@ -246,7 +371,8 @@ async function runTests() {
         if (createResult.auditLogCreated) {
           console.log(`    ✓ Audit log created (ID: ${createResult.auditLogCreated})`);
         } else {
-          console.log(`    ⚠ Audit log not found (manual verification may be needed)`);
+          console.log(`    ✗ Audit log not found`);
+          failures.push(`${userRole}: patient.created audit log missing`);
         }
 
         // Test update
@@ -256,14 +382,23 @@ async function runTests() {
         if (updateResult.success) {
           console.log(`    ✓ Update succeeded`);
           testResults[userRole].canUpdate = true;
+
+          if (updateResult.auditLogUpdated) {
+            console.log(`    ✓ Update audit log created (ID: ${updateResult.auditLogUpdated})`);
+          } else {
+            console.log(`    ✗ Update audit log not found`);
+            failures.push(`${userRole}: patient.updated audit log missing`);
+          }
         } else {
           console.log(`    ✗ Update denied: ${updateResult.error}`);
           testResults[userRole].canUpdate = false;
+          failures.push(`${userRole}: update failed - ${updateResult.error}`);
         }
       } else {
         console.log(`    ✗ Create denied: ${createResult.error}`);
         testResults[userRole].canCreate = false;
         testResults[userRole].canUpdate = false;
+        failures.push(`${userRole}: create failed - ${createResult.error}`);
       }
     } catch (error) {
       console.log(`    ✗ Error during test: ${error.message}`);
@@ -288,6 +423,7 @@ async function runTests() {
       if (createResult.success) {
         console.log(`    ✗ Create unexpectedly succeeded (should be denied)`);
         testResults[userRole].canCreate = true; // Wrong - should be false
+        failures.push(`${userRole}: create unexpectedly allowed`);
       } else {
         console.log(`    ✓ Create correctly denied: ${createResult.error}`);
         testResults[userRole].canCreate = false;
@@ -302,6 +438,7 @@ async function runTests() {
         if (updateResult.success) {
           console.log(`    ✗ Update unexpectedly succeeded (should be denied)`);
           testResults[userRole].canUpdate = true; // Wrong
+          failures.push(`${userRole}: update unexpectedly allowed`);
         } else {
           console.log(`    ✓ Update correctly denied: ${updateResult.error}`);
           testResults[userRole].canUpdate = false;
@@ -333,7 +470,8 @@ async function runTests() {
     if (ownerAuditCount > 0) {
       console.log(`  ✓ Owner can read audit logs (count: ${ownerAuditCount})`);
     } else {
-      console.log(`  ⚠ Owner audit log read returned 0 (policy working but may need data)`);
+      console.log(`  ✗ Owner audit log read returned 0`);
+      failures.push('owner_admin cannot read expected audit logs');
     }
   } catch (error) {
     console.log(`  ✗ Error: ${error.message}`);
@@ -351,6 +489,7 @@ async function runTests() {
       console.log(`  ✓ Doctor correctly cannot read audit logs (count: 0)`);
     } else {
       console.log(`  ✗ Doctor unexpectedly can read audit logs (count: ${doctorAuditCount})`);
+      failures.push('doctor unexpectedly can read audit logs');
     }
   } catch (error) {
     console.log(`  ✗ Error: ${error.message}`);
@@ -379,6 +518,16 @@ async function runTests() {
   console.log(`\n=== Cleanup ===\n`);
   console.log('To reset the database and remove all test data:');
   console.log('  npx supabase db reset');
+
+  if (failures.length > 0) {
+    console.log('\n=== Failures ===\n');
+
+    for (const failure of failures) {
+      console.log(`  - ${failure}`);
+    }
+
+    throw new Error(`Patient write service test failed with ${failures.length} issue(s).`);
+  }
 }
 
 // Run tests

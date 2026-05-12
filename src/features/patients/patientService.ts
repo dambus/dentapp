@@ -108,7 +108,7 @@ const mapSupabasePatientToDemoPatient = (
     nextAppointment: null,
     lastVisit: options?.latestClinicalNote?.created_at ?? null,
     activeTreatmentPlan: null,
-    importantWarning: patient.important_note,
+    importantNote: patient.important_note,
     unpaidBalance: 0,
     medicalWarnings,
     anamnesisSummary:
@@ -401,7 +401,13 @@ type PatientWriteResult = {
   error?: string
 }
 
-type PatientCreateInput = Omit<PatientFormValues, 'summary'>
+type AuditWriteResult = {
+  ok: boolean
+  auditLogId: string | null
+  error: string | null
+}
+
+type PatientCreateInput = PatientFormValues
 
 type PatientUpdateInput = Partial<PatientCreateInput>
 
@@ -466,7 +472,7 @@ function mapFormValuesToDatabaseRow(
     email: input.email?.trim() ? input.email : null,
     date_of_birth: input.dateOfBirth ?? null,
     status: input.status,
-    important_note: input.importantWarning?.trim() ?? null,
+    important_note: input.importantNote?.trim() ?? null,
     clinic_id: clinicId,
     created_by: currentProfileId,
     updated_by: currentProfileId,
@@ -505,8 +511,8 @@ function mapFormValuesToUpdateRow(
     updateRow.status = input.status
   }
 
-  if (input.importantWarning !== undefined) {
-    updateRow.important_note = input.importantWarning?.trim() ?? null
+  if (input.importantNote !== undefined) {
+    updateRow.important_note = input.importantNote?.trim() ?? null
   }
 
   return updateRow
@@ -515,7 +521,7 @@ function mapFormValuesToUpdateRow(
 async function createPatientAuditLog(
   patientId: string,
   newValues: Record<string, unknown>,
-): Promise<string | null> {
+): Promise<AuditWriteResult> {
   const supabase = await getSupabaseClientSafe()
 
   if (!supabase) {
@@ -523,7 +529,11 @@ async function createPatientAuditLog(
       '[patientService] Unable to create audit log: Supabase client unavailable.',
     )
 
-    return null
+    return {
+      ok: false,
+      auditLogId: null,
+      error: 'Supabase client unavailable for audit logging.',
+    }
   }
 
   const { data, error } = await supabase.rpc('create_audit_log', {
@@ -538,19 +548,27 @@ async function createPatientAuditLog(
   if (error) {
     console.warn('[patientService] Failed to create audit log for patient create:', error)
 
-    return null
+    return {
+      ok: false,
+      auditLogId: null,
+      error: error.message ?? 'Failed to create patient.created audit log.',
+    }
   }
 
   console.info('[patientService] Audit log created for patient create:', data)
 
-  return data
+  return {
+    ok: true,
+    auditLogId: data,
+    error: null,
+  }
 }
 
 async function updatePatientAuditLog(
   patientId: string,
   oldValues: Record<string, unknown> | null,
   newValues: Record<string, unknown>,
-): Promise<string | null> {
+): Promise<AuditWriteResult> {
   const supabase = await getSupabaseClientSafe()
 
   if (!supabase) {
@@ -558,7 +576,11 @@ async function updatePatientAuditLog(
       '[patientService] Unable to create audit log: Supabase client unavailable.',
     )
 
-    return null
+    return {
+      ok: false,
+      auditLogId: null,
+      error: 'Supabase client unavailable for audit logging.',
+    }
   }
 
   const { data, error } = await supabase.rpc('create_audit_log', {
@@ -573,12 +595,20 @@ async function updatePatientAuditLog(
   if (error) {
     console.warn('[patientService] Failed to create audit log for patient update:', error)
 
-    return null
+    return {
+      ok: false,
+      auditLogId: null,
+      error: error.message ?? 'Failed to create patient.updated audit log.',
+    }
   }
 
   console.info('[patientService] Audit log created for patient update:', data)
 
-  return data
+  return {
+    ok: true,
+    auditLogId: data,
+    error: null,
+  }
 }
 
 export async function createPatient(
@@ -671,7 +701,16 @@ export async function createPatient(
     important_note: insertData.important_note,
   }
 
-  await createPatientAuditLog(patientId, auditValues)
+  const auditResult = await createPatientAuditLog(patientId, auditValues)
+
+  if (!auditResult.ok) {
+    return {
+      ok: false,
+      patientId,
+      message: 'Patient was saved, but audit log could not be recorded.',
+      error: 'Patient was saved, but audit log could not be recorded.',
+    }
+  }
 
   return {
     ok: true,
@@ -805,7 +844,20 @@ export async function updatePatient(
   }
 
   // Create audit log
-  await updatePatientAuditLog(patientId, oldAuditValues, newAuditValues)
+  const auditResult = await updatePatientAuditLog(
+    patientId,
+    oldAuditValues,
+    newAuditValues,
+  )
+
+  if (!auditResult.ok) {
+    return {
+      ok: false,
+      patientId,
+      message: 'Patient was updated, but audit log could not be recorded.',
+      error: 'Patient was updated, but audit log could not be recorded.',
+    }
+  }
 
   return {
     ok: true,

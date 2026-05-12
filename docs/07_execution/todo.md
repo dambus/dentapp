@@ -142,7 +142,10 @@ Status legend:
   - [x] Task 21: Diagnose and fix Supabase-mode patient reads in browser flow
   - [x] Task 22: Define controlled audit insert strategy/RPC
   - [x] Task 23: Implement patient create/update service layer
-  - [ ] Task 24: Connect patient create/edit forms to service writes (submit behavior integration)
+  - [x] Task 24: Connect patient create/edit forms to service writes (submit behavior integration)
+  - [x] Task 24A: Fix patient write service test credentials
+  - [x] Task 24B: Fix patient important note field mapping (form/service/detail)
+  - [x] Task 24C: Fix patient write audit verification (service plus test script)
   - [ ] Task 25: Add fine-grained role-specific route guards (optional, later phase)
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
@@ -155,9 +158,10 @@ Status legend:
 
 ## 10. Current Immediate Next Tasks
 
-- [ ] Implement patient create/update service layer
-- [ ] Connect patient create/edit forms to service writes
-- [ ] Add fine-grained role-specific route guards (later phase)
+- [ ] Add role-specific route guards
+- [ ] Implement patient medical record edit flow
+- [ ] Implement patient archive/restore flow
+- [ ] Continue treatment plan foundation
 
 
 

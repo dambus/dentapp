@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { DEMO_PASSWORD } from './demoAuthConstants.mjs'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
@@ -12,12 +13,12 @@ const DEMO_CLINIC_ID = '11111111-1111-1111-1111-111111111111'
 const DEMO_PATIENT_ID = '22222222-2222-2222-2222-222222222201'
 
 const ROLE_USERS = [
-  { role: 'owner_admin', email: 'owner.demo@example.test', password: 'DemoPass!2026' },
-  { role: 'doctor', email: 'doctor.demo@example.test', password: 'DemoPass!2026' },
-  { role: 'specialist', email: 'specialist.demo@example.test', password: 'DemoPass!2026' },
-  { role: 'assistant', email: 'assistant.demo@example.test', password: 'DemoPass!2026' },
-  { role: 'reception_admin', email: 'reception.demo@example.test', password: 'DemoPass!2026' },
-  { role: 'inventory_responsible', email: 'inventory.demo@example.test', password: 'DemoPass!2026' },
+  { role: 'owner_admin', email: 'owner.demo@example.test', password: DEMO_PASSWORD },
+  { role: 'doctor', email: 'doctor.demo@example.test', password: DEMO_PASSWORD },
+  { role: 'specialist', email: 'specialist.demo@example.test', password: DEMO_PASSWORD },
+  { role: 'assistant', email: 'assistant.demo@example.test', password: DEMO_PASSWORD },
+  { role: 'reception_admin', email: 'reception.demo@example.test', password: DEMO_PASSWORD },
+  { role: 'inventory_responsible', email: 'inventory.demo@example.test', password: DEMO_PASSWORD },
 ]
 
 async function getCount(client, tableName) {

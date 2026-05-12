@@ -7,8 +7,7 @@ export type PatientFormValues = {
   email: string
   dateOfBirth: string
   status: PatientStatus
-  importantWarning: string
-  summary: string
+  importantNote: string
 }
 
 export function getPatientFormValuesFromDemoPatient(
@@ -21,7 +20,6 @@ export function getPatientFormValuesFromDemoPatient(
     email: patient.email,
     dateOfBirth: patient.dateOfBirth,
     status: patient.status,
-    importantWarning: patient.importantWarning ?? '',
-    summary: patient.lastClinicalNote,
+    importantNote: patient.importantNote ?? '',
   }
 }

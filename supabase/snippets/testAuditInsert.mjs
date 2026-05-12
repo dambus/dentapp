@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { DEMO_PASSWORD } from './demoAuthConstants.mjs'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
@@ -9,8 +10,8 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 }
 
 const ROLE_USERS = [
-  { role: 'owner_admin', email: 'owner.demo@example.test', password: 'DemoPass!2026' },
-  { role: 'doctor', email: 'doctor.demo@example.test', password: 'DemoPass!2026' },
+  { role: 'owner_admin', email: 'owner.demo@example.test', password: DEMO_PASSWORD },
+  { role: 'doctor', email: 'doctor.demo@example.test', password: DEMO_PASSWORD },
 ]
 
 async function callAuditRpc(client, role) {

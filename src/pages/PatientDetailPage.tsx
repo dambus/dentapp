@@ -142,7 +142,7 @@ export function PatientDetailPage() {
   }
 
   const patientName = getPatientFullName(patient)
-  const warningLabel = patient.importantWarning ?? 'No warning'
+  const importantNoteLabel = patient.importantNote ?? 'No important note recorded.'
   const activePlanLabel = patient.activeTreatmentPlan ?? 'No active plan'
   const hasMedicalWarnings = patient.medicalWarnings.length > 0
 
@@ -150,7 +150,7 @@ export function PatientDetailPage() {
     <Page>
       <PageHeader
         title={patientName}
-        description="Read-only demo patient profile. Create, edit, clinical records, payments, and Supabase data are not connected yet."
+        description="Patient profile overview. Demo mode remains non-persistent; Supabase mode supports patient create and basic profile updates."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">Fake demo data</Badge>
@@ -174,10 +174,10 @@ export function PatientDetailPage() {
               <Badge variant={patientStatusBadgeVariants[patient.status]}>
                 {patientStatusLabels[patient.status]}
               </Badge>
-              {patient.importantWarning ? (
-                <Badge variant="warning">{patient.importantWarning}</Badge>
+              {patient.importantNote ? (
+                <Badge variant="info">Important note recorded</Badge>
               ) : (
-                <Badge variant="neutral">No warning</Badge>
+                <Badge variant="neutral">No important note</Badge>
               )}
             </div>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600">
@@ -200,13 +200,11 @@ export function PatientDetailPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader>
-            <CardTitle>Important warning</CardTitle>
-            <CardDescription>High-visibility patient flag.</CardDescription>
+            <CardTitle>Important note</CardTitle>
+            <CardDescription>Administrative patient-level note.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Badge variant={patient.importantWarning ? 'warning' : 'neutral'}>
-              {warningLabel}
-            </Badge>
+            <p className="text-sm leading-6 text-slate-700">{importantNoteLabel}</p>
           </CardContent>
         </Card>
 

@@ -17,6 +17,12 @@ type PatientFormProps = {
   mode: PatientFormMode
   initialValues?: Partial<PatientFormValues>
   onCancel: () => void
+  onSubmit: (values: PatientFormValues) => void | Promise<void>
+  submitLabel?: string
+  isSubmitting?: boolean
+  submitError?: string | null
+  submitSuccess?: string | null
+  modeBadgeLabel?: string
 }
 
 const defaultValues: PatientFormValues = {
@@ -26,8 +32,7 @@ const defaultValues: PatientFormValues = {
   email: '',
   dateOfBirth: '',
   status: 'active',
-  importantWarning: '',
-  summary: '',
+  importantNote: '',
 }
 
 const inputBaseClasses =
@@ -71,12 +76,17 @@ export function PatientForm({
   mode,
   initialValues,
   onCancel,
+  onSubmit,
+  submitLabel,
+  isSubmitting = false,
+  submitError,
+  submitSuccess,
+  modeBadgeLabel = 'Demo mode',
 }: PatientFormProps) {
   const [values, setValues] = useState<PatientFormValues>(() =>
     getInitialValues(initialValues),
   )
   const [errors, setErrors] = useState<PatientFormErrors>({})
-  const [demoMessageVisible, setDemoMessageVisible] = useState(false)
 
   function updateField<Field extends keyof PatientFormValues>(
     field: Field,
@@ -95,21 +105,22 @@ export function PatientForm({
       delete nextErrors[field]
       return nextErrors
     })
-    setDemoMessageVisible(false)
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const validationErrors = validatePatientForm(values)
     setErrors(validationErrors)
 
     if (hasPatientFormErrors(validationErrors)) {
-      setDemoMessageVisible(false)
       return
     }
 
-    setDemoMessageVisible(true)
+    await onSubmit(values)
   }
+
+  const resolvedSubmitLabel =
+    submitLabel ?? (mode === 'create' ? 'Create patient' : 'Save changes')
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
@@ -122,10 +133,10 @@ export function PatientForm({
               </h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
                 Fields marked with <span className="text-red-700">*</span> are
-                required. These values are not saved yet.
+                required.
               </p>
             </div>
-            <Badge variant="info">Demo only</Badge>
+            <Badge variant="info">{modeBadgeLabel}</Badge>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
@@ -233,28 +244,15 @@ export function PatientForm({
 
           <label className="block">
             <span className="text-sm font-medium text-slate-700">
-              Important warning
-            </span>
-            <input
-              className={getInputClasses(false)}
-              onChange={(event) =>
-                updateField('importantWarning', event.target.value)
-              }
-              placeholder="Demo warning only"
-              type="text"
-              value={values.importantWarning}
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">
-              Notes or summary
+              Important note
             </span>
             <textarea
               className={classNames(getInputClasses(false), 'min-h-28')}
-              onChange={(event) => updateField('summary', event.target.value)}
-              placeholder="Demo summary for UI testing only"
-              value={values.summary}
+              onChange={(event) =>
+                updateField('importantNote', event.target.value)
+              }
+              placeholder="Administrative patient note"
+              value={values.importantNote}
             />
           </label>
         </CardContent>
@@ -264,24 +262,30 @@ export function PatientForm({
         <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-sm font-medium text-slate-950">
-              Saving is not connected yet
+              {mode === 'create' ? 'Create patient' : 'Update patient'}
             </div>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              This {mode === 'create' ? 'new patient' : 'edit'} form is for UI
-              foundation only. No data is persisted, and the demo dataset is not
-              changed.
+              Submit this form to continue. In demo mode, submit is intentionally
+              non-persistent.
             </p>
-            {demoMessageVisible ? (
-              <p className="mt-3 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-medium text-cyan-800">
-                Demo form only. No data was saved.
+            {submitSuccess ? (
+              <p className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+                {submitSuccess}
+              </p>
+            ) : null}
+            {submitError ? (
+              <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+                {submitError}
               </p>
             ) : null}
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button variant="secondary" onClick={onCancel}>
+            <Button variant="secondary" onClick={onCancel} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit">Submit demo form</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : resolvedSubmitLabel}
+            </Button>
           </div>
         </CardContent>
       </Card>

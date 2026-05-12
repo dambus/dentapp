@@ -114,7 +114,7 @@ export function PatientsPage() {
     <Page>
       <PageHeader
         title="Patients"
-        description="Search and review fake demo patients for the Phase 2 frontend foundation. Supabase, real patient records, and create/edit flows are not connected yet."
+        description="Search and review patient records. Demo mode uses non-persistent fake data, while Supabase mode reads persisted records."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">{dataModeLabel}</Badge>
@@ -195,7 +195,7 @@ export function PatientsPage() {
                     <th className="px-5 py-3">Status</th>
                     <th className="px-5 py-3">Next appointment</th>
                     <th className="px-5 py-3">Active plan</th>
-                    <th className="px-5 py-3">Warning</th>
+                    <th className="px-5 py-3">Important note</th>
                     <th className="px-5 py-3 text-right">
                       Demo unpaid balance
                     </th>
@@ -240,12 +240,12 @@ export function PatientsPage() {
                         )}
                       </td>
                       <td className="px-5 py-4">
-                        {patient.importantWarning ? (
-                          <Badge variant="warning">
-                            {patient.importantWarning}
+                        {patient.importantNote ? (
+                          <Badge variant="info">
+                            Note recorded
                           </Badge>
                         ) : (
-                          <Badge variant="neutral">No warning</Badge>
+                          <Badge variant="neutral">No note</Badge>
                         )}
                       </td>
                       <td className="px-5 py-4 text-right font-medium text-slate-950">
@@ -308,9 +308,9 @@ export function PatientsPage() {
                     </div>
                     <div>
                       <span className="font-medium text-slate-950">
-                        Warning:
+                        Important note:
                       </span>{' '}
-                      {patient.importantWarning ?? 'No warning'}
+                      {patient.importantNote ?? 'No important note recorded.'}
                     </div>
                     <div>
                       <span className="font-medium text-slate-950">

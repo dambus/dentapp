@@ -805,3 +805,63 @@ Demo mode remains non-persistent. UI form integration is deferred to a follow-up
 
 Status: Accepted
 
+---
+
+## Decision 040 — Patient Form Pages Use Service-Only Writes And Keep Demo Non-Persistent
+
+Date: 2026-05-12
+
+Decision:
+
+Patient create/edit pages must submit through `patientService` write functions only (`createPatient`, `updatePatient`) and must not write to Supabase directly from page components. Demo mode (`VITE_PATIENT_DATA_SOURCE` missing, invalid, or `demo`) remains explicitly non-persistent for patient create/edit submits.
+
+Reason:
+
+Keeping writes behind service-layer boundaries preserves consistent RLS behavior, centralized audit handling, and stable error handling. Preserving non-persistent demo mode avoids accidental local data mutation while still allowing realistic UI flow testing.
+
+Impact:
+
+`PatientCreatePage` and `PatientEditPage` call patient service writes only in Supabase mode. In demo mode, submit shows `Demo mode only. No data was saved.` and does not mutate `demoPatients`, use localStorage, or call Supabase writes. Audit behavior remains controlled by service-layer logic.
+
+Status: Accepted
+
+---
+
+## Decision 041 — Patient-Level Important Note Uses importantNote -> important_note Mapping
+
+Date: 2026-05-12
+
+Decision:
+
+Use one consistent patient-level note concept in frontend as `importantNote`, mapped to `patients.important_note` in Supabase.
+
+Reason:
+
+The previous create/edit form contained conflicting note-like fields (`importantWarning` and `summary`), causing a mismatch where user-entered note text was not reliably persisted, reloaded, and displayed.
+
+Impact:
+
+Patients create/edit flows now send and load `importantNote` consistently. Service create/update mapping targets `patients.important_note`. Patient detail and list views show important note state clearly. Audit remains service-layer controlled.
+
+Status: Accepted
+
+---
+
+## Decision 042 — Patient Write Success Requires Audit Verification
+
+Date: 2026-05-12
+
+Decision:
+
+Patient create/update service writes must not silently ignore audit insert failures. Audit verification scripts must validate patient audit rows by `action`, `entity_type`, and `entity_id`.
+
+Reason:
+
+Previous local verification reported successful patient writes while audit checks were incomplete because the test script did not mirror the controlled audit path and service audit failures were swallowed.
+
+Impact:
+
+`patientService` now returns a non-success result when audit logging fails after create/update writes. `testPatientWriteService.mjs` now verifies `patient.created` and `patient.updated` rows using exact audit dimensions and fails with non-zero exit when required audit checks fail.
+
+Status: Accepted
+

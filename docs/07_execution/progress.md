@@ -439,9 +439,103 @@ Initial stack:
 
 ### Next Recommended Work
 
-1. Implement patient create/update service layer using controlled audit RPC.
-2. Connect patient create/edit forms to service writes.
-3. Add fine-grained role-specific route guards later.
+1. Add fine-grained role-specific route guards.
+2. Implement patient medical record edit flow.
+3. Implement patient archive/restore flow.
+4. Continue treatment plan foundation.
+
+---
+
+## 2026-05-12
+
+### Completed
+
+- Completed Phase 2 Task 24: connected patient create/edit form submit behavior to patient service writes.
+- Updated `PatientForm` to keep existing validation while supporting page-level submit handling, loading state, submit label, and clear submit success/error messaging.
+- Connected `PatientCreatePage` submit to `createPatient()` in Supabase mode.
+- Connected `PatientEditPage` submit to `updatePatient()` in Supabase mode.
+- Kept demo mode explicitly non-persistent for both create and edit submits.
+- Demo submit behavior now shows: `Demo mode only. No data was saved.`
+- Confirmed pages do not mutate `demoPatients`, do not use localStorage, and do not write directly to Supabase.
+- Added user-friendly submit error handling in page layer (permission-required-fields-generic save failure mapping) without exposing raw SQL as primary UI text.
+- Kept write and audit responsibility in patient service layer; pages only call patient service.
+- Updated stale copy in patient pages to reflect current demo-vs-supabase behavior.
+
+### Verification
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- `npx.cmd supabase db reset` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes when local Supabase env vars are set.
+- `node .\supabase\snippets\testAuditInsert.mjs` passes:
+	- owner_admin audit insert/read works,
+	- doctor audit insert works and audit read remains restricted,
+	- unauthenticated audit insert is denied.
+- `node .\supabase\snippets\testPatientRlsByRole.mjs` passes expected role behavior:
+	- allowed patient writes: owner_admin, doctor, reception_admin,
+	- denied patient writes: specialist, assistant, inventory_responsible.
+- `node .\supabase\snippets\testPatientWriteService.mjs` currently fails sign-in because the script uses outdated demo passwords (`Demo@12345`) while provisioned demo users use `DemoPass!2026`.
+
+### Notes
+
+- Manual browser verification for demo mode and Supabase mode flows is still required for full UI acceptance confirmation.
+
+### Completed (Task 24A)
+
+- Added shared local demo auth password constant at `supabase/snippets/demoAuthConstants.mjs`.
+- Updated local snippet scripts to use the same demo password constant:
+	- `provisionDemoAuthUsers.mjs`
+	- `testPatientWriteService.mjs`
+	- `testAuditInsert.mjs`
+	- `testPatientRlsByRole.mjs`
+- Resolved local sign-in mismatch in patient write service script.
+- Verified local sequence: db reset, provision script, patient write service script, audit insert script, RLS by role script, build, and lint.
+
+### Completed (Task 24B)
+
+- Fixed patient important note mapping inconsistency across form, pages, and service layer.
+- Standardized frontend field naming to `importantNote` and mapped it to database column `patients.important_note`.
+- Removed conflicting non-persistent "Notes or summary" form field that caused user confusion.
+- Updated create and edit submit payload mapping to use `importantNote`.
+- Updated patient read mapping from Supabase to populate `importantNote` for detail/edit flows.
+- Updated patient detail and list views to show important note state clearly.
+- Kept audit behavior inside patientService and ensured `important_note` remains part of update audit old/new values.
+- Preserved demo mode non-persistent behavior with no demo dataset mutation on submit.
+
+### Verification (Task 24B)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- `npx.cmd supabase db reset` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes with local Supabase env variables.
+- Manual browser verification steps remain to be executed in local UI flow.
+
+### Completed (Task 24C)
+
+- Investigated missing audit verification in patient write test flow.
+- Confirmed patient service create/update functions call `create_audit_log`, but audit failures were previously swallowed and did not affect service result.
+- Fixed patient service audit handling so create/update no longer report full success when audit logging fails.
+- Fixed `testPatientWriteService.mjs` verification logic:
+	- added explicit `create_audit_log` RPC calls after successful patient create/update writes to mirror service behavior,
+	- verified audit rows by `action`, `entity_type`, and `entity_id`,
+	- validated owner audit read access and non-owner audit read restriction,
+	- made script fail with non-zero exit when required checks fail.
+- Confirmed no direct `audit_logs` insert policy was added and no RLS policy changes were required.
+
+### Verification (Task 24C)
+
+- `npx.cmd supabase db reset` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes.
+- `node .\supabase\snippets\testAuditInsert.mjs` passes.
+- `node .\supabase\snippets\testPatientWriteService.mjs` passes with expected audit verification:
+	- `patient.created` logs found for allowed roles,
+	- `patient.updated` logs found for allowed roles,
+	- owner can read audit logs,
+	- doctor cannot read audit logs,
+	- denied roles remain denied for patient writes.
+- `node .\supabase\snippets\testPatientRlsByRole.mjs` passes expected role behavior.
+- `npm run build` passes.
+- `npm run lint` passes.
 
 ---
 

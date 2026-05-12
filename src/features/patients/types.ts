@@ -18,7 +18,7 @@ export type DemoPatient = {
   nextAppointment: string | null
   lastVisit: string | null
   activeTreatmentPlan: string | null
-  importantWarning: string | null
+  importantNote: string | null
   unpaidBalance: number
   medicalWarnings: string[]
   anamnesisSummary: string

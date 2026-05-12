@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { DEMO_PASSWORD } from './demoAuthConstants.mjs'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -15,37 +16,37 @@ const DEMO_USERS = [
     role: 'owner_admin',
     fullName: 'Owner Demo',
     email: 'owner.demo@example.test',
-    password: 'DemoPass!2026',
+    password: DEMO_PASSWORD,
   },
   {
     role: 'doctor',
     fullName: 'Doctor Demo',
     email: 'doctor.demo@example.test',
-    password: 'DemoPass!2026',
+    password: DEMO_PASSWORD,
   },
   {
     role: 'specialist',
     fullName: 'Specialist Demo',
     email: 'specialist.demo@example.test',
-    password: 'DemoPass!2026',
+    password: DEMO_PASSWORD,
   },
   {
     role: 'assistant',
     fullName: 'Assistant Demo',
     email: 'assistant.demo@example.test',
-    password: 'DemoPass!2026',
+    password: DEMO_PASSWORD,
   },
   {
     role: 'reception_admin',
     fullName: 'Reception Demo',
     email: 'reception.demo@example.test',
-    password: 'DemoPass!2026',
+    password: DEMO_PASSWORD,
   },
   {
     role: 'inventory_responsible',
     fullName: 'Inventory Demo',
     email: 'inventory.demo@example.test',
-    password: 'DemoPass!2026',
+    password: DEMO_PASSWORD,
   },
 ]
 
