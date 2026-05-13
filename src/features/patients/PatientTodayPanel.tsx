@@ -6,6 +6,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  InlineNotice,
   MetricTile,
 } from '../../components/ui'
 import {
@@ -52,11 +53,14 @@ export function PatientTodayPanel({
       : 'No medical warning reminder recorded.'
 
   return (
-    <Card className="border-cyan-100 bg-cyan-50/40">
+    <Card className="overflow-hidden border-cyan-100 bg-cyan-50/40 shadow-sm">
       <CardHeader>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
+              <div className="flex h-11 w-11 items-center justify-center rounded-md bg-cyan-700 text-base font-semibold text-white">
+                TD
+              </div>
               <CardTitle>Today / Next Step</CardTitle>
               <Badge variant="info">Phase B</Badge>
               <Badge variant="neutral">Scheduling pending</Badge>
@@ -66,36 +70,60 @@ export function PatientTodayPanel({
             </CardDescription>
           </div>
 
-          <Button disabled size="sm" variant="secondary">
+          <Button className="min-h-10" disabled size="sm" variant="secondary">
             Complete Visit planned
           </Button>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        <div className="rounded-md border border-cyan-200 bg-white p-4">
-          <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
-            Main focus
-          </div>
-          <p className="mt-2 text-base font-semibold leading-7 text-slate-950">
-            {nextStep}
-          </p>
-          {isArchived ? (
-            <p className="mt-2 text-sm font-medium text-amber-800">
-              Patient is archived. Restore the profile before routine workflow
-              updates.
+      <CardContent className="space-y-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
+          <div className="rounded-md border border-cyan-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="info">Next clinical action</Badge>
+              {patient.medicalWarnings.length > 0 ? (
+                <Badge variant="warning">
+                  {patient.medicalWarnings.length} warning
+                  {patient.medicalWarnings.length === 1 ? '' : 's'}
+                </Badge>
+              ) : (
+                <Badge variant="success">No warning reminder</Badge>
+              )}
+            </div>
+            <p className="mt-4 text-2xl font-semibold leading-8 text-slate-950">
+              {nextStep}
             </p>
-          ) : null}
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Planned work: {plannedWork}
+            </p>
+            {isArchived ? (
+              <InlineNotice className="mt-4" variant="warning">
+                Patient is archived. Restore the profile before routine
+                workflow updates.
+              </InlineNotice>
+            ) : null}
+          </div>
+
+          <div className="rounded-md border border-cyan-200 bg-white p-5 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
+              Appointment context
+            </div>
+            <div className="mt-3 text-xl font-semibold leading-7 text-slate-950">
+              {formatPatientDateTime(patient.nextAppointment)}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Badge variant="neutral">Scheduling pending</Badge>
+              <Badge variant={patient.activeTreatmentPlan ? 'info' : 'neutral'}>
+                {activePlanLabel}
+              </Badge>
+            </div>
+          </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <MetricTile
-            label="Appointment context"
-            value={formatPatientDateTime(patient.nextAppointment)}
-            description="No appointment module connected yet. Today context will be linked to scheduling in a later phase."
-          />
-          <MetricTile
             label="Planned work"
+            tone="info"
             value={activePlanLabel}
             description={plannedWork}
           />
@@ -111,6 +139,7 @@ export function PatientTodayPanel({
           />
           <MetricTile
             label="Clinical reminder"
+            tone={patient.medicalWarnings.length > 0 ? 'warning' : 'success'}
             value={
               patient.medicalWarnings.length > 0
                 ? `${patient.medicalWarnings.length} warning${
@@ -127,13 +156,11 @@ export function PatientTodayPanel({
           />
         </div>
 
-        <div className="rounded-md border border-dashed border-cyan-200 bg-white/70 px-4 py-3">
-          <p className="text-sm leading-6 text-slate-600">
-            Scheduling and visit completion will be connected in later phases.
-            This panel does not create appointments, visits, payments, materials,
-            or clinical entries.
-          </p>
-        </div>
+        <InlineNotice className="border-dashed bg-white/70" variant="info">
+          Scheduling and visit completion will be connected in later phases.
+          This panel does not create appointments, visits, payments, materials,
+          or clinical entries.
+        </InlineNotice>
       </CardContent>
     </Card>
   )

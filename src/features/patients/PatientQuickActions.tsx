@@ -8,6 +8,7 @@ import {
   CardTitle,
   InlineNotice,
 } from '../../components/ui'
+import { classNames } from '../../lib/classNames'
 import type { AppRole } from '../../types/navigation'
 
 type PatientQuickActionsProps = {
@@ -87,6 +88,17 @@ const statusVariants: Record<
   readonly: 'info',
 }
 
+const actionMarkers: Record<string, string> = {
+  'complete-visit': 'CV',
+  'add-clinical-note': 'N',
+  'update-odontogram': 'O',
+  'view-odontogram': 'O',
+  'add-treatment-plan-item': 'TP',
+  'edit-medical-record': 'MR',
+  'add-payment': '$',
+  'schedule-next-appointment': 'S',
+}
+
 function roleCan(role: AppRole | null, roles: AppRole[]) {
   return role ? roles.includes(role) : false
 }
@@ -100,31 +112,54 @@ function QuickActionCard({
 }) {
   const isPlanned = action.status === 'planned'
   const isDisabled = isArchived || isPlanned || !action.onSelect
+  const isInteractive = !isDisabled && action.status === 'available'
 
   return (
-    <div className="flex min-h-48 flex-col justify-between rounded-md border border-slate-200 bg-white p-4">
+    <div
+      className={classNames(
+        'flex min-h-64 flex-col justify-between rounded-md border bg-white p-5 shadow-sm transition',
+        isInteractive
+          ? 'border-teal-200 hover:-translate-y-0.5 hover:shadow-md'
+          : 'border-slate-200 opacity-80',
+      )}
+    >
       <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-sm font-semibold text-slate-950">
-            {action.title}
-          </h3>
+        <div className="flex items-start justify-between gap-3">
+          <div
+            className={classNames(
+              'flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-base font-semibold',
+              isInteractive
+                ? 'bg-teal-700 text-white'
+                : action.status === 'readonly'
+                  ? 'bg-cyan-100 text-cyan-900'
+                  : 'bg-slate-100 text-slate-500',
+            )}
+          >
+            {actionMarkers[action.id] ?? 'A'}
+          </div>
           <Badge variant={statusVariants[action.status]}>
             {statusLabels[action.status]}
           </Badge>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <h3 className="text-lg font-semibold leading-6 text-slate-950">
+            {action.title}
+          </h3>
           {isArchived && action.status !== 'planned' ? (
             <Badge variant="warning">Archived</Badge>
           ) : null}
         </div>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
+        <p className="mt-3 text-sm leading-6 text-slate-600">
           {action.description}
         </p>
       </div>
 
       <Button
-        className="mt-4 w-full sm:w-auto"
+        className="mt-5 min-h-11 w-full"
         disabled={isDisabled}
         onClick={action.onSelect}
-        size="sm"
+        size="md"
         variant={action.status === 'available' ? 'primary' : 'secondary'}
       >
         {isArchived && action.status !== 'planned'
@@ -237,7 +272,7 @@ export function PatientQuickActions({
   }
 
   return (
-    <Card className="border-slate-200">
+    <Card className="border-slate-200 shadow-sm">
       <CardHeader>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -265,7 +300,7 @@ export function PatientQuickActions({
         ) : null}
 
         {actions.length > 0 ? (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {actions.map((action) => (
               <QuickActionCard
                 action={action}

@@ -76,33 +76,43 @@ export function PatientSnapshot({
     hasMedicalWarnings || hasAllergies || hasImportantNote
 
   return (
-    <Card className="border-teal-100 shadow-md">
-      <CardHeader>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <CardTitle className="text-2xl">{patientName}</CardTitle>
-              <Badge variant={patientStatusBadgeVariants[patient.status]}>
-                {patientStatusLabels[patient.status]}
-              </Badge>
-              {isArchived ? (
-                <Badge variant="warning">Archived profile</Badge>
-              ) : null}
-              <Badge variant="info">{dataSourceLabel}</Badge>
+    <Card className="overflow-hidden border-teal-100 shadow-md">
+      <div className="border-b border-teal-100 bg-white">
+        <CardHeader>
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="flex min-w-0 gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-teal-700 text-xl font-semibold text-white shadow-sm">
+                {patient.firstName.slice(0, 1)}
+                {patient.lastName.slice(0, 1)}
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="text-3xl leading-tight">
+                    {patientName}
+                  </CardTitle>
+                  <Badge variant={patientStatusBadgeVariants[patient.status]}>
+                    {patientStatusLabels[patient.status]}
+                  </Badge>
+                  {isArchived ? (
+                    <Badge variant="warning">Archived profile</Badge>
+                  ) : null}
+                  <Badge variant="info">{dataSourceLabel}</Badge>
+                </div>
+                <CardDescription className="text-base">
+                  {age} years old - born {formatPatientDate(patient.dateOfBirth)}
+                </CardDescription>
+              </div>
             </div>
-            <CardDescription>
-              {age} years old - born {formatPatientDate(patient.dateOfBirth)}
-            </CardDescription>
-          </div>
 
-          <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap xl:justify-end">
             {!isArchived ? (
-              <Button onClick={onEditPatient} size="sm">
+              <Button className="min-h-10" onClick={onEditPatient} size="sm">
                 Edit patient
               </Button>
             ) : null}
             {canEditMedicalRecord ? (
               <Button
+                className="min-h-10"
                 onClick={onEditMedicalRecord}
                 size="sm"
                 variant="secondary"
@@ -112,6 +122,7 @@ export function PatientSnapshot({
             ) : null}
             {canArchiveOrRestore && !isArchived ? (
               <Button
+                className="min-h-10"
                 disabled={isLifecycleSubmitting}
                 onClick={onArchive}
                 size="sm"
@@ -122,6 +133,7 @@ export function PatientSnapshot({
             ) : null}
             {canArchiveOrRestore && isArchived ? (
               <Button
+                className="min-h-10"
                 disabled={isLifecycleSubmitting}
                 onClick={onRestore}
                 size="sm"
@@ -129,14 +141,20 @@ export function PatientSnapshot({
                 {isLifecycleSubmitting ? 'Restoring...' : 'Restore patient'}
               </Button>
             ) : null}
-            <Button onClick={onViewFullRecord} size="sm" variant="ghost">
+            <Button
+              className="min-h-10"
+              onClick={onViewFullRecord}
+              size="sm"
+              variant="ghost"
+            >
               View full record
             </Button>
+            </div>
           </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
+      </div>
 
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-6 bg-slate-50/60">
         {lifecycleSuccess ? (
           <InlineNotice variant="success">
             {lifecycleSuccess}
@@ -148,19 +166,34 @@ export function PatientSnapshot({
           </InlineNotice>
         ) : null}
 
-        <div
-          className={
-            hasAnyCriticalContext
-              ? 'rounded-md border border-amber-200 bg-amber-50 p-4'
-              : 'rounded-md border border-emerald-200 bg-emerald-50 p-4'
-          }
-        >
-          <div className="text-sm font-semibold text-slate-950">
-            Safety and priority notes
+        <div className="rounded-md border border-amber-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className={
+                  hasAnyCriticalContext
+                    ? 'flex h-11 w-11 items-center justify-center rounded-md bg-amber-100 text-lg font-bold text-amber-900'
+                    : 'flex h-11 w-11 items-center justify-center rounded-md bg-emerald-100 text-lg font-bold text-emerald-900'
+                }
+              >
+                {hasAnyCriticalContext ? '!' : 'OK'}
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-slate-950">
+                  Safety and priority notes
+                </div>
+                <p className="text-sm leading-6 text-slate-600">
+                  Clinical context to check before routine updates.
+                </p>
+              </div>
+            </div>
+            <Badge variant={hasAnyCriticalContext ? 'warning' : 'success'}>
+              {hasAnyCriticalContext ? 'Review before care' : 'No alerts'}
+            </Badge>
           </div>
           {hasAnyCriticalContext ? (
-            <div className="mt-3 grid gap-3 lg:grid-cols-3">
-              <div>
+            <div className="mt-5 grid gap-3 lg:grid-cols-3">
+              <div className="rounded-md border border-amber-100 bg-amber-50 px-4 py-3">
                 <div className="text-xs font-semibold uppercase tracking-normal text-amber-900">
                   Allergies
                 </div>
@@ -168,7 +201,7 @@ export function PatientSnapshot({
                   {hasAllergies ? patient.allergies : 'No allergies recorded.'}
                 </p>
               </div>
-              <div>
+              <div className="rounded-md border border-amber-100 bg-amber-50 px-4 py-3">
                 <div className="text-xs font-semibold uppercase tracking-normal text-amber-900">
                   Medical warnings
                 </div>
@@ -186,7 +219,7 @@ export function PatientSnapshot({
                   </p>
                 )}
               </div>
-              <div>
+              <div className="rounded-md border border-amber-100 bg-amber-50 px-4 py-3">
                 <div className="text-xs font-semibold uppercase tracking-normal text-amber-900">
                   Important note
                 </div>
@@ -198,7 +231,7 @@ export function PatientSnapshot({
               </div>
             </div>
           ) : (
-            <p className="mt-1 text-sm leading-6 text-emerald-900">
+            <p className="mt-4 rounded-md border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">
               No critical warnings, allergies, or important notes recorded.
             </p>
           )}
@@ -206,17 +239,22 @@ export function PatientSnapshot({
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <MetricTile
+            className="min-h-36"
             label="Active plan"
+            tone={patient.activeTreatmentPlan ? 'info' : 'default'}
             value={activePlanLabel}
             description={patient.activeTreatmentPlanSummary}
           />
           <MetricTile
+            className="min-h-36"
             label="Last note"
             value={patient.lastClinicalNote}
             description="Most recent clinical context available in the current model."
           />
           <MetricTile
+            className="min-h-36"
             label="Next step"
+            tone="info"
             value={patient.nextRecommendedStep}
             description={`Next appointment: ${formatPatientDateTime(
               patient.nextAppointment,
@@ -224,12 +262,14 @@ export function PatientSnapshot({
           />
           {canViewFinancialPlaceholder ? (
             <MetricTile
+              className="min-h-36"
               label="Financial placeholder"
               value={formatDemoCurrency(patient.unpaidBalance)}
               description="Current demo/unpaid balance placeholder. Real ledger is not implemented yet."
             />
           ) : (
             <MetricTile
+              className="min-h-36"
               label="Financial context"
               value="Restricted"
               description="Financial data is hidden for this role."
@@ -240,11 +280,13 @@ export function PatientSnapshot({
         <div className="grid gap-3 md:grid-cols-2">
           <MetricTile
             label="Last visit"
+            tone="success"
             value={formatPatientDate(patient.lastVisit)}
             description={patient.recentVisitSummary}
           />
           <MetricTile
             label="Contact"
+            tone="default"
             value={patient.phone}
             description={patient.email || 'No email recorded.'}
           />

@@ -62,20 +62,27 @@ export function TopBar({ currentProfile }: TopBarProps) {
   })()
 
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="flex min-h-16 flex-col justify-center gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-        <div>
-          <p className="text-sm font-medium text-slate-500">DentApp MVP</p>
-          <p className="text-base font-semibold text-slate-950">
-            App foundation
-          </p>
+    <header className="border-b border-slate-200 bg-white/95 shadow-sm">
+      <div className="flex min-h-20 flex-col justify-center gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-teal-700 text-sm font-semibold text-white">
+            DA
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-normal text-teal-700">
+              DentApp MVP
+            </p>
+            <p className="text-base font-semibold text-slate-950">
+              Clinical workspace
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 font-medium text-slate-700">
+        <div className="flex flex-wrap items-center gap-2 text-sm lg:justify-end">
+          <span className="rounded-md border border-teal-100 bg-teal-50 px-3 py-2 font-medium text-teal-800">
             {roleLabel}
           </span>
-          <span className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 font-medium text-amber-800">
+          <span className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 font-medium text-amber-800">
             {authLabel}
           </span>
           {isSignedIn ? (

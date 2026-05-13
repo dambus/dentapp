@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -16,9 +15,9 @@ import {
   Select,
   TextInput,
 } from '../components/ui'
+import { classNames } from '../lib/classNames'
 import {
   formatDemoCurrency,
-  formatPatientDate,
   formatPatientDateTime,
   getPatientFullName,
   patientStatusBadgeVariants,
@@ -32,6 +31,105 @@ import type {
 import { getPatientDetailPath, routePaths } from '../routes/routePaths'
 
 type StatusFilter = PatientStatus | 'all'
+
+type PatientCardProps = {
+  patient: DemoPatient
+}
+
+function PatientMarker({ patient }: PatientCardProps) {
+  return (
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-teal-700 text-base font-semibold text-white shadow-sm">
+      {patient.firstName.slice(0, 1)}
+      {patient.lastName.slice(0, 1)}
+    </div>
+  )
+}
+
+function PatientFact({
+  label,
+  value,
+  tone = 'default',
+}: {
+  label: string
+  value: string
+  tone?: 'default' | 'info' | 'warning'
+}) {
+  return (
+    <div
+      className={classNames(
+        'rounded-md border px-3 py-2',
+        tone === 'info'
+          ? 'border-cyan-200 bg-cyan-50 text-cyan-950'
+          : tone === 'warning'
+            ? 'border-amber-200 bg-amber-50 text-amber-950'
+            : 'border-slate-200 bg-white text-slate-950',
+      )}
+    >
+      <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-semibold leading-5">{value}</div>
+    </div>
+  )
+}
+
+function PatientListCard({ patient }: PatientCardProps) {
+  const activePlanLabel = patient.activeTreatmentPlan ?? 'No active plan'
+  const importantNoteLabel = patient.importantNote
+    ? patient.importantNote
+    : 'No important note recorded.'
+
+  return (
+    <Card className="border-slate-200 shadow-sm transition hover:border-teal-200 hover:shadow-md">
+      <CardContent className="space-y-5 p-5 lg:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex min-w-0 gap-4">
+            <PatientMarker patient={patient} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-semibold leading-7 text-slate-950">
+                  {getPatientFullName(patient)}
+                </h2>
+                <Badge variant={patientStatusBadgeVariants[patient.status]}>
+                  {patientStatusLabels[patient.status]}
+                </Badge>
+              </div>
+              <div className="mt-2 flex flex-col gap-1 text-sm leading-5 text-slate-600 sm:flex-row sm:flex-wrap sm:gap-x-4">
+                <span>{patient.phone}</span>
+                <span>{patient.email}</span>
+              </div>
+            </div>
+          </div>
+
+          <ButtonLink
+            className="w-full min-h-11 lg:w-auto"
+            to={getPatientDetailPath(patient.id)}
+          >
+            View profile
+          </ButtonLink>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <PatientFact
+            label="Next appointment"
+            value={formatPatientDateTime(patient.nextAppointment)}
+            tone="info"
+          />
+          <PatientFact label="Active plan" value={activePlanLabel} />
+          <PatientFact
+            label="Important note"
+            value={importantNoteLabel}
+            tone={patient.importantNote ? 'warning' : 'default'}
+          />
+          <PatientFact
+            label="Demo balance"
+            value={formatDemoCurrency(patient.unpaidBalance)}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export function PatientsPage() {
   const currentProfile = useCurrentProfile()
@@ -129,7 +227,7 @@ export function PatientsPage() {
     <Page>
       <PageHeader
         title="Patients"
-        description="Search and review patient records. Demo mode uses non-persistent fake data, while Supabase mode reads persisted records."
+        description="Find a patient, check the current context, and open the clinical profile without switching into a dense admin table."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">{dataModeLabel}</Badge>
@@ -140,7 +238,7 @@ export function PatientsPage() {
         }
       />
 
-      <Card>
+      <Card className="border-slate-200 shadow-sm">
         <CardContent className="space-y-5">
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-end">
             <label className="block">
@@ -169,7 +267,7 @@ export function PatientsPage() {
             </label>
           </div>
 
-          <label className="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
+          <label className="flex items-start gap-3 rounded-md border border-slate-200 bg-white px-3 py-3 shadow-sm">
             <input
               checked={includeArchived}
               className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
@@ -209,153 +307,11 @@ export function PatientsPage() {
       ) : null}
 
       {!isPatientsLoading && filteredPatients.length > 0 ? (
-        <>
-          <Card className="hidden overflow-hidden md:block">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-600">
-                  <tr>
-                    <th className="px-5 py-3">Patient</th>
-                    <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3">Next appointment</th>
-                    <th className="px-5 py-3">Active plan</th>
-                    <th className="px-5 py-3">Important note</th>
-                    <th className="px-5 py-3 text-right">
-                      Demo unpaid balance
-                    </th>
-                    <th className="px-5 py-3 text-right">Profile</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
-                  {filteredPatients.map((patient) => (
-                    <tr key={patient.id} className="align-top">
-                      <td className="px-5 py-4">
-                        <div className="font-medium text-slate-950">
-                          {getPatientFullName(patient)}
-                        </div>
-                        <div className="mt-1 text-slate-600">
-                          {patient.phone}
-                        </div>
-                        <div className="text-slate-500">{patient.email}</div>
-                        <div className="mt-2 text-xs text-slate-500">
-                          Born {formatPatientDate(patient.dateOfBirth)} - Last
-                          visit {formatPatientDate(patient.lastVisit)}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <Badge
-                          variant={patientStatusBadgeVariants[patient.status]}
-                        >
-                          {patientStatusLabels[patient.status]}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-4 text-slate-700">
-                        {formatPatientDateTime(patient.nextAppointment)}
-                      </td>
-                      <td className="px-5 py-4">
-                        {patient.activeTreatmentPlan ? (
-                          <Badge variant="info">
-                            {patient.activeTreatmentPlan}
-                          </Badge>
-                        ) : (
-                          <span className="text-slate-500">
-                            No active plan
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-4">
-                        {patient.importantNote ? (
-                          <Badge variant="info">
-                            Note recorded
-                          </Badge>
-                        ) : (
-                          <Badge variant="neutral">No note</Badge>
-                        )}
-                      </td>
-                      <td className="px-5 py-4 text-right font-medium text-slate-950">
-                        {formatDemoCurrency(patient.unpaidBalance)}
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        <Link
-                          className="font-medium text-teal-700 underline-offset-4 hover:text-teal-800 hover:underline"
-                          to={getPatientDetailPath(patient.id)}
-                        >
-                          View profile
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-
-          <div className="grid gap-4 md:hidden">
-            {filteredPatients.map((patient) => (
-              <Card key={patient.id}>
-                <CardContent className="space-y-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-950">
-                        {getPatientFullName(patient)}
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-600">
-                        {patient.phone}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        {patient.email}
-                      </p>
-                    </div>
-                    <Badge variant={patientStatusBadgeVariants[patient.status]}>
-                      {patientStatusLabels[patient.status]}
-                    </Badge>
-                  </div>
-
-                  <div className="grid gap-3 text-sm text-slate-700">
-                    <div>
-                      <span className="font-medium text-slate-950">
-                        Next appointment:
-                      </span>{' '}
-                      {formatPatientDateTime(patient.nextAppointment)}
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-950">
-                        Last visit:
-                      </span>{' '}
-                      {formatPatientDate(patient.lastVisit)}
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-950">
-                        Active plan:
-                      </span>{' '}
-                      {patient.activeTreatmentPlan ?? 'No active plan'}
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-950">
-                        Important note:
-                      </span>{' '}
-                      {patient.importantNote ?? 'No important note recorded.'}
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-950">
-                        Demo unpaid balance:
-                      </span>{' '}
-                      {formatDemoCurrency(patient.unpaidBalance)}
-                    </div>
-                  </div>
-
-                  <ButtonLink
-                    className="w-full"
-                    variant="secondary"
-                    to={getPatientDetailPath(patient.id)}
-                  >
-                    View profile
-                  </ButtonLink>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </>
+        <div className="grid gap-4">
+          {filteredPatients.map((patient) => (
+            <PatientListCard key={patient.id} patient={patient} />
+          ))}
+        </div>
       ) : null}
 
       {!isPatientsLoading && filteredPatients.length === 0 ? (
