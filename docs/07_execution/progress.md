@@ -857,6 +857,32 @@ Initial stack:
 
 ---
 
+## 2026-05-13
+
+### Completed (Task 31)
+
+- Created `docs/04_ux_ui/dental_workflow_model.md`.
+- Documented real dental workflow assumptions for doctor-alone, assistant-supported, treatment plan discussion, and dense schedule scenarios.
+- Defined pre-treatment, during-treatment, and post-treatment workflow expectations.
+- Documented quick actions versus advanced actions and which patient data must be visible immediately.
+- Created `docs/04_ux_ui/patient_detail_refactor_plan.md`.
+- Planned a future Patient Detail refactor around Patient Snapshot, Today / Appointment Context, Quick Actions, and Full Record.
+- Created `docs/04_ux_ui/visit_completion_flow.md`.
+- Defined Visit Completion as the primary proposed post-treatment workflow, including performed work, teeth/regions, service selection, generated clinical note, materials, price/discount/override, payment/debt/prepayment, commission, and next step.
+- Created `docs/07_execution/patient_ux_refactor_checklist.md`.
+- Added a phased future execution checklist for Patient Snapshot, Today Panel, Quick Actions, Full Record organization, Visit Completion prototype, material suggestions, price/debt workflow, commission workflow, and pilot usability testing.
+- Updated `docs/07_execution/todo.md` with Patient Detail UX refactor and related workflow tasks.
+- Updated `docs/00_project/decisions.md` with workflow-first Patient Detail and Visit Completion product decisions.
+- No React application code was changed.
+- No database migrations, Supabase policies, or application behavior were changed.
+
+### Notes (Task 31)
+
+- This was a documentation and product/UX planning task only.
+- Future implementation should start with Patient Detail UX refactor Phase A - Snapshot, then Phase B - Today Panel, before building the Visit Completion prototype.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.

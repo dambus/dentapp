@@ -993,3 +993,68 @@ Plan and item create/update/archive writes go through `treatmentPlanService`, re
 
 Status: Accepted
 
+---
+
+## Decision 049 - Patient Detail Becomes Workflow-first
+
+Date: 2026-05-13
+
+Decision:
+
+Refactor Patient Detail around four priority areas:
+
+- Patient Snapshot,
+- Today / Appointment Context,
+- Quick Actions,
+- Full Record.
+
+Reason:
+
+The current Patient Detail foundation correctly proves patient profile, medical record, clinical notes, odontogram, treatment plans, and archive/restore workflows, but a real chairside screen cannot present every module with equal priority. Doctors and assistants need critical context and next actions within seconds.
+
+Impact:
+
+Future Patient Detail implementation should prioritize warnings, allergies, debt/prepayment if allowed, active plan, today's planned work, last note, and quick post-treatment actions. Full medical record, older notes, documents, timeline, payments, materials, and other advanced areas should remain available but secondary.
+
+Status: Accepted
+
+---
+
+## Decision 050 - Visit Completion Is The Primary Post-treatment Workflow
+
+Date: 2026-05-13
+
+Decision:
+
+Use Visit Completion as the primary workflow for closing a treatment visit.
+
+Reason:
+
+Dense dental schedules leave little time for manual documentation. DentApp should guide the user through performed work, teeth/regions, service selection, generated clinical note, material usage, price/discount/override, payment/debt/prepayment, commission input, and next step in a short flow.
+
+Impact:
+
+Future visit, performed service, ledger, material, and commission implementation should be designed around the Visit Completion workflow rather than isolated module entry. The common case should target completion within 60 to 90 seconds.
+
+Status: Accepted
+
+---
+
+## Decision 051 - Advanced Patient Modules Stay Available But Secondary
+
+Date: 2026-05-13
+
+Decision:
+
+Advanced patient modules should remain accessible through Full Record, tabs, accordions, or secondary module cards, but they should not dominate the first working screen.
+
+Reason:
+
+DentApp must support comprehensive records without overwhelming the doctor during pre-treatment review or post-treatment entry. Advanced access is important, but immediate chairside workflow needs a smaller information hierarchy.
+
+Impact:
+
+Future UI work should avoid placing full anamnesis, old notes, archived plans, documents, full ledger, materials history, and timeline above the daily working context. Role-specific permissions and RLS remain required for sensitive clinical, financial, and commission data.
+
+Status: Accepted
+

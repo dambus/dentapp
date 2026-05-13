@@ -56,7 +56,7 @@ Status legend:
 - [ ] Define feature backlog
 - [x] Define user roles
 - [x] Define permissions matrix
-- [ ] Define key user workflows
+- [x] Define key user workflows
 
 ---
 
@@ -78,9 +78,13 @@ Status legend:
 - [x] Define UX principles
 - [x] Define information architecture
 - [x] Define screen map
-- [ ] Define main user flows
+- [x] Define main user flows
 - [x] Define design system direction
 - [x] Define component inventory
+- [x] Define dental workflow model
+- [x] Define Patient Detail refactor plan
+- [x] Define Visit Completion flow
+- [x] Create Patient UX refactor checklist
 
 ---
 
@@ -152,6 +156,7 @@ Status legend:
   - [x] Task 28: Clinical notes CRUD
   - [x] Task 29: Odontogram foundation
   - [x] Task 30: Treatment plan foundation
+  - [x] Task 31: Dental workflow UX review and Patient Detail refactor plan
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -167,8 +172,15 @@ Status legend:
 - [x] Implement patient medical record edit flow
 - [x] Implement patient archive/restore flow
 - [x] Continue treatment plan foundation
+- [ ] Patient Detail UX refactor Phase A - Snapshot
+- [ ] Patient Detail UX refactor Phase B - Today Panel
+- [ ] Patient Detail UX refactor Phase C - Quick Actions
+- [ ] Patient Detail UX refactor Phase D - Full Record organization
+- [ ] Visit Completion prototype
+- [ ] Material suggestion model
+- [ ] Price/discount/debt workflow
+- [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
-- [ ] Define visit workflow
 - [ ] Plan performed services foundation
 - [ ] Plan payment/ledger foundation
 
