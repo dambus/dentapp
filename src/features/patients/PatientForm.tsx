@@ -1,8 +1,19 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 
-import { Badge, Button, Card, CardContent } from '../../components/ui'
-import { classNames } from '../../lib/classNames'
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  FieldError,
+  FieldLabel,
+  InlineNotice,
+  RequiredMark,
+  Select,
+  Textarea,
+  TextInput,
+} from '../../components/ui'
 import type { PatientFormValues } from './patientFormValues'
 import {
   hasPatientFormErrors,
@@ -33,36 +44,6 @@ const defaultValues: PatientFormValues = {
   dateOfBirth: '',
   status: 'active',
   importantNote: '',
-}
-
-const inputBaseClasses =
-  'mt-2 w-full rounded-md border bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100'
-
-function getInputClasses(hasError: boolean) {
-  return classNames(
-    inputBaseClasses,
-    hasError ? 'border-red-300 focus:border-red-600 focus:ring-red-100' : 'border-slate-300',
-  )
-}
-
-function RequiredMark() {
-  return (
-    <span className="ml-1 text-red-700" aria-label="required">
-      *
-    </span>
-  )
-}
-
-type FieldErrorProps = {
-  message?: string
-}
-
-function FieldError({ message }: FieldErrorProps) {
-  if (!message) {
-    return null
-  }
-
-  return <p className="mt-2 text-sm font-medium text-red-700">{message}</p>
 }
 
 function getInitialValues(patient?: Partial<PatientFormValues>) {
@@ -141,13 +122,12 @@ export function PatientForm({
 
           <div className="grid gap-5 md:grid-cols-2">
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">
+              <FieldLabel>
                 First name
                 <RequiredMark />
-              </span>
-              <input
-                aria-invalid={Boolean(errors.firstName)}
-                className={getInputClasses(Boolean(errors.firstName))}
+              </FieldLabel>
+              <TextInput
+                hasError={Boolean(errors.firstName)}
                 onChange={(event) =>
                   updateField('firstName', event.target.value)
                 }
@@ -159,13 +139,12 @@ export function PatientForm({
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">
+              <FieldLabel>
                 Last name
                 <RequiredMark />
-              </span>
-              <input
-                aria-invalid={Boolean(errors.lastName)}
-                className={getInputClasses(Boolean(errors.lastName))}
+              </FieldLabel>
+              <TextInput
+                hasError={Boolean(errors.lastName)}
                 onChange={(event) =>
                   updateField('lastName', event.target.value)
                 }
@@ -177,13 +156,12 @@ export function PatientForm({
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">
+              <FieldLabel>
                 Phone
                 <RequiredMark />
-              </span>
-              <input
-                aria-invalid={Boolean(errors.phone)}
-                className={getInputClasses(Boolean(errors.phone))}
+              </FieldLabel>
+              <TextInput
+                hasError={Boolean(errors.phone)}
                 onChange={(event) => updateField('phone', event.target.value)}
                 placeholder="+381 60 000 0000"
                 type="tel"
@@ -193,10 +171,9 @@ export function PatientForm({
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">Email</span>
-              <input
-                aria-invalid={Boolean(errors.email)}
-                className={getInputClasses(Boolean(errors.email))}
+              <FieldLabel>Email</FieldLabel>
+              <TextInput
+                hasError={Boolean(errors.email)}
                 onChange={(event) => updateField('email', event.target.value)}
                 placeholder="demo.patient@example.test"
                 type="text"
@@ -206,12 +183,11 @@ export function PatientForm({
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">
+              <FieldLabel>
                 Date of birth
-              </span>
-              <input
-                aria-invalid={Boolean(errors.dateOfBirth)}
-                className={getInputClasses(Boolean(errors.dateOfBirth))}
+              </FieldLabel>
+              <TextInput
+                hasError={Boolean(errors.dateOfBirth)}
                 onChange={(event) =>
                   updateField('dateOfBirth', event.target.value)
                 }
@@ -222,13 +198,12 @@ export function PatientForm({
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">
+              <FieldLabel>
                 Status
                 <RequiredMark />
-              </span>
-              <select
-                aria-invalid={Boolean(errors.status)}
-                className={getInputClasses(Boolean(errors.status))}
+              </FieldLabel>
+              <Select
+                hasError={Boolean(errors.status)}
                 onChange={(event) =>
                   updateField('status', event.target.value as PatientStatus)
                 }
@@ -237,17 +212,14 @@ export function PatientForm({
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="archived">Archived</option>
-              </select>
+              </Select>
               <FieldError message={errors.status} />
             </label>
           </div>
 
           <label className="block">
-            <span className="text-sm font-medium text-slate-700">
-              Important note
-            </span>
-            <textarea
-              className={classNames(getInputClasses(false), 'min-h-28')}
+            <FieldLabel>Important note</FieldLabel>
+            <Textarea
               onChange={(event) =>
                 updateField('importantNote', event.target.value)
               }
@@ -269,14 +241,14 @@ export function PatientForm({
               non-persistent.
             </p>
             {submitSuccess ? (
-              <p className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+              <InlineNotice className="mt-3" variant="success">
                 {submitSuccess}
-              </p>
+              </InlineNotice>
             ) : null}
             {submitError ? (
-              <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+              <InlineNotice className="mt-3" variant="danger">
                 {submitError}
-              </p>
+              </InlineNotice>
             ) : null}
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">

@@ -1,8 +1,15 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 
-import { Badge, Button, Card, CardContent } from '../../components/ui'
-import { classNames } from '../../lib/classNames'
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  FieldLabel,
+  InlineNotice,
+  Textarea,
+} from '../../components/ui'
 import type {
   PatientMedicalRecord,
   PatientMedicalRecordInput,
@@ -66,9 +73,6 @@ const emptyValues: PatientMedicalRecordInput = {
   dentalHistory: '',
   riskNotes: '',
 }
-
-const textareaClasses =
-  'mt-2 min-h-28 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100'
 
 function getInitialValues(
   initialRecord: PatientMedicalRecord | null,
@@ -155,11 +159,10 @@ export function PatientMedicalRecordForm({
           <div className="grid gap-5 lg:grid-cols-2">
             {fields.map((fieldConfig) => (
               <label className="block" key={fieldConfig.field}>
-                <span className="text-sm font-medium text-slate-700">
+                <FieldLabel>
                   {fieldConfig.label}
-                </span>
-                <textarea
-                  className={classNames(textareaClasses)}
+                </FieldLabel>
+                <Textarea
                   onChange={(event) =>
                     updateField(fieldConfig.field, event.target.value)
                   }
@@ -183,19 +186,19 @@ export function PatientMedicalRecordForm({
               audited after persistence.
             </p>
             {validationError ? (
-              <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+              <InlineNotice className="mt-3" variant="danger">
                 {validationError}
-              </p>
+              </InlineNotice>
             ) : null}
             {submitSuccess ? (
-              <p className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+              <InlineNotice className="mt-3" variant="success">
                 {submitSuccess}
-              </p>
+              </InlineNotice>
             ) : null}
             {submitError ? (
-              <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+              <InlineNotice className="mt-3" variant="danger">
                 {submitError}
-              </p>
+              </InlineNotice>
             ) : null}
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">

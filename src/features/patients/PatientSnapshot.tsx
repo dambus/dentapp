@@ -6,6 +6,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  InlineNotice,
+  MetricTile,
 } from '../../components/ui'
 import type { AppRole } from '../../types/navigation'
 import {
@@ -36,34 +38,12 @@ type PatientSnapshotProps = {
   onViewFullRecord: () => void
 }
 
-type SnapshotMetricProps = {
-  label: string
-  value: string
-  description?: string
-}
-
 const financialPlaceholderRoles: AppRole[] = [
   'owner_admin',
   'doctor',
   'specialist',
   'reception_admin',
 ]
-
-function SnapshotMetric({ label, value, description }: SnapshotMetricProps) {
-  return (
-    <div className="rounded-md border border-slate-200 bg-white p-4">
-      <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-        {label}
-      </div>
-      <div className="mt-2 text-sm font-semibold leading-6 text-slate-950">
-        {value}
-      </div>
-      {description ? (
-        <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
-      ) : null}
-    </div>
-  )
-}
 
 function getFinancialVisibility(role: AppRole | null) {
   return !role || financialPlaceholderRoles.includes(role)
@@ -158,14 +138,14 @@ export function PatientSnapshot({
 
       <CardContent className="space-y-5">
         {lifecycleSuccess ? (
-          <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+          <InlineNotice variant="success">
             {lifecycleSuccess}
-          </p>
+          </InlineNotice>
         ) : null}
         {lifecycleError ? (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+          <InlineNotice variant="danger">
             {lifecycleError}
-          </p>
+          </InlineNotice>
         ) : null}
 
         <div
@@ -225,17 +205,17 @@ export function PatientSnapshot({
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <SnapshotMetric
+          <MetricTile
             label="Active plan"
             value={activePlanLabel}
             description={patient.activeTreatmentPlanSummary}
           />
-          <SnapshotMetric
+          <MetricTile
             label="Last note"
             value={patient.lastClinicalNote}
             description="Most recent clinical context available in the current model."
           />
-          <SnapshotMetric
+          <MetricTile
             label="Next step"
             value={patient.nextRecommendedStep}
             description={`Next appointment: ${formatPatientDateTime(
@@ -243,13 +223,13 @@ export function PatientSnapshot({
             )}`}
           />
           {canViewFinancialPlaceholder ? (
-            <SnapshotMetric
+            <MetricTile
               label="Financial placeholder"
               value={formatDemoCurrency(patient.unpaidBalance)}
               description="Current demo/unpaid balance placeholder. Real ledger is not implemented yet."
             />
           ) : (
-            <SnapshotMetric
+            <MetricTile
               label="Financial context"
               value="Restricted"
               description="Financial data is hidden for this role."
@@ -258,12 +238,12 @@ export function PatientSnapshot({
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
-          <SnapshotMetric
+          <MetricTile
             label="Last visit"
             value={formatPatientDate(patient.lastVisit)}
             description={patient.recentVisitSummary}
           />
-          <SnapshotMetric
+          <MetricTile
             label="Contact"
             value={patient.phone}
             description={patient.email || 'No email recorded.'}
@@ -271,10 +251,10 @@ export function PatientSnapshot({
         </div>
 
         {isArchived ? (
-          <p className="rounded-md border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-amber-900">
+          <InlineNotice className="bg-white" variant="warning">
             This patient is archived. Restore the profile before regular
             workflow updates.
-          </p>
+          </InlineNotice>
         ) : null}
       </CardContent>
     </Card>

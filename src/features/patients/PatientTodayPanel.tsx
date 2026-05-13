@@ -6,6 +6,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  MetricTile,
 } from '../../components/ui'
 import {
   formatPatientDate,
@@ -18,36 +19,10 @@ type PatientTodayPanelProps = {
   isArchived: boolean
 }
 
-type TodayContextItemProps = {
-  label: string
-  value: string
-  description?: string
-}
-
 function getTextOrFallback(value: string | null | undefined, fallback: string) {
   const normalizedValue = value?.trim()
 
   return normalizedValue ? normalizedValue : fallback
-}
-
-function TodayContextItem({
-  label,
-  value,
-  description,
-}: TodayContextItemProps) {
-  return (
-    <div className="rounded-md border border-slate-200 bg-white p-4">
-      <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-        {label}
-      </div>
-      <div className="mt-2 text-sm font-semibold leading-6 text-slate-950">
-        {value}
-      </div>
-      {description ? (
-        <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
-      ) : null}
-    </div>
-  )
 }
 
 export function PatientTodayPanel({
@@ -114,27 +89,27 @@ export function PatientTodayPanel({
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <TodayContextItem
+          <MetricTile
             label="Appointment context"
             value={formatPatientDateTime(patient.nextAppointment)}
             description="No appointment module connected yet. Today context will be linked to scheduling in a later phase."
           />
-          <TodayContextItem
+          <MetricTile
             label="Planned work"
             value={activePlanLabel}
             description={plannedWork}
           />
-          <TodayContextItem
+          <MetricTile
             label="Last clinical note"
             value={lastNote}
             description="Most recent clinical note summary currently available."
           />
-          <TodayContextItem
+          <MetricTile
             label="Recent visit"
             value={formatPatientDate(patient.lastVisit)}
             description={recentVisitSummary}
           />
-          <TodayContextItem
+          <MetricTile
             label="Clinical reminder"
             value={
               patient.medicalWarnings.length > 0
@@ -145,7 +120,7 @@ export function PatientTodayPanel({
             }
             description={warningReminder}
           />
-          <TodayContextItem
+          <MetricTile
             label="Visit completion"
             value="Not implemented yet"
             description="Performed work, generated notes, materials, pricing, payments, and commissions remain future workflow phases."

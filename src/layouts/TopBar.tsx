@@ -1,10 +1,8 @@
-import { Link } from 'react-router-dom'
-
 import { signOut } from '../features/auth/authService'
 import type { CurrentProfileResult } from '../features/auth/useCurrentProfile'
 import { currentDemoUser } from '../lib/demoAuth'
 import { routePaths } from '../routes/routePaths'
-import { Button } from '../components/ui'
+import { Button, ButtonLink } from '../components/ui'
 
 type TopBarProps = {
   currentProfile: CurrentProfileResult
@@ -85,12 +83,9 @@ export function TopBar({ currentProfile }: TopBarProps) {
               Log out
             </Button>
           ) : (
-            <Link
-              to={routePaths.login}
-              className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
-            >
+            <ButtonLink to={routePaths.login} size="sm" variant="secondary">
               Log in
-            </Link>
+            </ButtonLink>
           )}
           {authMessage ? (
             <span className="text-xs text-slate-500">{authMessage}</span>

@@ -1,6 +1,6 @@
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
-import { Badge, Button, Card, CardContent } from '../components/ui'
+import { Badge, Button, Card, CardContent, InlineNotice } from '../components/ui'
 
 type PagePlaceholderProps = {
   title: string
@@ -23,9 +23,9 @@ export function PagePlaceholder({
         <CardContent>
           <Badge variant="info">{eyebrow}</Badge>
 
-          <div className="mt-5 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+          <InlineNotice className="mt-5 px-4 py-3" variant="success">
             {status}
-          </div>
+          </InlineNotice>
 
           <div className="mt-5">
             <Button variant="secondary" size="sm" disabled>

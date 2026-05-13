@@ -4,7 +4,18 @@ import { Link } from 'react-router-dom'
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
 import { useCurrentProfile } from '../features/auth/useCurrentProfile'
-import { Badge, Button, Card, CardContent, EmptyState, LoadingState } from '../components/ui'
+import {
+  Badge,
+  Button,
+  ButtonLink,
+  Card,
+  CardContent,
+  EmptyState,
+  FieldLabel,
+  LoadingState,
+  Select,
+  TextInput,
+} from '../components/ui'
 import {
   formatDemoCurrency,
   formatPatientDate,
@@ -122,12 +133,9 @@ export function PatientsPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">{dataModeLabel}</Badge>
-            <Link
-              className="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-800"
-              to={routePaths.patientCreate}
-            >
+            <ButtonLink to={routePaths.patientCreate}>
               New patient
-            </Link>
+            </ButtonLink>
           </div>
         }
       />
@@ -136,11 +144,8 @@ export function PatientsPage() {
         <CardContent className="space-y-5">
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-end">
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">
-                Search patients
-              </span>
-              <input
-                className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              <FieldLabel>Search patients</FieldLabel>
+              <TextInput
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search by name, phone, or email"
@@ -149,11 +154,8 @@ export function PatientsPage() {
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">
-                Status
-              </span>
-              <select
-                className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              <FieldLabel>Status</FieldLabel>
+              <Select
                 value={statusFilter}
                 onChange={(event) =>
                   setStatusFilter(event.target.value as StatusFilter)
@@ -163,7 +165,7 @@ export function PatientsPage() {
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="archived">Archived</option>
-              </select>
+              </Select>
             </label>
           </div>
 
@@ -342,12 +344,13 @@ export function PatientsPage() {
                     </div>
                   </div>
 
-                  <Link
-                    className="inline-flex w-full items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+                  <ButtonLink
+                    className="w-full"
+                    variant="secondary"
                     to={getPatientDetailPath(patient.id)}
                   >
                     View profile
-                  </Link>
+                  </ButtonLink>
                 </CardContent>
               </Card>
             ))}

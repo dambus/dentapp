@@ -6,6 +6,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  InlineNotice,
 } from '../../components/ui'
 import type { AppRole } from '../../types/navigation'
 
@@ -258,9 +259,9 @@ export function PatientQuickActions({
 
       <CardContent className="space-y-4">
         {isArchived ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
+          <InlineNotice variant="warning">
             Patient is archived. Restore the patient before making changes.
-          </p>
+          </InlineNotice>
         ) : null}
 
         {actions.length > 0 ? (
