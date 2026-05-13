@@ -70,16 +70,18 @@ Phase C note: Quick Actions reuse existing sections and routes. Visit Completion
 
 ## 6. Phase D - Full Record Organization
 
-- [ ] Move Medical Record into Full Record.
-- [ ] Collapse full medical record by default.
-- [ ] Move Odontogram into prominent Full Record tab/card.
-- [ ] Move Treatment Plans into Full Record with active plan summary first.
-- [ ] Move Clinical Notes into Full Record with recent notes first.
+- [x] Move Medical Record into Full Record.
+- [x] Organize full medical record behind the default Full Record tab.
+- [x] Move Odontogram into prominent Full Record tab/card.
+- [x] Move Treatment Plans into Full Record tab/card.
+- [x] Move Clinical Notes into Full Record tab/card.
 - [ ] Add Payments section when ledger exists.
 - [ ] Add Materials section when material usage exists.
-- [ ] Keep Documents and Timeline secondary.
-- [ ] Use tabs on desktop where appropriate.
+- [x] Keep Documents and Timeline secondary.
+- [x] Use tabs on desktop where appropriate.
 - [ ] Use accordions on tablet/mobile where appropriate.
+
+Phase D note: Full Record uses a simple responsive tab-button pattern for now. Payments, materials, and mobile-specific accordions remain pending until their modules or UX needs are clearer.
 
 ---
 

@@ -1118,3 +1118,23 @@ Quick Actions should link only to existing safe behavior or appear disabled and 
 
 Status: Accepted
 
+---
+
+## Decision 055 - Full Record Is The Fourth Patient Detail Priority Area
+
+Date: 2026-05-13
+
+Decision:
+
+Place detailed patient modules inside a Full Record area below Patient Snapshot, Today / Next Step, and Quick Actions.
+
+Reason:
+
+Detailed modules remain important, but they should not compete with the chairside briefing and quick workflow actions. Organizing existing modules behind a Full Record navigation keeps them accessible while reducing first-screen density.
+
+Impact:
+
+Full Record contains existing modules without rewriting their internal behavior. Medical Record, Odontogram, Treatment Plans, Clinical Notes, Documents, and Timeline are organized as selectable sections, while future payment and material sections should be added only when their modules exist.
+
+Status: Accepted
+

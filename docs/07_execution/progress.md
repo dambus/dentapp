@@ -972,6 +972,37 @@ Initial stack:
 
 ---
 
+### Completed (Task 35)
+
+- Created reusable `src/features/patients/PatientFullRecord.tsx`.
+- Moved existing detailed Patient Detail modules under the Full Record area below Patient Snapshot, Today / Next Step, and Quick Actions.
+- Organized Full Record with local tab-style navigation for:
+	- Medical Record,
+	- Odontogram,
+	- Treatment Plans,
+	- Clinical Notes,
+	- Documents,
+	- Timeline.
+- Kept the Medical Record section as the default Full Record tab.
+- Preserved existing module internals and behavior:
+	- medical record edit route,
+	- clinical notes CRUD,
+	- odontogram save/clear,
+	- treatment plan create/edit/archive,
+	- documents placeholder,
+	- timeline placeholder.
+- Preserved role visibility by passing the existing Patient Detail role flags into `PatientFullRecord`.
+- Updated Quick Actions section switching so existing quick actions select the matching Full Record tab before scrolling to the Full Record area.
+- Did not add database migrations, database tables, RLS changes, Supabase policies, new service queries, new dependencies, Visit Completion, scheduling, payments, materials, or commissions.
+
+### Verification (Task 35)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- Supabase reset and RLS script suite were not run because this task only reorganized existing UI composition without touching database, RLS, service, or persistence behavior.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.
