@@ -53,15 +53,18 @@ Phase B note: reason for visit, appointment-specific active plan item, and tooth
 
 ## 5. Phase C - Quick Actions
 
-- [ ] Add Quick Actions area.
-- [ ] Add Complete Visit action.
-- [ ] Add Add Clinical Note action.
-- [ ] Add Update Odontogram action.
-- [ ] Add Add Treatment Plan Item action.
-- [ ] Add Add Payment action for allowed roles.
+- [x] Add Quick Actions area.
+- [x] Add disabled/planned Complete Visit action.
+- [x] Add Add Clinical Note action for clinical write roles.
+- [x] Add Update Odontogram action for clinical edit roles and read-only assistant context.
+- [x] Add Add Treatment Plan Item entry point to the existing Treatment Plans section.
+- [x] Add disabled/planned Add Payment action for allowed future payment roles.
 - [ ] Add Schedule Next Appointment action when scheduling exists.
-- [ ] Make every quick action role-aware.
-- [ ] Hide or disable actions for archived patients where appropriate.
+- [x] Add disabled/planned Schedule Next Appointment action for relevant future scheduling roles.
+- [x] Make every quick action role-aware.
+- [x] Hide or disable actions for archived patients where appropriate.
+
+Phase C note: Quick Actions reuse existing sections and routes. Visit Completion, scheduling, payment, and ledger behavior remain disabled placeholders until their modules exist.
 
 ---
 

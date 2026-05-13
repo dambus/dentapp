@@ -943,6 +943,35 @@ Initial stack:
 
 ---
 
+### Completed (Task 34)
+
+- Created reusable `src/features/patients/PatientQuickActions.tsx`.
+- Added Quick Actions directly below Today / Next Step and above Full Record on `PatientDetailPage`.
+- Added role-aware quick actions:
+	- Complete Visit as a planned/disabled action,
+	- Add Clinical Note for clinical write roles,
+	- Update Odontogram for clinical edit roles,
+	- View Odontogram context for assistant,
+	- Add Treatment Plan Item entry point for clinical write roles,
+	- Edit Medical Record for medical-record edit roles,
+	- Add Payment as a planned/disabled action for owner/admin and reception,
+	- Schedule Next Appointment as a planned/disabled action for relevant workflow roles.
+- Connected working actions only to existing behavior:
+	- Edit Medical Record navigates to the existing medical record edit route,
+	- Clinical Notes, Odontogram, and Treatment Plans actions scroll to existing sections.
+- Added stable Patient Detail section anchors for clinical notes, odontogram, and treatment plans.
+- Added archived-patient behavior so modifying quick actions are disabled and the panel tells users to restore the patient first.
+- Preserved existing Patient Snapshot, Today Panel, archive/restore, medical record summary, clinical notes CRUD, odontogram, treatment plans, documents, and timeline behavior.
+- Did not add database migrations, database tables, RLS changes, Supabase policies, new service queries, new dependencies, Visit Completion, scheduling, payments, materials, or commissions.
+
+### Verification (Task 34)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- Supabase reset and RLS script suite were not run because this task only added UI hierarchy, existing-route navigation, and scroll anchors without touching database, RLS, service, or persistence behavior.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.

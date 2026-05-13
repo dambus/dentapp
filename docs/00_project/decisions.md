@@ -1098,3 +1098,23 @@ Impact:
 
 Status: Accepted
 
+---
+
+## Decision 054 - Quick Actions Are The Third Patient Detail Priority Block
+
+Date: 2026-05-13
+
+Decision:
+
+Place role-aware Quick Actions directly after Patient Snapshot and Today / Next Step, before Full Record sections.
+
+Reason:
+
+Doctors, assistants, and reception users need fast entry points into common patient work without scanning the full record. Some target workflows already exist as sections or routes, while Visit Completion, scheduling, and payment/ledger are future modules.
+
+Impact:
+
+Quick Actions should link only to existing safe behavior or appear disabled and clearly marked as planned. Planned actions may be visible to relevant roles, but they must not create visits, appointments, payments, materials, ledger entries, or commissions until those modules are implemented.
+
+Status: Accepted
+

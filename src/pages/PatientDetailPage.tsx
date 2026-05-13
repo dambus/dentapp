@@ -25,6 +25,7 @@ import {
   getPatientFullName,
   patientStatusLabels,
 } from '../features/patients/patientDisplay'
+import { PatientQuickActions } from '../features/patients/PatientQuickActions'
 import { PatientSnapshot } from '../features/patients/PatientSnapshot'
 import { PatientTodayPanel } from '../features/patients/PatientTodayPanel'
 import {
@@ -313,6 +314,12 @@ export function PatientDetailPage() {
     await refreshPatient()
   }
 
+  function scrollToPatientSection(sectionId: string) {
+    document
+      .getElementById(sectionId)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <Page>
       <PageHeader
@@ -355,6 +362,23 @@ export function PatientDetailPage() {
       />
 
       <PatientTodayPanel patient={patient} isArchived={isArchived} />
+
+      <PatientQuickActions
+        role={currentProfile.profile?.role ?? null}
+        isArchived={isArchived}
+        onEditMedicalRecord={() =>
+          navigate(getPatientMedicalRecordEditPath(patient.id))
+        }
+        onOpenClinicalNotes={() =>
+          scrollToPatientSection('patient-clinical-notes-section')
+        }
+        onOpenOdontogram={() =>
+          scrollToPatientSection('patient-odontogram-section')
+        }
+        onOpenTreatmentPlans={() =>
+          scrollToPatientSection('patient-treatment-plans-section')
+        }
+      />
 
       <div
         className="grid scroll-mt-6 gap-6 lg:grid-cols-[1fr_1fr]"
@@ -546,27 +570,33 @@ export function PatientDetailPage() {
       </div>
 
       {canViewOdontogram ? (
-        <OdontogramSection
-          patientId={patient.id}
-          canEditOdontogram={canEditOdontogram}
-          isPatientArchived={isArchived}
-        />
+        <div className="scroll-mt-6" id="patient-odontogram-section">
+          <OdontogramSection
+            patientId={patient.id}
+            canEditOdontogram={canEditOdontogram}
+            isPatientArchived={isArchived}
+          />
+        </div>
       ) : null}
 
       {canViewClinicalNotes ? (
-        <ClinicalNotesSection
-          patientId={patient.id}
-          canManageNotes={canViewClinicalNotes}
-          isPatientArchived={isArchived}
-        />
+        <div className="scroll-mt-6" id="patient-clinical-notes-section">
+          <ClinicalNotesSection
+            patientId={patient.id}
+            canManageNotes={canViewClinicalNotes}
+            isPatientArchived={isArchived}
+          />
+        </div>
       ) : null}
 
       {canViewTreatmentPlans ? (
-        <TreatmentPlansSection
-          patientId={patient.id}
-          canManageTreatmentPlans={canManageTreatmentPlans}
-          isPatientArchived={isArchived}
-        />
+        <div className="scroll-mt-6" id="patient-treatment-plans-section">
+          <TreatmentPlansSection
+            patientId={patient.id}
+            canManageTreatmentPlans={canManageTreatmentPlans}
+            isPatientArchived={isArchived}
+          />
+        </div>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
