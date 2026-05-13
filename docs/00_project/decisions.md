@@ -1058,3 +1058,23 @@ Future UI work should avoid placing full anamnesis, old notes, archived plans, d
 
 Status: Accepted
 
+---
+
+## Decision 052 - Patient Snapshot Is The Top Patient Detail Context Block
+
+Date: 2026-05-13
+
+Decision:
+
+Use Patient Snapshot as the primary top-level context block on Patient Detail.
+
+Reason:
+
+The doctor and assistant need patient identity, age, status, warnings, allergies, important note, active plan, last note, next step, and financial placeholder context before scrolling through the full record.
+
+Impact:
+
+`PatientDetailPage` should keep Patient Snapshot above detailed modules. Existing patient modules remain available below the snapshot, while future Today Panel, Quick Actions, and Full Record organization should build on this hierarchy.
+
+Status: Accepted
+

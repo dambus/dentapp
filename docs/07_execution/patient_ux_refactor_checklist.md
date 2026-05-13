@@ -23,16 +23,16 @@
 
 ## 3. Phase A - Patient Snapshot
 
-- [ ] Create Patient Snapshot component.
-- [ ] Show patient name and age/year of birth.
-- [ ] Show patient status.
-- [ ] Move warnings and allergies to top priority area.
-- [ ] Move important note to top priority area.
-- [ ] Show debt/prepayment state if user has permission.
-- [ ] Show active treatment plan.
-- [ ] Show next appointment.
-- [ ] Show last visit or last clinical note.
-- [ ] Ensure archived patient state remains visible.
+- [x] Create Patient Snapshot component.
+- [x] Show patient name and age/year of birth.
+- [x] Show patient status.
+- [x] Move warnings and allergies to top priority area.
+- [x] Move important note to top priority area.
+- [x] Show debt/prepayment state if user has permission.
+- [x] Show active treatment plan.
+- [x] Show next appointment.
+- [x] Show last visit or last clinical note.
+- [x] Ensure archived patient state remains visible.
 
 ---
 

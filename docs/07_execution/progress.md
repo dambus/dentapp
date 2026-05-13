@@ -883,6 +883,42 @@ Initial stack:
 
 ---
 
+### Completed (Task 32)
+
+- Created reusable `src/features/patients/PatientSnapshot.tsx`.
+- Refactored `PatientDetailPage` so Patient Snapshot appears near the top as the primary patient context block.
+- Moved high-priority context into the snapshot:
+	- patient identity,
+	- age/date of birth,
+	- patient status,
+	- archived state,
+	- allergies,
+	- medical warnings,
+	- important patient note,
+	- active treatment plan summary,
+	- last clinical note,
+	- next recommended step,
+	- last visit and recent visit summary,
+	- demo/unpaid balance placeholder with role-aware visibility.
+- Preserved existing Patient Detail modules below the snapshot:
+	- patient identity/contact detail cards,
+	- medical record summary sections,
+	- clinical notes CRUD,
+	- odontogram section,
+	- treatment plans section,
+	- documents and timeline placeholders.
+- Preserved existing edit patient, edit medical record, archive, and restore behavior by moving those actions into the snapshot.
+- Added a "View full record" snapshot action that scrolls to the existing detail sections without introducing a new business workflow.
+- Did not add database migrations, database tables, RLS changes, Supabase policies, new dependencies, Visit Completion, Today Panel, payments, materials, or commissions.
+
+### Verification (Task 32)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- Supabase reset and RLS script suite were not run because this task only reorganized existing UI display and did not touch database, RLS, service, or persistence behavior.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.

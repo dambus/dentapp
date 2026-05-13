@@ -23,9 +23,9 @@ import {
   formatPatientDateTime,
   getPatientAge,
   getPatientFullName,
-  patientStatusBadgeVariants,
   patientStatusLabels,
 } from '../features/patients/patientDisplay'
+import { PatientSnapshot } from '../features/patients/PatientSnapshot'
 import {
   archivePatient,
   getPatientById,
@@ -209,8 +209,6 @@ export function PatientDetailPage() {
 
   const loadedPatient = patient
   const patientName = getPatientFullName(loadedPatient)
-  const importantNoteLabel =
-    loadedPatient.importantNote ?? 'No important note recorded.'
   const activePlanLabel = loadedPatient.activeTreatmentPlan ?? 'No active plan'
   const hasMedicalWarnings = loadedPatient.medicalWarnings.length > 0
   const isArchived =
@@ -236,6 +234,7 @@ export function PatientDetailPage() {
   const canArchiveOrRestore = currentProfile.profile
     ? patientArchiveRoles.includes(currentProfile.profile.role)
     : false
+  const dataSourceLabel = isSupabasePatientMode ? 'Supabase mode' : 'Fake demo data'
 
   async function refreshPatient() {
     const refreshedPatient = await getPatientById(loadedPatient.id)
@@ -320,41 +319,7 @@ export function PatientDetailPage() {
         description="Patient profile overview. Demo mode remains non-persistent; Supabase mode supports patient create and basic profile updates."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="info">
-              {isSupabasePatientMode ? 'Supabase mode' : 'Fake demo data'}
-            </Badge>
-            {!isArchived ? (
-              <Button onClick={() => navigate(getPatientEditPath(patient.id))}>
-                Edit patient
-              </Button>
-            ) : null}
-            {canEditMedicalRecord ? (
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  navigate(getPatientMedicalRecordEditPath(patient.id))
-                }
-              >
-                Edit medical record
-              </Button>
-            ) : null}
-            {canArchiveOrRestore && !isArchived ? (
-              <Button
-                variant="secondary"
-                onClick={() => void handleLifecycleAction('archive')}
-                disabled={isLifecycleSubmitting}
-              >
-                {isLifecycleSubmitting ? 'Archiving...' : 'Archive patient'}
-              </Button>
-            ) : null}
-            {canArchiveOrRestore && isArchived ? (
-              <Button
-                onClick={() => void handleLifecycleAction('restore')}
-                disabled={isLifecycleSubmitting}
-              >
-                {isLifecycleSubmitting ? 'Restoring...' : 'Restore patient'}
-              </Button>
-            ) : null}
+            <Badge variant="info">{dataSourceLabel}</Badge>
             <Button
               variant="secondary"
               onClick={() => navigate(routePaths.patients)}
@@ -365,98 +330,33 @@ export function PatientDetailPage() {
         }
       />
 
-      <Card>
-        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={patientStatusBadgeVariants[patient.status]}>
-                {patientStatusLabels[patient.status]}
-              </Badge>
-              {isArchived ? (
-                <Badge variant="warning">Archived profile</Badge>
-              ) : null}
-              {patient.importantNote ? (
-                <Badge variant="info">Important note recorded</Badge>
-              ) : (
-                <Badge variant="neutral">No important note</Badge>
-              )}
-            </div>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600">
-              {isArchived
-                ? 'This patient is archived. Restore the profile before regular workflow updates.'
-                : 'This overview uses fictional Phase 2 data in demo mode and persisted patient data in Supabase mode.'}
-            </p>
-            {lifecycleSuccess ? (
-              <p className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
-                {lifecycleSuccess}
-              </p>
-            ) : null}
-            {lifecycleError ? (
-              <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
-                {lifecycleError}
-              </p>
-            ) : null}
-          </div>
-          <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-            <div className="font-medium text-slate-950">
-              Demo unpaid balance
-            </div>
-            <div className="mt-1 text-lg font-semibold text-slate-950">
-              {formatDemoCurrency(patient.unpaidBalance)}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <PatientSnapshot
+        patient={patient}
+        role={currentProfile.profile?.role ?? null}
+        isArchived={isArchived}
+        isLifecycleSubmitting={isLifecycleSubmitting}
+        lifecycleError={lifecycleError}
+        lifecycleSuccess={lifecycleSuccess}
+        canEditMedicalRecord={canEditMedicalRecord}
+        canArchiveOrRestore={canArchiveOrRestore}
+        dataSourceLabel={dataSourceLabel}
+        onEditPatient={() => navigate(getPatientEditPath(patient.id))}
+        onEditMedicalRecord={() =>
+          navigate(getPatientMedicalRecordEditPath(patient.id))
+        }
+        onArchive={() => void handleLifecycleAction('archive')}
+        onRestore={() => void handleLifecycleAction('restore')}
+        onViewFullRecord={() =>
+          document
+            .getElementById('patient-full-record')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Important note</CardTitle>
-            <CardDescription>Administrative patient-level note.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-6 text-slate-700">{importantNoteLabel}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Next appointment</CardTitle>
-            <CardDescription>Upcoming scheduled context.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm font-medium text-slate-950">
-              {formatPatientDateTime(patient.nextAppointment)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Active plan</CardTitle>
-            <CardDescription>Current treatment planning signal.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Badge variant={patient.activeTreatmentPlan ? 'info' : 'neutral'}>
-              {activePlanLabel}
-            </Badge>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Financial summary</CardTitle>
-            <CardDescription>Demo value only.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm font-semibold text-slate-950">
-              {formatDemoCurrency(patient.unpaidBalance)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+      <div
+        className="grid scroll-mt-6 gap-6 lg:grid-cols-[1fr_1fr]"
+        id="patient-full-record"
+      >
         <Card>
           <CardHeader>
             <CardTitle>Patient identity</CardTitle>
