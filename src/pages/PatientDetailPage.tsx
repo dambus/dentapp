@@ -26,6 +26,7 @@ import {
   patientStatusLabels,
 } from '../features/patients/patientDisplay'
 import { PatientSnapshot } from '../features/patients/PatientSnapshot'
+import { PatientTodayPanel } from '../features/patients/PatientTodayPanel'
 import {
   archivePatient,
   getPatientById,
@@ -352,6 +353,8 @@ export function PatientDetailPage() {
             ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
       />
+
+      <PatientTodayPanel patient={patient} isArchived={isArchived} />
 
       <div
         className="grid scroll-mt-6 gap-6 lg:grid-cols-[1fr_1fr]"

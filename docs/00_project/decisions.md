@@ -1078,3 +1078,23 @@ Impact:
 
 Status: Accepted
 
+---
+
+## Decision 053 - Today Panel Is The Second Patient Detail Priority Block
+
+Date: 2026-05-13
+
+Decision:
+
+Place the Today / Next Step panel directly after Patient Snapshot and before the Full Record on Patient Detail.
+
+Reason:
+
+The chairside workflow needs a second compact block that answers what matters for the current or next encounter without requiring the user to scan the full patient record. Appointment and Visit Completion modules are not implemented yet, so the panel must use currently available patient context and clearly label future-module placeholders.
+
+Impact:
+
+`PatientDetailPage` should keep Patient Snapshot first, Today / Next Step second, and detailed modules below. Appointment context and Complete Visit remain non-functional placeholders until scheduling and Visit Completion are implemented.
+
+Status: Accepted
+

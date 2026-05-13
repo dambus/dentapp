@@ -919,6 +919,30 @@ Initial stack:
 
 ---
 
+### Completed (Task 33)
+
+- Created reusable `src/features/patients/PatientTodayPanel.tsx`.
+- Added the Today / Next Step panel directly below Patient Snapshot on `PatientDetailPage`.
+- Displayed current encounter context from already available patient fields:
+	- next recommended step,
+	- active treatment plan and planned work summary,
+	- last clinical note summary,
+	- recent visit summary,
+	- medical warning reminder,
+	- appointment placeholder.
+- Kept appointment and visit module data explicit as future placeholders.
+- Added a disabled "Complete Visit planned" control to signal the future workflow without implementing Visit Completion.
+- Preserved existing Patient Detail sections below the new panel, including medical record summary, clinical notes CRUD, odontogram, treatment plans, archive/restore, documents, and timeline placeholders.
+- Did not add database migrations, database tables, RLS changes, Supabase policies, new service queries, new dependencies, scheduling, Visit Completion, payments, materials, or commissions.
+
+### Verification (Task 33)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- Supabase reset and RLS script suite were not run because this task only added a presentational UI panel and did not touch database, RLS, service, or persistence behavior.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.

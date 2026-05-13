@@ -158,6 +158,7 @@ Status legend:
   - [x] Task 30: Treatment plan foundation
   - [x] Task 31: Dental workflow UX review and Patient Detail refactor plan
   - [x] Task 32: Patient Detail UX refactor Phase A - Patient Snapshot
+  - [x] Task 33: Patient Detail UX refactor Phase B - Today Panel
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -174,7 +175,7 @@ Status legend:
 - [x] Implement patient archive/restore flow
 - [x] Continue treatment plan foundation
 - [x] Patient Detail UX refactor Phase A - Snapshot
-- [ ] Patient Detail UX refactor Phase B - Today Panel
+- [x] Patient Detail UX refactor Phase B - Today Panel
 - [ ] Patient Detail UX refactor Phase C - Quick Actions
 - [ ] Patient Detail UX refactor Phase D - Full Record organization
 - [ ] Visit Completion prototype

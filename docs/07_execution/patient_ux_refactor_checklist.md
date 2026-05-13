@@ -38,14 +38,16 @@
 
 ## 4. Phase B - Today Panel
 
-- [ ] Create Today Panel component.
+- [x] Create Today Panel component.
 - [ ] Show reason for visit when appointment data exists.
-- [ ] Show planned treatment.
+- [x] Show planned treatment from the active treatment plan summary.
 - [ ] Show active treatment plan item.
 - [ ] Show tooth/region for today's work where known.
-- [ ] Show next recommended step.
-- [ ] Add quick Complete Visit entry point.
-- [ ] Support no-appointment/ad hoc visit context.
+- [x] Show next recommended step.
+- [x] Add disabled/planned Complete Visit placeholder.
+- [x] Support no-appointment/ad hoc visit context with clear scheduling placeholder.
+
+Phase B note: reason for visit, appointment-specific active plan item, and tooth/region remain pending until scheduling, visit, or richer treatment-plan-item context exists.
 
 ---
 
