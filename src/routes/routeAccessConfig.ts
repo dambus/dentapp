@@ -49,6 +49,12 @@ export const routeAllowedRoles: Record<ProtectedRoutePath, AppRole[]> = {
   [routePaths.patientCreate]: patientWriteRoles,
   [routePaths.patientEdit]: patientWriteRoles,
   [routePaths.patientMedicalRecordEdit]: patientMedicalRecordWriteRoles,
+  [routePaths.patientVisitCompletion]: [
+    'owner_admin',
+    'doctor',
+    'specialist',
+    'assistant',
+  ],
   [routePaths.treatmentPlans]: ['owner_admin', 'doctor', 'specialist'],
   [routePaths.payments]: ['owner_admin', 'reception_admin'],
   [routePaths.commissions]: ['owner_admin'],

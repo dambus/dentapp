@@ -1138,3 +1138,71 @@ Full Record contains existing modules without rewriting their internal behavior.
 
 Status: Accepted
 
+---
+
+## Decision 056 - Clinical Workflows Use Focused Route-Based Flows
+
+Date: 2026-05-14
+
+Decision:
+
+Use route-based focused workflows for important clinical actions such as Visit
+Completion. These workflows should use compact context, stepper navigation, one
+main task visible at a time, review, final confirmation, and success states.
+
+Classic modals should be reserved for short decisions, final confirmation,
+discard warnings, and small edits.
+
+Reason:
+
+Clinical work should not feel like navigating another dense admin module.
+Dedicated routes provide better browser back/refresh behavior, future draft
+persistence, testing, mobile/tablet layout, and long-term maintainability.
+
+Impact:
+
+Visit Completion remains a patient-scoped route:
+`/patients/:patientId/visit-completion`.
+
+Future complex clinical workflows should follow the same focused route pattern
+instead of nesting dense forms inside modal dialogs or showing all workflow
+sections at once.
+
+Status: Accepted
+
+---
+
+## Decision 057 - Responsive App Shell and Workflow Navigation
+
+Date: 2026-05-14
+
+Decision:
+
+Use a responsive shell model that keeps clinical work dominant:
+
+- mobile uses a burger menu and fullscreen menu overlay,
+- tablet portrait uses a collapsed sidebar icon rail,
+- desktop and wide tablet use an expanded sidebar with labels,
+- focused workflows use compact context and a sticky mobile progress/status
+  header,
+- modals remain reserved for confirmations, discard warnings, and small
+  decisions.
+
+Reason:
+
+DentApp should feel like a guided clinical productivity tool, not a generic
+admin panel. Mobile users need navigation that does not overflow horizontally.
+Tablet portrait users need more clinical content width than a full sidebar
+allows. Focused workflows need persistent progress context without a large
+vertical stepper.
+
+Impact:
+
+The app shell uses a fullscreen mobile navigation overlay below `md`, a
+collapsed marker rail from `md` to below `xl`, and an expanded sidebar at `xl`
+and wider. Visit Completion keeps its route-based focused workflow and uses a
+compact sticky mobile progress header while retaining a clearer horizontal
+stepper on larger screens.
+
+Status: Accepted
+

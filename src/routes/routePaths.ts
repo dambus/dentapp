@@ -7,6 +7,7 @@ export const routePaths = {
   patientDetail: '/patients/:patientId',
   patientEdit: '/patients/:patientId/edit',
   patientMedicalRecordEdit: '/patients/:patientId/record/edit',
+  patientVisitCompletion: '/patients/:patientId/visit-completion',
   treatmentPlans: '/treatment-plans',
   payments: '/payments',
   commissions: '/commissions',
@@ -25,4 +26,8 @@ export function getPatientEditPath(patientId: string) {
 
 export function getPatientMedicalRecordEditPath(patientId: string) {
   return `/patients/${patientId}/record/edit`
+}
+
+export function getPatientVisitCompletionPath(patientId: string) {
+  return `/patients/${patientId}/visit-completion`
 }

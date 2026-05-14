@@ -18,6 +18,8 @@ import type { DemoPatient } from './types'
 type PatientTodayPanelProps = {
   patient: DemoPatient
   isArchived: boolean
+  canCompleteVisit: boolean
+  onCompleteVisit: () => void
 }
 
 function getTextOrFallback(value: string | null | undefined, fallback: string) {
@@ -29,6 +31,8 @@ function getTextOrFallback(value: string | null | undefined, fallback: string) {
 export function PatientTodayPanel({
   patient,
   isArchived,
+  canCompleteVisit,
+  onCompleteVisit,
 }: PatientTodayPanelProps) {
   const activePlanLabel = patient.activeTreatmentPlan ?? 'No active plan'
   const plannedWork = getTextOrFallback(
@@ -70,8 +74,13 @@ export function PatientTodayPanel({
             </CardDescription>
           </div>
 
-          <Button className="min-h-10" disabled size="sm" variant="secondary">
-            Complete Visit planned
+          <Button
+            className="min-h-10"
+            disabled={isArchived || !canCompleteVisit}
+            onClick={onCompleteVisit}
+            size="sm"
+          >
+            Complete Visit
           </Button>
         </div>
       </CardHeader>
@@ -157,9 +166,8 @@ export function PatientTodayPanel({
         </div>
 
         <InlineNotice className="border-dashed bg-white/70" variant="info">
-          Scheduling and visit completion will be connected in later phases.
-          This panel does not create appointments, visits, payments, materials,
-          or clinical entries.
+          Visit completion opens a prototype workflow in this phase. It does not
+          create appointments, visits, payments, materials, or clinical entries.
         </InlineNotice>
       </CardContent>
     </Card>

@@ -161,6 +161,14 @@ Status legend:
   - [x] Task 33: Patient Detail UX refactor Phase B - Today Panel
   - [x] Task 34: Patient Detail UX refactor Phase C - Quick Actions
   - [x] Task 35: Patient Detail UX refactor Phase D - Full Record organization
+  - [x] Task 37: Visit Completion prototype
+  - [x] Task 38: Responsive App Shell and Workflow Navigation UX Pass
+  - [x] Task 38B: Responsive Polish Pass for Patient Detail and Visit Completion
+  - [x] Task 39: Visit Completion Data Model and Persistence Plan
+  - [x] Task 40A: Visit Completion Migration and RLS
+  - [x] Task 40B: Apply and Validate Visit Completion Migration + RLS Smoke Test
+  - [x] Task 40C: Visit Completion service layer
+  - [x] Task 40D: Connect Visit Completion UI to persistence
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -180,7 +188,16 @@ Status legend:
 - [x] Patient Detail UX refactor Phase B - Today Panel
 - [x] Patient Detail UX refactor Phase C - Quick Actions
 - [x] Patient Detail UX refactor Phase D - Full Record organization
-- [ ] Visit Completion prototype
+- [x] Visit Completion prototype
+- [x] Responsive app shell and workflow navigation UX pass
+- [x] Responsive polish pass for Patient Detail and Visit Completion
+- [x] Visit Completion data model and persistence plan
+- [x] Create reviewed Visit Completion migration
+- [x] Apply and validate Visit Completion migration and RLS
+- [x] Create Visit Completion service layer
+- [x] Connect Visit Completion UI to draft persistence
+- [x] Connect Visit Completion UI to completed state persistence
+- [ ] Add Visit Completion browser/RLS interaction test coverage
 - [ ] Material suggestion model
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow

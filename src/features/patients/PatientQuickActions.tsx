@@ -14,6 +14,7 @@ import type { AppRole } from '../../types/navigation'
 type PatientQuickActionsProps = {
   role: AppRole | null
   isArchived: boolean
+  onCompleteVisit: () => void
   onEditMedicalRecord: () => void
   onOpenClinicalNotes: () => void
   onOpenOdontogram: () => void
@@ -173,6 +174,7 @@ function QuickActionCard({
 export function PatientQuickActions({
   role,
   isArchived,
+  onCompleteVisit,
   onEditMedicalRecord,
   onOpenClinicalNotes,
   onOpenOdontogram,
@@ -185,9 +187,10 @@ export function PatientQuickActions({
       id: 'complete-visit',
       title: 'Complete Visit',
       description:
-        "Close today's work and generate note, service, material, payment, and next-step draft.",
-      status: 'planned',
-      cta: 'Coming soon',
+        "Close today's work with a guided prototype for procedures, notes, next step, and confirmation.",
+      status: 'available',
+      cta: 'Complete visit',
+      onSelect: onCompleteVisit,
     })
   }
 

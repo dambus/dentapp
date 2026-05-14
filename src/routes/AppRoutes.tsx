@@ -17,6 +17,7 @@ import { PaymentsPage } from '../pages/PaymentsPage'
 import { ReportsPage } from '../pages/ReportsPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { TreatmentPlansPage } from '../pages/TreatmentPlansPage'
+import { VisitCompletionPage } from '../pages/VisitCompletionPage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { RoleGuard } from './RoleGuard'
 import { routeAllowedRoles } from './routeAccessConfig'
@@ -74,6 +75,13 @@ export function AppRoutes() {
           element={withRoleGuard(
             'patientMedicalRecordEdit',
             <PatientMedicalRecordEditPage />,
+          )}
+        />
+        <Route
+          path={routePaths.patientVisitCompletion}
+          element={withRoleGuard(
+            'patientVisitCompletion',
+            <VisitCompletionPage />,
           )}
         />
         <Route

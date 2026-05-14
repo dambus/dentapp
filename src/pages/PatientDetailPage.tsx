@@ -20,6 +20,7 @@ import type { DemoPatient } from '../features/patients/types'
 import {
   getPatientEditPath,
   getPatientMedicalRecordEditPath,
+  getPatientVisitCompletionPath,
   routePaths,
 } from '../routes/routePaths'
 import type { AppRole } from '../types/navigation'
@@ -61,6 +62,13 @@ const treatmentPlanWriteRoles: AppRole[] = [
   'owner_admin',
   'doctor',
   'specialist',
+]
+
+const visitCompletionRoles: AppRole[] = [
+  'owner_admin',
+  'doctor',
+  'specialist',
+  'assistant',
 ]
 
 const patientArchiveRoles: AppRole[] = [
@@ -157,6 +165,9 @@ export function PatientDetailPage() {
     : false
   const canManageTreatmentPlans = currentProfile.profile
     ? treatmentPlanWriteRoles.includes(currentProfile.profile.role)
+    : false
+  const canCompleteVisit = currentProfile.profile
+    ? visitCompletionRoles.includes(currentProfile.profile.role)
     : false
   const canArchiveOrRestore = currentProfile.profile
     ? patientArchiveRoles.includes(currentProfile.profile.role)
@@ -287,11 +298,17 @@ export function PatientDetailPage() {
         }
       />
 
-      <PatientTodayPanel patient={patient} isArchived={isArchived} />
+      <PatientTodayPanel
+        patient={patient}
+        isArchived={isArchived}
+        canCompleteVisit={canCompleteVisit}
+        onCompleteVisit={() => navigate(getPatientVisitCompletionPath(patient.id))}
+      />
 
       <PatientQuickActions
         role={currentProfile.profile?.role ?? null}
         isArchived={isArchived}
+        onCompleteVisit={() => navigate(getPatientVisitCompletionPath(patient.id))}
         onEditMedicalRecord={() =>
           navigate(getPatientMedicalRecordEditPath(patient.id))
         }

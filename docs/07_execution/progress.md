@@ -1003,6 +1003,266 @@ Initial stack:
 
 ---
 
+## 2026-05-14
+
+### Completed (Task 37)
+
+- Created `docs/design/task-37-visit-completion-prototype.md`.
+- Inspected current appointment/visit model boundaries:
+	- no implemented appointment service or appointment table in frontend flow,
+	- no implemented visits table or visit service,
+	- patient detail uses patient fields for next appointment, active plan, last note, last visit, and next step context,
+	- clinical notes, odontogram statuses, and treatment plans already exist as patient-scoped modules.
+- Added patient-scoped Visit Completion route:
+	- `/patients/:patientId/visit-completion`
+	- `getPatientVisitCompletionPath(patientId)`
+- Created `VisitCompletionPage`, `VisitCompletionFlow`, and `VisitCompletionSummary`.
+- Applied the focused workflow architecture decision:
+	- route-based Visit Completion flow,
+	- compact patient/visit context,
+	- stepper navigation,
+	- one main task visible at a time,
+	- Back / Next controls,
+	- Review & Complete step,
+	- final confirmation,
+	- local success state.
+- Added prototype sections for:
+	- patient context,
+	- visit context,
+	- performed procedures,
+	- clinical notes,
+	- next step,
+	- attachments placeholder,
+	- completion summary,
+	- complete visit action,
+	- validation,
+	- confirmation and success state.
+- Wired safe navigation from:
+	- `PatientQuickActions`,
+	- `PatientTodayPanel`.
+- Kept completion data local/prototype-only:
+	- no Supabase writes,
+	- no localStorage writes,
+	- no demo patient mutation,
+	- no appointment, visit, payment, material, or file record creation.
+- Added route access for `owner_admin`, `doctor`, `specialist`, and `assistant`.
+
+### Verification (Task 37)
+
+- `npm run build` passes.
+- `npm run lint` passes.
+- Visual browser inspection remains recommended for Patient Quick Actions, Today Panel, Visit Completion prototype, and mobile/tablet/desktop widths.
+- Supabase reset and RLS script suite were not run because this task adds a local prototype workflow and does not change database schema, RLS, or service persistence.
+
+### Follow-up (Task 37)
+
+- Persist visit completion data.
+- Connect performed procedures to treatment plan items.
+- Connect follow-up workflow to appointments.
+- Add attachments/photos.
+- Add audit/history trail.
+
+---
+
+### Completed (Task 38)
+
+- Created `docs/design/task-38-responsive-app-shell-and-workflow-navigation.md`.
+- Added Decision 057 documenting the responsive app shell and focused workflow navigation pattern.
+- Updated `AppShell` to support mobile navigation drawer state, route-change close behavior, and Escape-key close behavior.
+- Reworked main navigation:
+	- mobile uses a burger button and fullscreen menu overlay,
+	- tablet portrait uses a collapsed icon rail from `md`,
+	- desktop uses an expanded sidebar from `xl`,
+	- active route highlighting is preserved.
+- Updated `TopBar` to avoid crowded mobile status content and expose the mobile menu button.
+- Updated Visit Completion workflow navigation:
+	- mobile uses a compact sticky progress/status header,
+	- mobile hides the large stepper,
+	- `sm+` keeps a horizontal stepper,
+	- route, local state, validation, confirmation, and success state are preserved.
+- No backend persistence, Supabase writes, or database schema changes were added.
+
+### Verification (Task 38)
+
+- `npm run build` passes through `npm.cmd run build`.
+- `npm run lint` passes through `npm.cmd run lint`.
+- Visit Completion route returns HTTP 200 locally.
+- Manual browser responsive checks remain recommended at 375px, 768px, 1024px, and 1280px+.
+
+---
+
+### Completed (Task 38B)
+
+- Created `docs/design/task-38b-responsive-polish-pass.md`.
+- Reviewed responsive risks after Task 38 app shell changes.
+- Added horizontal overflow containment to the app shell and main content area.
+- Tightened mobile TopBar text behavior so diagnostic/status text does not crowd small screens.
+- Tightened mobile navigation overlay header truncation and overflow containment.
+- Refined Visit Completion mobile workflow header and sticky action spacing:
+	- shorter sticky progress header,
+	- smaller progress bar,
+	- reduced bottom action padding,
+	- preserved current step visibility and Back / Next / Complete behavior.
+- Documented the current tablet rail text markers as acceptable for now and noted future icon dependency/design-system follow-up.
+- No backend persistence, Supabase writes, or database schema changes were added.
+
+### Verification (Task 38B)
+
+- `npm run build` passes through `npm.cmd run build`.
+- `npm run lint` passes through `npm.cmd run lint`.
+- Route checks return HTTP 200 for `/patients`, `/patients/demo-patient-001`, and `/patients/demo-patient-001/visit-completion`.
+
+---
+
+### Completed (Task 39)
+
+- Created `docs/design/task-39-visit-completion-data-model-and-persistence-plan.md`.
+- Inspected existing Supabase migrations, seed data, patient service, clinical notes service, treatment plan service, Visit Completion UI state, PatientTodayPanel, PatientQuickActions, and current routing.
+- Confirmed existing schema has patient, medical record, clinical note, odontogram, treatment plan, treatment plan item, audit log, and RLS foundations.
+- Confirmed there are no implemented appointment or visit tables yet.
+- Documented the appointment vs visit relationship:
+	- appointment = scheduled event,
+	- visit = clinical record of what happened,
+	- a visit may originate from an appointment,
+	- completion should not be only an appointment status change.
+- Documented current Visit Completion local state fields.
+- Proposed minimal persistence model:
+	- `visits`,
+	- `visit_procedures`,
+	- reuse `clinical_notes.visit_id` after `visits` exists.
+- Defined draft/completed behavior and future reopen/amend considerations.
+- Documented RLS/security expectations using current clinic/profile/role helper pattern.
+- Proposed TypeScript service-layer shape for Task 40.
+- Prepared recommended Task 40 implementation plan.
+- No Supabase writes, database reset, migration application, or production-impacting schema changes were added.
+
+### Verification (Task 39)
+
+- `npm run build` passes through `npm.cmd run build`.
+- `npm run lint` passes through `npm.cmd run lint`.
+
+---
+
+### Completed (Task 40A)
+
+- Created `supabase/migrations/20260514190000_create_visit_completion_tables.sql`.
+- Added proposed database foundation for Visit Completion:
+	- `visits`,
+	- `visit_procedures`,
+	- foreign key from `clinical_notes.visit_id` to `visits(id)`.
+- Added table and column comments following existing migration conventions.
+- Added practical indexes for clinic, patient, status, visit date, visit procedure lookup, sort order, and soft archive markers.
+- Added `updated_at` triggers using existing `public.update_updated_at_column()`.
+- Enabled RLS on `visits` and `visit_procedures`.
+- Added clinic-scoped, active-profile-scoped, role-based select/insert/update policies for clinical workflow roles:
+	- `owner_admin`,
+	- `doctor`,
+	- `specialist`,
+	- `assistant`.
+- Preserved existing `clinical_notes` RLS and documented assistant-role clinical note nuance for the service integration task.
+- Created `docs/design/task-40a-visit-completion-migration-and-rls.md`.
+- No frontend persistence, VisitCompletionFlow changes, Supabase frontend writes, billing, payment, material, attachment, odontogram, treatment plan mutation, follow-up appointment creation, or audit triggers were added.
+- The migration was created only; no `db reset` was run.
+
+### Verification (Task 40A)
+
+- `npm run build` passes through `npm.cmd run build`.
+- `npm run lint` passes through `npm.cmd run lint`.
+- SQL was reviewed against existing migration conventions, but the migration was not applied locally in this task.
+
+---
+
+### Completed (Task 40B)
+
+- Applied the Visit Completion migration locally with `npx.cmd supabase db reset`.
+- Confirmed local reset applied `20260514190000_create_visit_completion_tables.sql`.
+- Re-provisioned local demo auth users and profiles with `supabase/snippets/provisionDemoAuthUsers.mjs`.
+- Created `supabase/snippets/testVisitCompletionRls.mjs`.
+- Smoke test verified:
+	- `visits` table is reachable,
+	- `visit_procedures` table is reachable,
+	- clinical workflow roles can insert/select/update visits,
+	- clinical workflow roles can insert/select/update visit procedures,
+	- reception and inventory roles cannot read/create visit records,
+	- hard delete does not remove visit/procedure rows through RLS,
+	- `clinical_notes.visit_id` accepts valid visit IDs for clinical note roles,
+	- invalid `clinical_notes.visit_id` is rejected by FK for clinical note roles,
+	- assistants can write visits/procedures but remain blocked from clinical note writes.
+- Ran `npx.cmd supabase db lint`; no schema errors were found.
+- Created `docs/design/task-40b-visit-completion-migration-validation.md`.
+- No frontend persistence, VisitCompletionFlow changes, visitCompletionService, billing, payment, materials, attachments, treatment plan mutation, appointment creation, odontogram mutation, or clinical_notes RLS expansion was added.
+
+### Verification (Task 40B)
+
+- `npx.cmd supabase db reset` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `npx.cmd supabase db lint` passes.
+- `npm run build` passes through `npm.cmd run build`.
+- `npm run lint` passes through `npm.cmd run lint`.
+
+---
+
+### Completed (Task 40C)
+
+- Created `src/features/visits/visitCompletionService.ts`.
+- Added Visit Completion service-level types for visit status, next step, procedure input, draft input, normalized draft records, warnings, and write results.
+- Implemented `fetchLatestOpenVisitCompletion(patientId)` for loading the latest open Supabase visit draft with procedure rows and linked clinical note when available.
+- Implemented `saveVisitCompletionDraft(input)` for creating/updating open visit drafts, saving recommendation and next step, replacing procedure rows, saving permitted clinical note content, linking `visits.clinical_note_id`, and writing visit draft audit events.
+- Implemented `replaceVisitProcedures(visitId, patientId, procedures)` using soft-delete replacement semantics for `visit_procedures`.
+- Implemented `completeVisit(input)` with the minimum completion rule, draft save-before-complete behavior, `completed_at`, `completed_by`, and visit completion audit logging.
+- Kept assistant clinical-note behavior explicit:
+	- assistants can persist visits and procedure rows,
+	- assistants cannot persist `clinical_notes`,
+	- assistant-entered clinical note text returns a structured `clinical_note_permission_denied` warning instead of failing silently.
+- Kept demo mode non-persistent with no demo data mutation and no localStorage persistence.
+- Did not connect the service to `VisitCompletionFlow`, add autosave, change schema, add frontend Supabase writes from the UI, or add billing/payment/material/attachment/treatment-plan/appointment/odontogram mutation.
+- Created `docs/design/task-40c-visit-completion-service-layer.md`.
+
+### Verification (Task 40C)
+
+- `npm run build` passes through `npm.cmd run build`.
+- `npm run lint` passes through `npm.cmd run lint`.
+
+---
+
+### Completed (Task 40D)
+
+- Connected the route-based Visit Completion workflow UI to `visitCompletionService`.
+- Added open draft loading on `/patients/:patientId/visit-completion` through `fetchLatestOpenVisitCompletion(patientId)`.
+- Populated local workflow state from loaded drafts:
+	- `visitId`,
+	- performed procedure rows,
+	- clinical note,
+	- recommendation,
+	- selected next step,
+	- service warnings.
+- Added explicit `Save Draft` action with no autosave.
+- Wired Save Draft to `saveVisitCompletionDraft`, including returned `visitId`, normalized draft state, saved timestamp, service messages, warnings, and errors.
+- Updated final confirmation to call `completeVisit`.
+- Kept success state dependent on service success rather than local-only simulation.
+- Added loading, saving, and completing UI states.
+- Surfaced structured service warnings in the workflow:
+	- assistant clinical-note permission limitation,
+	- demo mode non-persistent behavior,
+	- clinical note unavailable,
+	- audit log failure.
+- Kept assistant clinical-note limitation visible without changing `clinical_notes` RLS:
+	- assistant note-only completion fails,
+	- assistant procedure/next-step completion can succeed while warning that note text was not persisted.
+- Converted Visit Completion next-step values to the persisted `VisitNextStep` enum values used by the service.
+- Preserved focused workflow UX, route, stepper, sticky mobile progress header, confirmation pattern, and local form state.
+- Did not add autosave, schema changes, billing/payment/material/attachment persistence, treatment-plan mutation, appointment mutation, follow-up creation, or odontogram mutation.
+- Created `docs/design/task-40d-connect-visit-completion-ui-to-persistence.md`.
+
+### Verification (Task 40D)
+
+- `npm run build` passes through `npm.cmd run build`.
+- `npm run lint` passes through `npm.cmd run lint`.
+- Manual role-based browser verification remains recommended for doctor/specialist/assistant Supabase sessions.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.
