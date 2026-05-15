@@ -1263,6 +1263,466 @@ Initial stack:
 
 ---
 
+### Completed (Task 40E)
+
+- Polished Visit Completion draft lifecycle feedback:
+	- loading existing open draft,
+	- open draft loaded,
+	- no open draft found,
+	- successful draft save,
+	- persisted Last saved timestamp from `updated_at`,
+	- user-friendly save/load/complete error notices.
+- Strengthened busy-state handling:
+	- Save Draft, Complete Visit, confirmation, step navigation, and editable fields are disabled while loading/saving/completing,
+	- save and completion handlers use guarded execution and `try/finally` cleanup,
+	- accidental double-submit is blocked by UI disabled states and handler guards.
+- Added incomplete procedure-row feedback:
+	- rows missing a procedure name are shown as incomplete,
+	- incomplete rows are not counted as performed work,
+	- users are prompted to add the procedure name or remove the row before completion.
+- Updated completion success behavior:
+	- completed state no longer returns to an editable review for the completed visit,
+	- success state routes back to the patient record,
+	- refresh after completion does not reload the completed visit as an open editable draft.
+- Confirmed existing auth architecture remains in place:
+	- Visit Completion stays behind `ProtectedRoute`,
+	- route role access remains limited to owner/admin, doctor, specialist, and assistant clinical workflow roles.
+- Preserved focused route-based workflow UX and did not add autosave, billing, payments, materials, attachments, treatment-plan mutation, appointment mutation, odontogram mutation, or new modules.
+- Created `docs/design/task-40e-authenticated-browser-persistence-smoke-test-and-ux-polish.md`.
+
+### Verification (Task 40E)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes with local Supabase env values.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- Authenticated headless Chrome browser smoke passed with `doctor.demo@example.test`:
+	- authenticated session opened,
+	- protected Visit Completion route opened,
+	- draft saved with success feedback,
+	- saved draft reloaded after browser refresh,
+	- edited draft saved and reloaded,
+	- visit completed with success state,
+	- completed visit did not reload as open editable draft after refresh,
+	- browser session persisted during the flow.
+
+### Known Limitations (Task 40E)
+
+- No autosave.
+- No draft conflict handling.
+- No completed visit amend/reopen workflow.
+- Completed visits are persisted but not yet visible in a dedicated patient visit history/timeline.
+- Assistant clinical-note persistence remains limited by existing `clinical_notes` RLS.
+- Billing, payments, materials, attachments, treatment-plan mutation, appointment mutation, follow-up creation, and odontogram mutation remain intentionally out of scope.
+
+---
+
+### Completed (Task 41)
+
+- Added completed visit history data access through `fetchCompletedVisitsForPatient(patientId)`.
+- The completed visit query:
+	- loads `completed` visits for the selected patient,
+	- orders newest first,
+	- hydrates visit procedures,
+	- loads linked clinical note content when the current role can read it,
+	- respects existing Supabase auth and RLS,
+	- returns an empty list in demo mode.
+- Created `PatientVisitTimeline` and wired it into the existing Patient Full Record `Timeline` tab.
+- Timeline cards show:
+	- visit date and completed timestamp,
+	- completed status,
+	- procedure count,
+	- procedure summary and per-procedure details,
+	- clinical note,
+	- recommendation,
+	- next step,
+	- clinical note availability warnings when applicable.
+- Added timeline UX states:
+	- loading,
+	- empty,
+	- error with retry,
+	- long-note and multi-procedure wrapping inside cards.
+- Linked Visit Completion success to patient history:
+	- success action now reads `View visit history`,
+	- completion routes to `/patients/:patientId?section=timeline`,
+	- Patient Detail opens the Timeline tab from the `section=timeline` query parameter.
+- Refreshed stale Today Panel copy so Visit Completion is no longer described as unimplemented or non-persistent.
+- No schema or RLS change was needed.
+- Did not add appointments, follow-up scheduling, billing, payments, materials, attachments, treatment-plan mutation, visit editing/deletion, filtering, analytics, or calendar integration.
+- Created `docs/design/task-41-visit-history-patient-timeline.md`.
+
+### Verification (Task 41)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- Authenticated headless Chrome smoke passed with `doctor.demo@example.test`:
+	- completed a new visit,
+	- returned through `View visit history`,
+	- confirmed the completed visit appeared in the patient Timeline,
+	- confirmed procedure, clinical note, recommendation, and next step were visible,
+	- refreshed the patient record and confirmed the timeline persisted,
+	- opened another patient with no completed visits and confirmed the empty state.
+
+### Known Limitations (Task 41)
+
+- Timeline is display-only.
+- No visit edit, amend, reopen, or delete workflow.
+- No filtering/search.
+- No appointment or follow-up creation from next step yet.
+- No real-time subscriptions.
+- Demo mode shows an empty completed-visit timeline because completed visits are stored in Supabase only.
+- Assistant users may see clinical-note unavailable warnings where existing `clinical_notes` RLS prevents note reads.
+
+---
+
+### Completed (Task 42)
+
+- Chose the lightweight UI-only follow-up approach.
+- No migration, schema change, RLS change, appointment table, task table, or persistent handled/dismissed status was added.
+- Added `PatientFollowUpSummary` below the Today / Next Step panel.
+- Follow-up summary derives pending follow-up context from completed visits loaded through `fetchCompletedVisitsForPatient(patientId)`.
+- A completed visit is treated as follow-up-relevant when it has:
+	- a non-empty recommendation, or
+	- a `next_step` other than `no_follow_up`.
+- The summary shows:
+	- latest relevant source visit date,
+	- next step label,
+	- recommendation text,
+	- procedure count,
+	- loading state,
+	- empty/no pending state,
+	- error state with retry.
+- Added `View source visit` from the follow-up summary.
+- Patient Detail now supports source-visit timeline navigation through:
+	- `?section=timeline&visitId=:visitId`.
+- Updated `PatientVisitTimeline`:
+	- follow-up-relevant visits show a compact warning badge,
+	- visits without recommendation/next step stay visually quiet,
+	- timeline cards can be highlighted and scrolled into view by `visitId`.
+- Preserved Visit Completion and Patient Timeline persistence behavior.
+- Did not add full appointment scheduling, calendar integration, reminders, billing, payments, materials, attachments, treatment-plan mutation, recurring reminders, staff assignment, analytics, or advanced filtering/search.
+- Created `docs/design/task-42-follow-up-next-step-handling.md`.
+
+### Verification (Task 42)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- Authenticated headless Chrome smoke passed with `doctor.demo@example.test`:
+	- empty follow-up state shown,
+	- completed visit without recommendation/next step kept the empty follow-up summary,
+	- first follow-up visit appeared in the summary and timeline,
+	- second follow-up visit superseded the earlier one in the compact summary,
+	- both follow-up visits remained visible in the timeline,
+	- `View source visit` opened the timeline context,
+	- follow-up information remained visible after refresh.
+
+### Known Limitations (Task 42)
+
+- Follow-up state is display-only.
+- No persistent handled/dismissed status.
+- No appointment or staff task creation.
+- No reminders or notifications.
+- Compact summary shows only the latest relevant follow-up.
+- Older follow-up recommendations remain visible only in the timeline.
+- Demo mode does not synthesize follow-up history outside Supabase-backed completed visits.
+
+---
+
+### Completed (Task 43A)
+
+- Created `supabase/migrations/20260515100000_create_appointments.sql`.
+- Added `public.appointments` as the appointments foundation table.
+- Appointment fields include:
+	- `id`,
+	- `clinic_id`,
+	- `patient_id`,
+	- `scheduled_start`,
+	- `scheduled_end`,
+	- `status`,
+	- `reason`,
+	- `notes`,
+	- `created_by`,
+	- `updated_by`,
+	- `created_at`,
+	- `updated_at`.
+- Added appointment status constraint for:
+	- `scheduled`,
+	- `completed`,
+	- `cancelled`,
+	- `no_show`.
+- Added `scheduled_end > scheduled_start` constraint when `scheduled_end` is present.
+- Added indexes for clinic, patient, scheduled start, status, clinic/status, patient/scheduled start, and clinic/scheduled start lookups.
+- Added `update_appointments_updated_at` trigger using the existing `update_updated_at_column()` pattern.
+- Enabled RLS on `appointments`.
+- Added clinic-scoped, active-profile-scoped RLS policies:
+	- owner/admin, doctor, specialist, assistant, and reception can view appointments,
+	- owner/admin, doctor, specialist, assistant, and reception can create/update appointments,
+	- inventory cannot read/create/update appointments,
+	- unauthenticated access is blocked,
+	- appointment patient must belong to the same clinic as the appointment record.
+- No hard delete policy was added.
+- Created `supabase/snippets/testAppointmentsRls.mjs`.
+- Did not add appointment UI, service layer, calendar, reminders, external calendar sync, billing, or Visit Completion bridge.
+- Created `docs/design/task-43a-appointments-data-model-rls.md`.
+
+### Verification (Task 43A)
+
+- Applied migrations locally with `npx.cmd supabase db reset`.
+- Re-provisioned local demo users with `node .\supabase\snippets\provisionDemoAuthUsers.mjs`.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes:
+	- unauthenticated access is blocked,
+	- allowed roles can select/insert/update,
+	- inventory role cannot select/insert/update,
+	- patient context is checked,
+	- invalid status is rejected,
+	- invalid end time is rejected,
+	- invalid patient context is rejected,
+	- hard delete remains unavailable through RLS,
+	- `updated_at` changes on update.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` still passes.
+- `npx.cmd supabase db lint` passes with no schema errors.
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+
+### Known Limitations (Task 43A)
+
+- No appointment UI.
+- No appointment service layer.
+- No calendar view.
+- No reminder or notification model.
+- No external calendar sync.
+- No appointment-to-visit linkage yet.
+- No Visit Completion bridge.
+
+---
+
+### Completed (Task 43B)
+
+- Created `src/features/appointments/appointmentService.ts`.
+- Added appointment service types:
+	- `AppointmentStatus`,
+	- `Appointment`,
+	- `CreateAppointmentInput`,
+	- `UpdateAppointmentStatusInput`,
+	- `AppointmentWriteResult`.
+- Implemented `fetchAppointmentsForPatient(patientId)`:
+	- returns all appointments for a patient,
+	- orders by `scheduled_start` descending,
+	- returns an empty array in demo mode.
+- Implemented `fetchUpcomingAppointmentsForPatient(patientId)`:
+	- returns future `scheduled` appointments,
+	- orders by `scheduled_start` ascending,
+	- returns an empty array in demo mode.
+- Implemented `createAppointment(input)`:
+	- validates patient and schedule input,
+	- creates a `scheduled` appointment,
+	- derives `clinic_id`, `created_by`, and `updated_by` from the active profile,
+	- respects existing appointment RLS,
+	- returns a non-persistent demo-mode result outside Supabase mode.
+- Implemented `updateAppointmentStatus(input)`:
+	- validates appointment id and status,
+	- updates only appointment `status` plus `updated_by`,
+	- respects existing appointment RLS.
+- Created `supabase/snippets/testAppointmentService.mjs`.
+- Did not add appointment UI, calendar, reminders, appointment-to-visit bridge, follow-up bridge, billing, or treatment plan mutation.
+- Created `docs/design/task-43b-appointment-service-layer.md`.
+
+### Verification (Task 43B)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes:
+	- authenticated doctor can create an appointment,
+	- patient appointment fetch returns the created appointment,
+	- upcoming appointment fetch returns the created scheduled future appointment,
+	- status update changes the appointment to `completed`.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` still passes.
+- `npx.cmd supabase db lint` passes with no schema errors.
+
+### Known Limitations (Task 43B)
+
+- No appointment UI.
+- No calendar view.
+- No reminder or notification model.
+- No appointment-to-visit bridge.
+- No follow-up bridge.
+- No recurrence, provider, chair, or resource assignment.
+
+---
+
+### Completed (Task 43C)
+
+- Created `src/features/patients/PatientAppointmentSummary.tsx`.
+- Added a compact patient appointment section to the patient record:
+	- next upcoming appointment,
+	- date/time,
+	- reason,
+	- notes,
+	- status badge,
+	- loading state,
+	- empty state,
+	- error state with retry.
+- Added appointment creation in patient context:
+	- date,
+	- time,
+	- duration,
+	- reason,
+	- notes,
+	- `scheduled` default status,
+	- success and friendly error feedback,
+	- summary refresh after create.
+- Added basic status actions for the next upcoming appointment:
+	- Complete,
+	- Cancel,
+	- No-show.
+- Extended `PatientFollowUpSummary` with a `Schedule appointment` action:
+	- scrolls/focuses the appointment form,
+	- prefills appointment reason from recommendation or next-step label,
+	- does not mark the UI-only follow-up as handled.
+- Mounted the appointment summary in `PatientDetailPage` below the follow-up summary.
+- Updated appointment fetch services so Supabase query/client errors surface to UI error states instead of being silently treated as empty results.
+- Created `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs`.
+- Created `docs/design/task-43c-patient-appointment-ui-follow-up-bridge.md`.
+
+### Verification (Task 43C)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes:
+	- unauthenticated patient route redirects to login,
+	- patient with no appointments shows an empty appointment state,
+	- follow-up recommendation opens/prefills the appointment form,
+	- appointment creation succeeds,
+	- refresh keeps the appointment visible,
+	- status update succeeds and removes completed appointment from upcoming summary.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` still passes.
+
+### Known Limitations (Task 43C)
+
+- No full calendar view.
+- No provider, chair, or resource scheduling.
+- No recurring appointments.
+- No reminders or notification workflow.
+- No external calendar sync.
+- No automatic appointment-to-visit conversion.
+- Follow-up bridge only prefills appointment reason; it does not persist a handled follow-up state.
+
+---
+
+### Completed (Task 44)
+
+- Added `supabase/migrations/20260515103000_link_visits_to_appointments.sql`.
+- Formalized the existing `visits.appointment_id` placeholder:
+	- added foreign key to `appointments(id)`,
+	- added `on delete set null`,
+	- added `visits_appointment_id_idx`,
+	- updated column comment.
+- Added `fetchAppointmentForPatient(patientId, appointmentId)` to the appointment service.
+- Added `Start visit` action to `PatientAppointmentSummary`.
+- Kept Visit Completion on the existing patient route and passed appointment context through `?appointmentId=...`.
+- Updated `VisitCompletionPage` to read optional appointment context for the current patient.
+- Updated `VisitCompletionFlow` to show a compact appointment context notice:
+	- scheduled date/time,
+	- reason,
+	- status.
+- Threaded linked `appointmentId` through draft save and completion.
+- Updated `completeVisit(input)` so completing a linked visit marks the appointment `completed`.
+- Added warning behavior for partial success:
+	- if visit completion succeeds but appointment status update fails, the completed visit is preserved and a warning is returned.
+- Updated `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` to cover the appointment-to-visit bridge.
+- Created `docs/design/task-44-appointment-to-visit-workflow-bridge.md`.
+
+### Verification (Task 44)
+
+- `npx.cmd supabase db reset` passes and applies the appointment bridge migration.
+- `npx.cmd supabase db lint` passes with no schema errors.
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\provisionDemoAuthUsers.mjs` passes after reset.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes:
+	- unauthenticated route redirects to login,
+	- appointment can be created from the patient record,
+	- `Start visit` opens Visit Completion with appointment context,
+	- visit completes from the linked appointment,
+	- completed visit is linked to the appointment,
+	- appointment status becomes `completed`,
+	- appointment no longer appears as upcoming,
+	- completed visit appears in the patient timeline,
+	- normal Visit Completion still opens without appointment context.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` still passes.
+
+### Known Limitations (Task 44)
+
+- No full calendar view.
+- No provider, chair, or resource scheduling.
+- No recurring appointments.
+- No reminders or external calendar sync.
+- No appointment conflict detection.
+- No automatic visit creation before the user starts Visit Completion.
+- No completed visit detail/review screen yet.
+- No automatic follow-up handled state.
+
+---
+
+### Completed (Task 45)
+
+- Added read-only completed visit review route:
+	- `/patients/:patientId/visits/:visitId`.
+- Added route access using the existing patient-read role set.
+- Created `src/pages/PatientVisitDetailPage.tsx`.
+- Added `fetchCompletedVisitById(patientId, visitId)` to `visitCompletionService`.
+- Added linked appointment detail loading for completed visit review.
+- Updated `PatientVisitTimeline.tsx`:
+	- each completed visit card now has a `View details` action.
+- Completed visit detail shows:
+	- patient context,
+	- visit date/status,
+	- read-only state,
+	- linked appointment context when present,
+	- procedure list/details,
+	- clinical note,
+	- recommendation,
+	- next step,
+	- back link to patient timeline.
+- Handled loading, error, not found, not completed, no-procedure, long-note, and many-procedure states.
+- Updated `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` to verify completed visit detail review.
+- Created `docs/design/task-45-visit-detail-completed-visit-review.md`.
+
+### Verification (Task 45)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes:
+	- appointment-to-visit completion still works,
+	- completed visit appears in patient timeline,
+	- `View details` opens completed visit review,
+	- procedure, note, recommendation, and linked appointment context are visible,
+	- detail route survives refresh,
+	- `Back to timeline` returns to the patient timeline,
+	- normal Visit Completion still opens without appointment context.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` still passes.
+
+### Known Limitations (Task 45)
+
+- No print/PDF export yet.
+- No visit editing or deletion.
+- No audit UI.
+- No billing, materials, or attachments.
+- No treatment plan mutation.
+- Linked appointment context is read-only summary only.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.

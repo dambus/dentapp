@@ -160,14 +160,14 @@ export function PatientTodayPanel({
           />
           <MetricTile
             label="Visit completion"
-            value="Not implemented yet"
-            description="Performed work, generated notes, materials, pricing, payments, and commissions remain future workflow phases."
+            value="Draft and completion active"
+            description="Completed visits now appear in the patient timeline. Materials, pricing, payments, and commissions remain future workflow phases."
           />
         </div>
 
         <InlineNotice className="border-dashed bg-white/70" variant="info">
-          Visit completion opens a prototype workflow in this phase. It does not
-          create appointments, visits, payments, materials, or clinical entries.
+          Visit completion saves draft and completed visit records. It does not
+          create appointments, payments, materials, or ledger entries yet.
         </InlineNotice>
       </CardContent>
     </Card>

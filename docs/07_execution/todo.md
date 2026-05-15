@@ -169,6 +169,14 @@ Status legend:
   - [x] Task 40B: Apply and Validate Visit Completion Migration + RLS Smoke Test
   - [x] Task 40C: Visit Completion service layer
   - [x] Task 40D: Connect Visit Completion UI to persistence
+  - [x] Task 40E: Authenticated Browser Persistence Smoke Test and UX Polish
+  - [x] Task 41: Visit History / Patient Timeline
+  - [x] Task 42: Follow-up / Next Step Handling
+  - [x] Task 43A: Appointments Data Model + RLS
+  - [x] Task 43B: Appointments Service Layer
+  - [x] Task 43C: Patient Appointment UI + Follow-up Bridge
+  - [x] Task 44: Appointment to Visit Workflow Bridge
+  - [x] Task 45: Visit Detail / Completed Visit Review
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -197,13 +205,110 @@ Status legend:
 - [x] Create Visit Completion service layer
 - [x] Connect Visit Completion UI to draft persistence
 - [x] Connect Visit Completion UI to completed state persistence
-- [ ] Add Visit Completion browser/RLS interaction test coverage
+- [x] Add Visit Completion browser/RLS interaction test coverage
+- [x] Task 41 - Visit History / Patient Timeline
+- [x] Task 42 - Follow-up / Next Step Handling
+- [x] Task 43A - Appointments Data Model + RLS
+- [x] Task 43B - Appointments Service Layer
+- [x] Task 43C - Patient Appointment UI + Follow-up Bridge
+- [x] Task 44 - Appointment to Visit Workflow Bridge
+- [x] Task 45 - Visit Detail / Completed Visit Review
+- [ ] Task 46 - Visit Review Print/PDF Preparation
 - [ ] Material suggestion model
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
 - [ ] Plan performed services foundation
 - [ ] Plan payment/ledger foundation
+
+### Completed Recommended Task
+
+Task 41 - Visit History / Patient Timeline
+
+Completed direction:
+
+- display completed visits in patient context,
+- create a basic chronological patient timeline,
+- connect completed Visit Completion records to visible patient history.
+
+### Completed Recommended Task
+
+Task 42 - Follow-up / Next Step Handling
+
+Completed direction:
+
+- use recommendation / next step from completed visits,
+- create a lightweight follow-up action model or UI,
+- do not build full appointments/calendar yet unless needed.
+
+### Completed Recommended Task
+
+Task 43A - Appointments Data Model + RLS
+
+Completed direction:
+
+- create basic appointment data model,
+- add appointment RLS policies,
+- validate appointment RLS behavior.
+
+### Completed Recommended Task
+
+Task 43B - Appointments Service Layer
+
+Completed direction:
+
+- create typed appointment service functions,
+- fetch patient appointments and upcoming appointments,
+- keep UI and advanced calendar views out of scope.
+
+### Completed Recommended Task
+
+Task 43C - Patient Appointment UI + Follow-up Bridge
+
+Completed direction:
+
+- connect patient to scheduled visits in the patient context,
+- create appointment UI entry points from patient/follow-up context,
+- keep advanced calendar views out of scope.
+
+### Completed Recommended Task
+
+Task 44 - Appointment to Visit Workflow Bridge
+
+Completed direction:
+
+- allow a scheduled appointment to become the starting context for Visit Completion,
+- keep the bridge focused and route-based,
+- do not build a full calendar workflow yet.
+
+### Completed Recommended Task
+
+Task 45 - Visit Detail / Completed Visit Review
+
+Completed direction:
+
+- add a focused completed visit review view,
+- make patient timeline visit cards easier to inspect,
+- keep editing/deleting completed visits out of scope unless explicitly needed.
+
+### Next Recommended Task
+
+Task 46 - Visit Review Print/PDF Preparation
+
+Suggested direction:
+
+- prepare the completed visit review layout for printing,
+- add print-friendly CSS and structure,
+- do not build PDF generation until the printed layout is stable.
+
+### Later Appointment Direction
+
+Task 43D - Calendar View Foundation
+
+Suggested direction:
+
+- create basic day/week calendar views,
+- do not yet build advanced calendar views.
 
 
 

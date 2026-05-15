@@ -19,8 +19,9 @@ import {
   getPatientAge,
   patientStatusLabels,
 } from './patientDisplay'
+import { PatientVisitTimeline } from './PatientVisitTimeline'
 import { TreatmentPlansSection } from './TreatmentPlansSection'
-import type { DemoPatient, DemoTimelineEvent } from './types'
+import type { DemoPatient } from './types'
 
 export type PatientFullRecordSection =
   | 'medical-record'
@@ -43,6 +44,7 @@ type PatientFullRecordProps = {
   canManageClinicalNotes: boolean
   canViewTreatmentPlans: boolean
   canManageTreatmentPlans: boolean
+  highlightedVisitId?: string | null
   isPatientArchived: boolean
   onEditMedicalRecord: () => void
 }
@@ -56,10 +58,6 @@ type RecordSectionProps = {
   title: string
   description: string
   children: ReactNode
-}
-
-type TimelineEventProps = {
-  event: DemoTimelineEvent
 }
 
 function DetailItem({ label, value }: DetailItemProps) {
@@ -80,21 +78,6 @@ function RecordSection({ title, description, children }: RecordSectionProps) {
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
-  )
-}
-
-function TimelineEventItem({ event }: TimelineEventProps) {
-  return (
-    <li className="relative pl-6">
-      <span className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full bg-teal-700" />
-      <div className="text-sm font-medium text-slate-950">{event.label}</div>
-      <div className="mt-1 text-xs text-slate-500">
-        {formatPatientDate(event.date)}
-      </div>
-      <p className="mt-2 text-sm leading-6 text-slate-600">
-        {event.description}
-      </p>
-    </li>
   )
 }
 
@@ -124,6 +107,7 @@ export function PatientFullRecord({
   canManageClinicalNotes,
   canViewTreatmentPlans,
   canManageTreatmentPlans,
+  highlightedVisitId,
   isPatientArchived,
   onEditMedicalRecord,
 }: PatientFullRecordProps) {
@@ -456,14 +440,13 @@ export function PatientFullRecord({
           id="patient-timeline-section"
         >
           <RecordSection
-            title="Timeline placeholder"
-            description="Demo events for future patient timeline structure."
+            title="Visit history"
+            description="Completed clinical visits for this patient."
           >
-            <ol className="space-y-5">
-              {patient.timelineEvents.map((event) => (
-                <TimelineEventItem event={event} key={event.id} />
-              ))}
-            </ol>
+            <PatientVisitTimeline
+              highlightedVisitId={highlightedVisitId}
+              patientId={patient.id}
+            />
           </RecordSection>
         </div>
       </CardContent>

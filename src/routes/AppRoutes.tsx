@@ -12,6 +12,7 @@ import { PatientCreatePage } from '../pages/PatientCreatePage'
 import { PatientDetailPage } from '../pages/PatientDetailPage'
 import { PatientEditPage } from '../pages/PatientEditPage'
 import { PatientMedicalRecordEditPage } from '../pages/PatientMedicalRecordEditPage'
+import { PatientVisitDetailPage } from '../pages/PatientVisitDetailPage'
 import { PatientsPage } from '../pages/PatientsPage'
 import { PaymentsPage } from '../pages/PaymentsPage'
 import { ReportsPage } from '../pages/ReportsPage'
@@ -76,6 +77,10 @@ export function AppRoutes() {
             'patientMedicalRecordEdit',
             <PatientMedicalRecordEditPage />,
           )}
+        />
+        <Route
+          path={routePaths.patientVisitDetail}
+          element={withRoleGuard('patientVisitDetail', <PatientVisitDetailPage />)}
         />
         <Route
           path={routePaths.patientVisitCompletion}

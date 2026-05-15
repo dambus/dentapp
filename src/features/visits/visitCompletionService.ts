@@ -63,6 +63,7 @@ export type VisitClinicalNoteDraft = {
 export type VisitCompletionWarningCode =
   | 'clinical_note_permission_denied'
   | 'clinical_note_unavailable'
+  | 'appointment_status_update_failed'
   | 'demo_mode_non_persistent'
   | 'audit_log_failed'
 
@@ -89,6 +90,19 @@ export type VisitCompletionDraft = {
   updatedAt: string
   deletedAt: string | null
   warnings: VisitCompletionServiceWarning[]
+}
+
+export type VisitLinkedAppointment = {
+  id: string
+  scheduledStart: string
+  scheduledEnd: string | null
+  status: string
+  reason: string | null
+  notes: string | null
+}
+
+export type CompletedVisitDetail = VisitCompletionDraft & {
+  linkedAppointment: VisitLinkedAppointment | null
 }
 
 export type VisitCompletionWriteResult = {
@@ -268,6 +282,24 @@ function makeDemoModeWarning(): VisitCompletionServiceWarning {
   return {
     code: 'demo_mode_non_persistent',
     message: 'Demo mode is non-persistent. No visit completion data was saved.',
+  }
+}
+
+type SupabaseVisitAppointmentRow = {
+  id: string
+  scheduled_start: string
+  scheduled_end: string | null
+  status: string
+  reason: string | null
+  notes: string | null
+}
+
+function makeAppointmentStatusWarning(
+  errorMessage: string,
+): VisitCompletionServiceWarning {
+  return {
+    code: 'appointment_status_update_failed',
+    message: `Visit was completed, but the linked appointment could not be marked completed: ${errorMessage}`,
   }
 }
 
@@ -570,6 +602,49 @@ async function createVisitAuditLog(
     return {
       ok: false,
       error: error.message ?? 'Audit log could not be recorded.',
+    }
+  }
+
+  return { ok: true, error: null }
+}
+
+async function markLinkedAppointmentCompleted(
+  appointmentId: string | null,
+  patientId: string,
+  profileContext: SupabaseProfileContextRow,
+) {
+  if (!appointmentId) {
+    return { ok: true, error: null }
+  }
+
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    return {
+      ok: false,
+      error: 'Supabase client is not available.',
+    }
+  }
+
+  const { error } = await supabase
+    .from('appointments')
+    .update({
+      status: 'completed',
+      updated_by: profileContext.id,
+    })
+    .eq('id', appointmentId)
+    .eq('patient_id', patientId)
+    .eq('clinic_id', profileContext.clinic_id)
+
+  if (error) {
+    console.warn(
+      '[visitCompletionService] Linked appointment status update failed.',
+      error,
+    )
+
+    return {
+      ok: false,
+      error: error.message ?? 'Appointment status could not be updated.',
     }
   }
 
@@ -903,6 +978,143 @@ export async function fetchLatestOpenVisitCompletion(
   }
 
   return hydrateVisitDraft(data as SupabaseVisitRow)
+}
+
+export async function fetchCompletedVisitsForPatient(
+  patientId: string,
+): Promise<VisitCompletionDraft[]> {
+  if (!patientId?.trim()) {
+    return []
+  }
+
+  if (patientDataSource !== 'supabase') {
+    return []
+  }
+
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    throw new Error('Supabase client is not available.')
+  }
+
+  const { data, error } = await supabase
+    .from('visits')
+    .select(
+      'id, patient_id, appointment_id, status, visit_date, started_at, completed_at, completed_by, clinical_note_id, recommendation, next_step, created_at, updated_at, deleted_at',
+    )
+    .eq('patient_id', patientId)
+    .eq('status', 'completed')
+    .is('deleted_at', null)
+    .order('completed_at', { ascending: false, nullsFirst: false })
+    .order('visit_date', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.warn(
+      '[visitCompletionService] Completed visits could not be loaded.',
+      error,
+    )
+    throw new Error(error.message ?? 'Completed visits could not be loaded.')
+  }
+
+  const visits = (data as SupabaseVisitRow[] | null) ?? []
+
+  return Promise.all(visits.map((visit) => hydrateVisitDraft(visit)))
+}
+
+async function fetchLinkedAppointment(
+  appointmentId: string | null,
+): Promise<VisitLinkedAppointment | null> {
+  if (!appointmentId) {
+    return null
+  }
+
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    throw new Error('Supabase client is not available.')
+  }
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .select('id, scheduled_start, scheduled_end, status, reason, notes')
+    .eq('id', appointmentId)
+    .maybeSingle()
+
+  if (error) {
+    console.warn(
+      '[visitCompletionService] Linked appointment could not be loaded.',
+      error,
+    )
+    throw new Error(error.message ?? 'Linked appointment could not be loaded.')
+  }
+
+  const appointment = data as SupabaseVisitAppointmentRow | null
+
+  return appointment
+    ? {
+        id: appointment.id,
+        scheduledStart: appointment.scheduled_start,
+        scheduledEnd: appointment.scheduled_end,
+        status: appointment.status,
+        reason: appointment.reason,
+        notes: appointment.notes,
+      }
+    : null
+}
+
+export async function fetchCompletedVisitById(
+  patientId: string,
+  visitId: string,
+): Promise<CompletedVisitDetail | null> {
+  if (!patientId?.trim() || !visitId?.trim()) {
+    return null
+  }
+
+  if (patientDataSource !== 'supabase') {
+    return null
+  }
+
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    throw new Error('Supabase client is not available.')
+  }
+
+  const { data, error } = await supabase
+    .from('visits')
+    .select(
+      'id, patient_id, appointment_id, status, visit_date, started_at, completed_at, completed_by, clinical_note_id, recommendation, next_step, created_at, updated_at, deleted_at',
+    )
+    .eq('id', visitId)
+    .eq('patient_id', patientId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('[visitCompletionService] Completed visit detail failed to load.', error)
+    throw new Error(error.message ?? 'Completed visit could not be loaded.')
+  }
+
+  if (!data) {
+    return null
+  }
+
+  const visit = data as SupabaseVisitRow
+
+  if (visit.status !== 'completed') {
+    throw new Error('This visit is not completed yet.')
+  }
+
+  const [draft, linkedAppointment] = await Promise.all([
+    hydrateVisitDraft(visit),
+    fetchLinkedAppointment(visit.appointment_id),
+  ])
+
+  return {
+    ...draft,
+    linkedAppointment,
+  }
 }
 
 export async function replaceVisitProcedures(
@@ -1277,6 +1489,22 @@ export async function completeVisit(
     data as SupabaseVisitRow,
     draftResult.warnings ?? [],
   )
+  const completionWarnings = [...(draftResult.warnings ?? [])]
+  const appointmentStatusResult = await markLinkedAppointmentCompleted(
+    completedDraft.appointmentId,
+    input.patientId,
+    profileContext,
+  )
+
+  if (!appointmentStatusResult.ok) {
+    completionWarnings.push(
+      makeAppointmentStatusWarning(
+        appointmentStatusResult.error ??
+          'Appointment status could not be updated.',
+      ),
+    )
+  }
+
   const auditResult = await createVisitAuditLog(
     'visit.completed',
     completedDraft,
@@ -1291,7 +1519,7 @@ export async function completeVisit(
       error: auditResult.error ?? 'Audit log could not be recorded.',
       reason: 'audit',
       warnings: [
-        ...(draftResult.warnings ?? []),
+        ...completionWarnings,
         {
           code: 'audit_log_failed',
           message: 'Visit completion audit log could not be recorded.',
@@ -1303,7 +1531,9 @@ export async function completeVisit(
   return {
     ok: true,
     draft: completedDraft,
-    message: 'Visit was completed successfully.',
-    warnings: draftResult.warnings,
+    message: appointmentStatusResult.ok
+      ? 'Visit was completed successfully.'
+      : 'Visit was completed, but the linked appointment status could not be updated.',
+    warnings: completionWarnings,
   }
 }

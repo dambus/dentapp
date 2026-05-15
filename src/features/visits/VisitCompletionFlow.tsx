@@ -16,6 +16,7 @@ import {
   TextInput,
 } from '../../components/ui'
 import { classNames } from '../../lib/classNames'
+import type { Appointment } from '../appointments/appointmentService'
 import {
   formatPatientDate,
   formatPatientDateTime,
@@ -36,7 +37,10 @@ import {
 } from './visitCompletionService'
 
 type VisitCompletionFlowProps = {
+  appointmentContext?: Appointment | null
+  appointmentId?: string | null
   patient: DemoPatient
+  onBackToPatient?: () => void
 }
 
 type ProcedureRow = {
@@ -113,6 +117,16 @@ function getCompletedProcedureCount(procedures: ProcedureRow[]) {
   return procedures.filter((procedure) => procedure.name.trim()).length
 }
 
+function getIncompleteProcedureCount(procedures: ProcedureRow[]) {
+  return procedures.filter(
+    (procedure) =>
+      !procedure.name.trim() &&
+      (procedure.toothOrRegion.trim() ||
+        procedure.quantityOrDuration.trim() ||
+        procedure.note.trim()),
+  ).length
+}
+
 function getNextStepLabel(value: string) {
   return (
     nextStepOptions.find((option) => option.value === value)?.label ??
@@ -120,9 +134,40 @@ function getNextStepLabel(value: string) {
   )
 }
 
-export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
+function getUserFriendlyServiceError(
+  message: string | null | undefined,
+  fallback: string,
+) {
+  if (!message?.trim()) {
+    return fallback
+  }
+
+  if (
+    message.includes('Failed to fetch') ||
+    message.includes('NetworkError') ||
+    message.includes('network')
+  ) {
+    return 'The visit could not be saved because the connection failed. Check the local Supabase service and try again.'
+  }
+
+  if (message.includes('Active profile context')) {
+    return 'Your session is signed in, but no active clinical profile is available. Sign in again or switch to an active clinical user.'
+  }
+
+  return message
+}
+
+export function VisitCompletionFlow({
+  appointmentContext,
+  appointmentId,
+  patient,
+  onBackToPatient,
+}: VisitCompletionFlowProps) {
   const [activeStepIndex, setActiveStepIndex] = useState(0)
   const [visitId, setVisitId] = useState<string | undefined>()
+  const [linkedAppointmentId, setLinkedAppointmentId] = useState<
+    string | null
+  >(appointmentId ?? null)
   const [procedures, setProcedures] = useState<ProcedureRow[]>([
     createProcedureRow(),
   ])
@@ -144,6 +189,8 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
 
   const patientName = getPatientFullName(patient)
   const procedureCount = getCompletedProcedureCount(procedures)
+  const incompleteProcedureCount = getIncompleteProcedureCount(procedures)
+  const hasIncompleteProcedureRows = incompleteProcedureCount > 0
   const hasClinicalNote = Boolean(clinicalNote.trim())
   const hasRecommendation = Boolean(recommendation.trim())
   const hasNextStep = Boolean(nextStep)
@@ -153,6 +200,7 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
   const nextStepLabel = getNextStepLabel(nextStep)
   const age = getPatientAge(patient.dateOfBirth)
   const activeStep = workflowSteps[activeStepIndex]
+  const isBusy = isLoadingDraft || isSavingDraft || isCompleting
   const plannedWork =
     patient.activeTreatmentPlanSummary.trim() ||
     'No planned treatment is recorded in the current patient context.'
@@ -173,13 +221,27 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
     return Array.from(warningSet)
   }, [patient])
 
-  const applyDraft = useCallback((draft: VisitCompletionDraft) => {
-    setVisitId(draft.id)
-    setProcedures(applyDraftToProcedures(draft))
-    setClinicalNote(draft.clinicalNote)
-    setRecommendation(draft.recommendation)
-    setNextStep(draft.nextStep)
-  }, [])
+  const applyDraft = useCallback(
+    (draft: VisitCompletionDraft) => {
+      setVisitId(draft.id)
+      setLinkedAppointmentId(draft.appointmentId ?? appointmentId ?? null)
+      setProcedures(applyDraftToProcedures(draft))
+      setClinicalNote(draft.clinicalNote)
+      setRecommendation(draft.recommendation)
+      setNextStep(draft.nextStep)
+    },
+    [appointmentId],
+  )
+
+  useEffect(() => {
+    if (appointmentId) {
+      const timeoutId = window.setTimeout(() => {
+        setLinkedAppointmentId(appointmentId)
+      }, 0)
+
+      return () => window.clearTimeout(timeoutId)
+    }
+  }, [appointmentId])
 
   useEffect(() => {
     let isCurrent = true
@@ -198,10 +260,12 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
         if (draft) {
           applyDraft(draft)
           setServiceWarnings(draft.warnings)
-          setServiceMessage('Open draft loaded.')
+          setLastSavedAt(draft.updatedAt)
+          setServiceMessage('Open visit draft loaded.')
         } else {
           setServiceWarnings([])
-          setServiceMessage(null)
+          setLastSavedAt(null)
+          setServiceMessage('No open draft found. New visit completion ready.')
         }
       } catch (error) {
         if (isCurrent) {
@@ -263,6 +327,7 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
     return {
       visitId,
       patientId: patient.id,
+      appointmentId: linkedAppointmentId,
       clinicalNote,
       recommendation,
       nextStep: nextStep as VisitNextStep | '',
@@ -285,23 +350,41 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
     setServiceError(null)
     setServiceMessage(null)
 
-    const result = await saveVisitCompletionDraft(buildDraftInput())
+    try {
+      const result = await saveVisitCompletionDraft(buildDraftInput())
 
-    setServiceWarnings(result.warnings ?? [])
+      setServiceWarnings(result.warnings ?? [])
 
-    if (result.ok && result.draft) {
-      setVisitId(result.draft.id)
-      setLastSavedAt(new Date().toISOString())
-      setServiceMessage(result.message ?? 'Visit draft saved.')
-      applyDraft(result.draft)
-    } else {
-      setServiceError(result.error ?? result.message ?? 'Visit draft was not saved.')
+      if (result.ok && result.draft) {
+        setVisitId(result.draft.id)
+        setLastSavedAt(result.draft.updatedAt)
+        setServiceMessage(result.message ?? 'Visit draft saved.')
+        applyDraft(result.draft)
+      } else {
+        setServiceError(
+          getUserFriendlyServiceError(
+            result.error ?? result.message,
+            'Visit draft was not saved. Check your connection and try again.',
+          ),
+        )
+      }
+    } catch (error) {
+      setServiceError(
+        getUserFriendlyServiceError(
+          error instanceof Error ? error.message : null,
+          'Visit draft was not saved. Check your connection and try again.',
+        ),
+      )
+    } finally {
+      setIsSavingDraft(false)
     }
-
-    setIsSavingDraft(false)
   }
 
   function startCompletion() {
+    if (isBusy) {
+      return
+    }
+
     setAttemptedCompletion(true)
     setServiceError(null)
 
@@ -314,7 +397,7 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
   }
 
   async function confirmCompletion() {
-    if (isCompleting) {
+    if (isCompleting || isSavingDraft || isLoadingDraft) {
       return
     }
 
@@ -322,23 +405,39 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
     setServiceError(null)
     setServiceMessage(null)
 
-    const result = await completeVisit(buildDraftInput())
+    try {
+      const result = await completeVisit(buildDraftInput())
 
-    setServiceWarnings(result.warnings ?? [])
+      setServiceWarnings(result.warnings ?? [])
 
-    if (result.ok && result.draft) {
-      setVisitId(result.draft.id)
-      setLastSavedAt(new Date().toISOString())
-      setServiceMessage(result.message ?? 'Visit completed.')
-      applyDraft(result.draft)
-      setCompletionState('completed')
-    } else {
-      setServiceError(result.error ?? result.message ?? 'Visit was not completed.')
+      if (result.ok && result.draft) {
+        setVisitId(result.draft.id)
+        setLastSavedAt(result.draft.updatedAt)
+        setServiceMessage(result.message ?? 'Visit completed.')
+        applyDraft(result.draft)
+        setCompletionState('completed')
+      } else {
+        setServiceError(
+          getUserFriendlyServiceError(
+            result.error ?? result.message,
+            'Visit was not completed. Your entered data is still visible.',
+          ),
+        )
+        setCompletionState('editing')
+        setActiveStepIndex(workflowSteps.length - 1)
+      }
+    } catch (error) {
+      setServiceError(
+        getUserFriendlyServiceError(
+          error instanceof Error ? error.message : null,
+          'Visit was not completed. Your entered data is still visible.',
+        ),
+      )
       setCompletionState('editing')
       setActiveStepIndex(workflowSteps.length - 1)
+    } finally {
+      setIsCompleting(false)
     }
-
-    setIsCompleting(false)
   }
 
   if (completionState === 'completed') {
@@ -350,9 +449,8 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
             <Badge variant="success">Completed</Badge>
           </div>
           <CardDescription>
-            The completion service accepted this visit. Billing, appointments,
-            files, treatment plan changes, and odontogram changes were not
-            created.
+            The completion service accepted this visit. Billing, files,
+            treatment plan changes, and odontogram changes were not created.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -371,13 +469,11 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
             warnings={warnings}
           />
           <Button
-            onClick={() => {
-              setCompletionState('editing')
-              setActiveStepIndex(workflowSteps.length - 1)
-            }}
+            onClick={onBackToPatient}
             variant="secondary"
+            disabled={!onBackToPatient}
           >
-            Return to review
+            View visit history
           </Button>
         </CardContent>
       </Card>
@@ -404,6 +500,10 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
         plannedWork={plannedWork}
         warnings={warnings}
       />
+
+      {appointmentContext ? (
+        <AppointmentContextNotice appointment={appointmentContext} />
+      ) : null}
 
       <MobileWorkflowHeader
         activeStep={activeStep}
@@ -449,6 +549,8 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
 
           {activeStep.id === 'procedures' ? (
             <ProceduresStep
+              disabled={isBusy}
+              hasIncompleteProcedureRows={hasIncompleteProcedureRows}
               procedures={procedures}
               onAddProcedure={() =>
                 setProcedures((currentProcedures) => [
@@ -464,6 +566,7 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
           {activeStep.id === 'notes' ? (
             <NotesStep
               clinicalNote={clinicalNote}
+              disabled={isBusy}
               recommendation={recommendation}
               onClinicalNoteChange={setClinicalNote}
               onRecommendationChange={setRecommendation}
@@ -472,6 +575,7 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
 
           {activeStep.id === 'next-step' ? (
             <NextStep
+              disabled={isBusy}
               nextStep={nextStep}
               onNextStepChange={setNextStep}
             />
@@ -481,6 +585,7 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
             <ReviewStep
               attemptedCompletion={attemptedCompletion}
               clinicalNote={clinicalNote}
+              hasIncompleteProcedureRows={hasIncompleteProcedureRows}
               hasClinicalNote={hasClinicalNote}
               hasNextStep={hasNextStep}
               hasRecommendation={hasRecommendation}
@@ -500,7 +605,7 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
             <CardTitle>Confirm Visit Completion</CardTitle>
             <CardDescription>
               This will save the latest draft data and mark the visit as
-              completed when persistence is available.
+              completed.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 sm:flex-row">
@@ -513,6 +618,7 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
             </Button>
             <Button
               className="min-h-11"
+              disabled={isCompleting}
               onClick={() => setCompletionState('editing')}
               variant="secondary"
             >
@@ -525,7 +631,7 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Button
               className="min-h-11"
-              disabled={activeStepIndex === 0 || isLoadingDraft || isSavingDraft}
+              disabled={activeStepIndex === 0 || isBusy}
               onClick={goToPreviousStep}
               variant="secondary"
             >
@@ -536,9 +642,7 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
                 className="min-h-11"
                 disabled={
                   !hasMeaningfulDraftData ||
-                  isLoadingDraft ||
-                  isSavingDraft ||
-                  isCompleting
+                  isBusy
                 }
                 onClick={handleSaveDraft}
                 variant="secondary"
@@ -548,7 +652,7 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
               {activeStepIndex < workflowSteps.length - 1 ? (
                 <Button
                   className="min-h-11"
-                  disabled={isLoadingDraft || isSavingDraft}
+                  disabled={isBusy}
                   onClick={goToNextStep}
                 >
                   Next
@@ -556,10 +660,10 @@ export function VisitCompletionFlow({ patient }: VisitCompletionFlowProps) {
               ) : (
                 <Button
                   className="min-h-11"
-                  disabled={isLoadingDraft || isSavingDraft || isCompleting}
+                  disabled={isBusy}
                   onClick={startCompletion}
                 >
-                  Complete Visit
+                  {isCompleting ? 'Completing...' : 'Complete Visit'}
                 </Button>
               )}
             </div>
@@ -604,7 +708,8 @@ function ServiceFeedback({
         <InlineNotice
           key={`${warning.code}-${warning.message}`}
           variant={
-            warning.code === 'clinical_note_permission_denied'
+            warning.code === 'clinical_note_permission_denied' ||
+            warning.code === 'appointment_status_update_failed'
               ? 'warning'
               : 'info'
           }
@@ -619,6 +724,40 @@ function ServiceFeedback({
         </InlineNotice>
       ) : null}
     </div>
+  )
+}
+
+function AppointmentContextNotice({
+  appointment,
+}: {
+  appointment: Appointment
+}) {
+  return (
+    <Card className="border-cyan-200 bg-cyan-50/50 shadow-sm">
+      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="info">Appointment context</Badge>
+            <Badge variant="neutral">{appointment.status}</Badge>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            Started from appointment scheduled for{' '}
+            <span className="font-semibold text-slate-950">
+              {formatPatientDateTime(appointment.scheduled_start)}
+            </span>
+            .
+          </p>
+          {appointment.reason?.trim() ? (
+            <p className="mt-1 break-words text-sm leading-6 text-slate-600">
+              {appointment.reason}
+            </p>
+          ) : null}
+        </div>
+        <div className="text-sm text-slate-500">
+          Completing this visit will mark the appointment completed.
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -790,8 +929,8 @@ function PlannedStep({
       />
       <MetricTile
         label="Current visit status"
-        value="Open prototype visit"
-        description="No visits table or completion status exists yet."
+        value="Open visit completion"
+        description="Open drafts save to the visit completion tables."
       />
       <div className="md:col-span-2">
         {warnings.length > 0 ? (
@@ -809,11 +948,15 @@ function PlannedStep({
 }
 
 function ProceduresStep({
+  disabled,
+  hasIncompleteProcedureRows,
   procedures,
   onAddProcedure,
   onRemoveProcedure,
   onUpdateProcedure,
 }: {
+  disabled: boolean
+  hasIncompleteProcedureRows: boolean
   procedures: ProcedureRow[]
   onAddProcedure: () => void
   onRemoveProcedure: (procedureId: string) => void
@@ -829,6 +972,12 @@ function ProceduresStep({
         If this was only a consult or check, you can skip procedures and record
         the visit in Notes or Next Step.
       </InlineNotice>
+      {hasIncompleteProcedureRows ? (
+        <InlineNotice variant="warning">
+          Procedure rows need a procedure name before they can be saved as
+          performed work. Rows without a name are ignored by persistence.
+        </InlineNotice>
+      ) : null}
 
       {procedures.map((procedure, index) => (
         <div
@@ -840,6 +989,7 @@ function ProceduresStep({
               Procedure {index + 1}
             </div>
             <Button
+              disabled={disabled}
               onClick={() => onRemoveProcedure(procedure.id)}
               size="sm"
               variant="ghost"
@@ -851,6 +1001,7 @@ function ProceduresStep({
             <label>
               <FieldLabel>Procedure name</FieldLabel>
               <TextInput
+                disabled={disabled}
                 value={procedure.name}
                 onChange={(event) =>
                   onUpdateProcedure(procedure.id, 'name', event.target.value)
@@ -861,6 +1012,7 @@ function ProceduresStep({
             <label>
               <FieldLabel>Tooth / region</FieldLabel>
               <TextInput
+                disabled={disabled}
                 value={procedure.toothOrRegion}
                 onChange={(event) =>
                   onUpdateProcedure(
@@ -875,6 +1027,7 @@ function ProceduresStep({
             <label>
               <FieldLabel>Quantity / duration</FieldLabel>
               <TextInput
+                disabled={disabled}
                 value={procedure.quantityOrDuration}
                 onChange={(event) =>
                   onUpdateProcedure(
@@ -889,6 +1042,7 @@ function ProceduresStep({
             <label>
               <FieldLabel>Procedure note</FieldLabel>
               <TextInput
+                disabled={disabled}
                 value={procedure.note}
                 onChange={(event) =>
                   onUpdateProcedure(procedure.id, 'note', event.target.value)
@@ -900,7 +1054,12 @@ function ProceduresStep({
         </div>
       ))}
 
-      <Button className="min-h-10" onClick={onAddProcedure} variant="secondary">
+      <Button
+        className="min-h-10"
+        disabled={disabled}
+        onClick={onAddProcedure}
+        variant="secondary"
+      >
         Add another procedure
       </Button>
     </div>
@@ -909,11 +1068,13 @@ function ProceduresStep({
 
 function NotesStep({
   clinicalNote,
+  disabled,
   recommendation,
   onClinicalNoteChange,
   onRecommendationChange,
 }: {
   clinicalNote: string
+  disabled: boolean
   recommendation: string
   onClinicalNoteChange: (value: string) => void
   onRecommendationChange: (value: string) => void
@@ -923,6 +1084,7 @@ function NotesStep({
       <label>
         <FieldLabel>Clinical note</FieldLabel>
         <Textarea
+          disabled={disabled}
           value={clinicalNote}
           onChange={(event) => onClinicalNoteChange(event.target.value)}
           placeholder="What was observed and completed today?"
@@ -931,6 +1093,7 @@ function NotesStep({
       <label>
         <FieldLabel>Recommendation / next instruction</FieldLabel>
         <Textarea
+          disabled={disabled}
           value={recommendation}
           onChange={(event) => onRecommendationChange(event.target.value)}
           placeholder="Home care, warning signs, control visit timing, or plan instructions."
@@ -941,9 +1104,11 @@ function NotesStep({
 }
 
 function NextStep({
+  disabled,
   nextStep,
   onNextStepChange,
 }: {
+  disabled: boolean
   nextStep: string
   onNextStepChange: (value: string) => void
 }) {
@@ -952,6 +1117,7 @@ function NextStep({
       <label>
         <FieldLabel>Next step</FieldLabel>
         <Select
+          disabled={disabled}
           value={nextStep}
           onChange={(event) => onNextStepChange(event.target.value)}
         >
@@ -995,6 +1161,7 @@ function NextStep({
 function ReviewStep({
   attemptedCompletion,
   clinicalNote,
+  hasIncompleteProcedureRows,
   hasClinicalNote,
   hasNextStep,
   hasRecommendation,
@@ -1006,6 +1173,7 @@ function ReviewStep({
 }: {
   attemptedCompletion: boolean
   clinicalNote: string
+  hasIncompleteProcedureRows: boolean
   hasClinicalNote: boolean
   hasNextStep: boolean
   hasRecommendation: boolean
@@ -1030,12 +1198,12 @@ function ReviewStep({
         <MetricTile
           label="Clinical note preview"
           value={hasClinicalNote ? clinicalNote : 'No note entered'}
-          description="This remains local prototype text."
+          description="Saved with the visit when the current role can write clinical notes."
         />
         <MetricTile
           label="Instruction preview"
           value={hasRecommendation ? recommendation : 'No instruction entered'}
-          description="This remains local prototype text."
+          description="Saved with the visit draft and completion record."
         />
       </div>
 
@@ -1043,6 +1211,12 @@ function ReviewStep({
         <InlineNotice variant="warning">
           Add at least one procedure, clinical note, or next step before
           completing this visit.
+        </InlineNotice>
+      ) : null}
+      {hasIncompleteProcedureRows ? (
+        <InlineNotice variant="warning">
+          One or more procedure rows are missing a procedure name. Add the name
+          or remove the row before completing.
         </InlineNotice>
       ) : null}
     </div>

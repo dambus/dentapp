@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Badge, Button, EmptyState } from '../components/ui'
 import { useCurrentProfile } from '../features/auth/useCurrentProfile'
+import { PatientAppointmentSummary } from '../features/patients/PatientAppointmentSummary'
 import { PatientFullRecord } from '../features/patients/PatientFullRecord'
 import type { PatientFullRecordSection } from '../features/patients/PatientFullRecord'
+import { PatientFollowUpSummary } from '../features/patients/PatientFollowUpSummary'
 import { getPatientFullName } from '../features/patients/patientDisplay'
 import { PatientQuickActions } from '../features/patients/PatientQuickActions'
 import { PatientSnapshot } from '../features/patients/PatientSnapshot'
@@ -80,17 +82,40 @@ const patientArchiveRoles: AppRole[] = [
 const isSupabasePatientMode =
   import.meta.env.VITE_PATIENT_DATA_SOURCE?.toLowerCase() === 'supabase'
 
+const patientFullRecordSections: PatientFullRecordSection[] = [
+  'medical-record',
+  'odontogram',
+  'treatment-plans',
+  'clinical-notes',
+  'documents',
+  'timeline',
+]
+
+function getInitialFullRecordSection(
+  section: string | null,
+): PatientFullRecordSection {
+  return patientFullRecordSections.includes(section as PatientFullRecordSection)
+    ? (section as PatientFullRecordSection)
+    : 'medical-record'
+}
+
 export function PatientDetailPage() {
   const { patientId } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const currentProfile = useCurrentProfile()
   const [patient, setPatient] = useState<DemoPatient | undefined>()
   const [hasLoadedPatient, setHasLoadedPatient] = useState(false)
   const [isLifecycleSubmitting, setIsLifecycleSubmitting] = useState(false)
   const [lifecycleError, setLifecycleError] = useState<string | null>(null)
   const [lifecycleSuccess, setLifecycleSuccess] = useState<string | null>(null)
+  const [appointmentPrefillReason, setAppointmentPrefillReason] = useState('')
+  const [appointmentPrefillRequestId, setAppointmentPrefillRequestId] =
+    useState(0)
   const [fullRecordSection, setFullRecordSection] =
-    useState<PatientFullRecordSection>('medical-record')
+    useState<PatientFullRecordSection>(() =>
+      getInitialFullRecordSection(searchParams.get('section')),
+    )
 
   useEffect(() => {
     let isCurrent = true
@@ -173,6 +198,7 @@ export function PatientDetailPage() {
     ? patientArchiveRoles.includes(currentProfile.profile.role)
     : false
   const dataSourceLabel = isSupabasePatientMode ? 'Supabase mode' : 'Fake demo data'
+  const highlightedVisitId = searchParams.get('visitId')
 
   async function refreshPatient() {
     const refreshedPatient = await getPatientById(loadedPatient.id)
@@ -252,9 +278,54 @@ export function PatientDetailPage() {
 
   function openFullRecordSection(section: PatientFullRecordSection) {
     setFullRecordSection(section)
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams)
+      nextParams.set('section', section)
+      if (section !== 'timeline') {
+        nextParams.delete('visitId')
+      }
+      return nextParams
+    })
     window.setTimeout(() => {
       document
         .getElementById('patient-full-record')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }
+
+  function handleFullRecordSectionChange(section: PatientFullRecordSection) {
+    setFullRecordSection(section)
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams)
+      nextParams.set('section', section)
+      if (section !== 'timeline') {
+        nextParams.delete('visitId')
+      }
+      return nextParams
+    })
+  }
+
+  function openTimelineVisit(visitId: string) {
+    setFullRecordSection('timeline')
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams)
+      nextParams.set('section', 'timeline')
+      nextParams.set('visitId', visitId)
+      return nextParams
+    })
+    window.setTimeout(() => {
+      document
+        .getElementById('patient-full-record')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }
+
+  function openAppointmentForm(reason: string) {
+    setAppointmentPrefillReason(reason)
+    setAppointmentPrefillRequestId((currentRequestId) => currentRequestId + 1)
+    window.setTimeout(() => {
+      document
+        .getElementById('patient-appointments')
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 0)
   }
@@ -305,6 +376,18 @@ export function PatientDetailPage() {
         onCompleteVisit={() => navigate(getPatientVisitCompletionPath(patient.id))}
       />
 
+      <PatientFollowUpSummary
+        patientId={patient.id}
+        onOpenTimelineVisit={openTimelineVisit}
+        onScheduleAppointment={openAppointmentForm}
+      />
+
+      <PatientAppointmentSummary
+        patientId={patient.id}
+        prefillReason={appointmentPrefillReason}
+        prefillRequestId={appointmentPrefillRequestId}
+      />
+
       <PatientQuickActions
         role={currentProfile.profile?.role ?? null}
         isArchived={isArchived}
@@ -322,7 +405,7 @@ export function PatientDetailPage() {
         patientName={patientName}
         activePlanLabel={activePlanLabel}
         activeSection={fullRecordSection}
-        onSectionChange={setFullRecordSection}
+        onSectionChange={handleFullRecordSectionChange}
         canEditMedicalRecord={canEditMedicalRecord}
         canViewOdontogram={canViewOdontogram}
         canEditOdontogram={canEditOdontogram}
@@ -330,6 +413,7 @@ export function PatientDetailPage() {
         canManageClinicalNotes={canViewClinicalNotes}
         canViewTreatmentPlans={canViewTreatmentPlans}
         canManageTreatmentPlans={canManageTreatmentPlans}
+        highlightedVisitId={highlightedVisitId}
         isPatientArchived={isArchived}
         onEditMedicalRecord={() =>
           navigate(getPatientMedicalRecordEditPath(patient.id))

@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Badge, Button, EmptyState, InlineNotice } from '../components/ui'
+import {
+  fetchAppointmentForPatient,
+  type Appointment,
+} from '../features/appointments/appointmentService'
 import { useCurrentProfile } from '../features/auth/useCurrentProfile'
 import { getPatientFullName } from '../features/patients/patientDisplay'
 import { getPatientById } from '../features/patients/patientService'
@@ -22,9 +26,16 @@ const visitCompletionRoles: AppRole[] = [
 export function VisitCompletionPage() {
   const { patientId } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const currentProfile = useCurrentProfile()
   const [patient, setPatient] = useState<DemoPatient | undefined>()
   const [hasLoadedPatient, setHasLoadedPatient] = useState(false)
+  const [appointmentContext, setAppointmentContext] =
+    useState<Appointment | null>(null)
+  const [appointmentContextError, setAppointmentContextError] =
+    useState<string | null>(null)
+
+  const appointmentId = searchParams.get('appointmentId')?.trim() || null
 
   useEffect(() => {
     let isCurrent = true
@@ -44,6 +55,52 @@ export function VisitCompletionPage() {
       isCurrent = false
     }
   }, [patientId])
+
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadAppointmentContext() {
+      setAppointmentContext(null)
+      setAppointmentContextError(null)
+
+      if (!patientId || !appointmentId) {
+        return
+      }
+
+      try {
+        const appointment = await fetchAppointmentForPatient(
+          patientId,
+          appointmentId,
+        )
+
+        if (!isCurrent) {
+          return
+        }
+
+        if (appointment) {
+          setAppointmentContext(appointment)
+        } else {
+          setAppointmentContextError(
+            'The linked appointment could not be found for this patient. Visit completion can continue without appointment linking.',
+          )
+        }
+      } catch (error) {
+        if (isCurrent) {
+          setAppointmentContextError(
+            error instanceof Error
+              ? error.message
+              : 'Appointment context could not be loaded.',
+          )
+        }
+      }
+    }
+
+    void loadAppointmentContext()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [appointmentId, patientId])
 
   if (!hasLoadedPatient) {
     return null
@@ -116,8 +173,19 @@ export function VisitCompletionPage() {
         </InlineNotice>
       ) : null}
 
+      {appointmentContextError ? (
+        <InlineNotice variant="warning">{appointmentContextError}</InlineNotice>
+      ) : null}
+
       {canUsePrototype && !isArchived ? (
-        <VisitCompletionFlow patient={patient} />
+        <VisitCompletionFlow
+          appointmentContext={appointmentContext}
+          appointmentId={appointmentContext?.id ?? null}
+          patient={patient}
+          onBackToPatient={() =>
+            navigate(`${getPatientDetailPath(patient.id)}?section=timeline`)
+          }
+        />
       ) : null}
     </Page>
   )
