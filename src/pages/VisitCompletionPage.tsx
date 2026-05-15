@@ -78,7 +78,14 @@ export function VisitCompletionPage() {
         }
 
         if (appointment) {
-          setAppointmentContext(appointment)
+          if (appointment.status !== 'scheduled') {
+            setAppointmentContextError(
+              'That appointment is no longer scheduled, so visit completion will continue without appointment linking.',
+            )
+            setAppointmentContext(null)
+          } else {
+            setAppointmentContext(appointment)
+          }
         } else {
           setAppointmentContextError(
             'The linked appointment could not be found for this patient. Visit completion can continue without appointment linking.',

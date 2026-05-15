@@ -144,21 +144,24 @@ export function PatientFullRecord({
       </CardHeader>
 
       <CardContent className="space-y-5">
-        <div className="flex flex-wrap gap-2">
-          {availableSections.map((section) => {
-            const isSelected = selectedSection === section
+        <div className="-mx-4 sm:mx-0">
+          <div className="flex gap-1.5 overflow-x-auto px-4 pb-1 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+            {availableSections.map((section) => {
+              const isSelected = selectedSection === section
 
-            return (
-              <Button
-                key={section}
-                onClick={() => onSectionChange(section)}
-                size="sm"
-                variant={isSelected ? 'primary' : 'secondary'}
-              >
-                {getSectionLabel(section)}
-              </Button>
-            )
-          })}
+              return (
+                <Button
+                  className="shrink-0"
+                  key={section}
+                  onClick={() => onSectionChange(section)}
+                  size="sm"
+                  variant={isSelected ? 'primary' : 'secondary'}
+                >
+                  {getSectionLabel(section)}
+                </Button>
+              )
+            })}
+          </div>
         </div>
 
         <div

@@ -21,6 +21,30 @@ export type Appointment = {
   updated_at: string
 }
 
+export type AppointmentPatientSummary = {
+  id: string
+  fullName: string
+  phone?: string | null
+  email?: string | null
+}
+
+export type AppointmentRangeItem = Appointment & {
+  patient: AppointmentPatientSummary | null
+}
+
+export type AppointmentLinkedVisitSummary = {
+  id: string
+  patientId: string
+  status: string
+  visitDate: string
+  completedAt: string | null
+}
+
+export type AppointmentDetail = Appointment & {
+  patient: AppointmentPatientSummary | null
+  linkedVisit: AppointmentLinkedVisitSummary | null
+}
+
 export type CreateAppointmentInput = {
   patientId: string
   scheduledStart: string
@@ -53,9 +77,21 @@ type SupabaseProfileContextRow = {
 type SupabasePatientRow = {
   id: string
   clinic_id: string
+  first_name: string | null
+  last_name: string | null
+  phone?: string | null
+  email?: string | null
 }
 
 type SupabaseAppointmentRow = Appointment
+
+type SupabaseLinkedVisitRow = {
+  id: string
+  patient_id: string
+  status: string
+  visit_date: string
+  completed_at: string | null
+}
 
 const appointmentStatuses = new Set<AppointmentStatus>([
   'scheduled',
@@ -63,6 +99,9 @@ const appointmentStatuses = new Set<AppointmentStatus>([
   'cancelled',
   'no_show',
 ])
+
+export const APPOINTMENT_REASON_MAX_LENGTH = 160
+export const APPOINTMENT_NOTES_MAX_LENGTH = 500
 
 const patientDataSource = normalizeDataSource(
   import.meta.env.VITE_PATIENT_DATA_SOURCE,
@@ -115,6 +154,37 @@ function classifyAppointmentError(errorMessage: string | undefined) {
   return 'unknown' as const
 }
 
+function toRangeDateBoundary(value: string, mode: 'start' | 'end') {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return null
+  }
+
+  const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/
+
+  if (dateOnlyPattern.test(trimmed)) {
+    const daySuffix = mode === 'start' ? 'T00:00:00.000Z' : 'T23:59:59.999Z'
+    const parsed = new Date(`${trimmed}${daySuffix}`)
+
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const parsed = new Date(trimmed)
+
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function getPatientFullNameFromRow(
+  row: Pick<SupabasePatientRow, 'first_name' | 'last_name'>,
+) {
+  const firstName = normalizeText(row.first_name)
+  const lastName = normalizeText(row.last_name)
+  const fullName = `${firstName} ${lastName}`.trim()
+
+  return fullName || 'Unknown patient'
+}
+
 function validateCreateAppointmentInput(
   input: CreateAppointmentInput,
 ): string | null {
@@ -123,25 +193,33 @@ function validateCreateAppointmentInput(
   }
 
   if (!normalizeText(input.scheduledStart)) {
-    return 'Scheduled start is required to create an appointment.'
+    return 'Choose appointment date and time.'
   }
 
   const scheduledStart = new Date(input.scheduledStart)
 
   if (Number.isNaN(scheduledStart.getTime())) {
-    return 'Scheduled start must be a valid date and time.'
+    return 'Choose a valid appointment date and time.'
   }
 
   if (input.scheduledEnd) {
     const scheduledEnd = new Date(input.scheduledEnd)
 
     if (Number.isNaN(scheduledEnd.getTime())) {
-      return 'Scheduled end must be a valid date and time.'
+      return 'Choose a valid appointment duration.'
     }
 
     if (scheduledEnd <= scheduledStart) {
-      return 'Scheduled end must be after scheduled start.'
+      return 'Appointment end must be after start.'
     }
+  }
+
+  if (normalizeText(input.reason).length > APPOINTMENT_REASON_MAX_LENGTH) {
+    return `Reason must be ${APPOINTMENT_REASON_MAX_LENGTH} characters or fewer.`
+  }
+
+  if (normalizeText(input.notes).length > APPOINTMENT_NOTES_MAX_LENGTH) {
+    return `Notes must be ${APPOINTMENT_NOTES_MAX_LENGTH} characters or fewer.`
   }
 
   return null
@@ -325,6 +403,170 @@ export async function fetchAppointmentForPatient(
   }
 
   return data ? mapRowToAppointment(data as SupabaseAppointmentRow) : null
+}
+
+export async function fetchAppointmentById(
+  appointmentId: string,
+): Promise<AppointmentDetail | null> {
+  if (!appointmentId?.trim()) {
+    return null
+  }
+
+  if (patientDataSource !== 'supabase') {
+    return null
+  }
+
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    throw new Error('Supabase client is not available.')
+  }
+
+  const { data: appointmentData, error: appointmentError } = await supabase
+    .from('appointments')
+    .select(
+      'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
+    )
+    .eq('id', appointmentId)
+    .maybeSingle()
+
+  if (appointmentError) {
+    console.warn('[appointmentService] Appointment detail failed to load.', appointmentError)
+    throw new Error(appointmentError.message ?? 'Appointment could not be loaded.')
+  }
+
+  if (!appointmentData) {
+    return null
+  }
+
+  const appointment = mapRowToAppointment(appointmentData as SupabaseAppointmentRow)
+
+  const [
+    { data: patientData, error: patientError },
+    { data: linkedVisitData, error: linkedVisitError },
+  ] = await Promise.all([
+    supabase
+      .from('patients')
+      .select('id, clinic_id, first_name, last_name, phone, email')
+      .eq('id', appointment.patient_id)
+      .is('deleted_at', null)
+      .maybeSingle(),
+    supabase
+      .from('visits')
+      .select('id, patient_id, status, visit_date, completed_at')
+      .eq('appointment_id', appointment.id)
+      .eq('status', 'completed')
+      .is('deleted_at', null)
+      .order('completed_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
+
+  if (patientError) {
+    console.warn('[appointmentService] Appointment patient summary failed to load.', patientError)
+    throw new Error(patientError.message ?? 'Appointment patient could not be loaded.')
+  }
+
+  if (linkedVisitError) {
+    console.warn('[appointmentService] Linked visit summary failed to load.', linkedVisitError)
+    throw new Error(linkedVisitError.message ?? 'Linked visit could not be loaded.')
+  }
+
+  const patient = patientData as SupabasePatientRow | null
+  const linkedVisit = linkedVisitData as SupabaseLinkedVisitRow | null
+
+  return {
+    ...appointment,
+    patient: patient
+      ? {
+          id: patient.id,
+          fullName: getPatientFullNameFromRow(patient),
+          phone: patient.phone ?? null,
+          email: patient.email ?? null,
+        }
+      : null,
+    linkedVisit: linkedVisit
+      ? {
+          id: linkedVisit.id,
+          patientId: linkedVisit.patient_id,
+          status: linkedVisit.status,
+          visitDate: linkedVisit.visit_date,
+          completedAt: linkedVisit.completed_at,
+        }
+      : null,
+  }
+}
+
+export async function fetchAppointmentsForRange(
+  startDate: string,
+  endDate: string,
+): Promise<AppointmentRangeItem[]> {
+  const rangeStart = toRangeDateBoundary(startDate, 'start')
+  const rangeEnd = toRangeDateBoundary(endDate, 'end')
+
+  if (!rangeStart || !rangeEnd || rangeEnd < rangeStart) {
+    return []
+  }
+
+  if (patientDataSource !== 'supabase') {
+    return []
+  }
+
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    throw new Error('Supabase client is not available.')
+  }
+
+  const { data: appointmentsData, error: appointmentsError } = await supabase
+    .from('appointments')
+    .select(
+      'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
+    )
+    .gte('scheduled_start', rangeStart.toISOString())
+    .lte('scheduled_start', rangeEnd.toISOString())
+    .order('scheduled_start', { ascending: true })
+
+  if (appointmentsError) {
+    console.warn('[appointmentService] Range appointments failed to load.', appointmentsError)
+    throw new Error(appointmentsError.message ?? 'Appointments could not be loaded.')
+  }
+
+  const appointmentRows = (appointmentsData as SupabaseAppointmentRow[] | null) ?? []
+
+  if (appointmentRows.length === 0) {
+    return []
+  }
+
+  const uniquePatientIds = Array.from(
+    new Set(appointmentRows.map((appointment) => appointment.patient_id)),
+  )
+
+  const { data: patientData, error: patientError } = await supabase
+    .from('patients')
+    .select('id, clinic_id, first_name, last_name')
+    .in('id', uniquePatientIds)
+    .is('deleted_at', null)
+
+  if (patientError) {
+    console.warn('[appointmentService] Patient summary lookup failed.', patientError)
+    throw new Error(patientError.message ?? 'Appointments could not be loaded.')
+  }
+
+  const patientById = new Map(
+    ((patientData as SupabasePatientRow[] | null) ?? []).map((patient) => [
+      patient.id,
+      {
+        id: patient.id,
+        fullName: getPatientFullNameFromRow(patient),
+      } satisfies AppointmentPatientSummary,
+    ]),
+  )
+
+  return appointmentRows.map((appointment) => ({
+    ...mapRowToAppointment(appointment),
+    patient: patientById.get(appointment.patient_id) ?? null,
+  }))
 }
 
 export async function createAppointment(

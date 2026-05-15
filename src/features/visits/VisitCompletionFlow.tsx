@@ -16,6 +16,9 @@ import {
   TextInput,
 } from '../../components/ui'
 import { classNames } from '../../lib/classNames'
+import {
+  appointmentStatusLabels,
+} from '../appointments/appointmentDisplay'
 import type { Appointment } from '../appointments/appointmentService'
 import {
   formatPatientDate,
@@ -532,7 +535,7 @@ export function VisitCompletionFlow({
                 {activeStep.description}
               </CardDescription>
             </div>
-            <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 sm:max-w-sm">
+            <div className="hidden rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 sm:block sm:max-w-sm">
               {getStepPrompt(activeStep.id)}
             </div>
           </div>
@@ -738,7 +741,9 @@ function AppointmentContextNotice({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">Appointment context</Badge>
-            <Badge variant="neutral">{appointment.status}</Badge>
+            <Badge variant="neutral">
+              {appointmentStatusLabels[appointment.status] ?? appointment.status}
+            </Badge>
           </div>
           <p className="mt-2 text-sm leading-6 text-slate-700">
             Started from appointment scheduled for{' '}
@@ -748,12 +753,12 @@ function AppointmentContextNotice({
             .
           </p>
           {appointment.reason?.trim() ? (
-            <p className="mt-1 break-words text-sm leading-6 text-slate-600">
+            <p className="mt-1 text-sm leading-6 text-slate-600 wrap-break-word">
               {appointment.reason}
             </p>
           ) : null}
         </div>
-        <div className="text-sm text-slate-500">
+        <div className="hidden text-sm text-slate-500 sm:block">
           Completing this visit will mark the appointment completed.
         </div>
       </CardContent>
@@ -840,7 +845,7 @@ function CompactVisitContext({
             </div>
           </div>
 
-          <div className="rounded-md border border-cyan-200 bg-white px-4 py-3">
+          <div className="hidden sm:block rounded-md border border-cyan-200 bg-white px-4 py-3">
             <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
               Planned today
             </div>

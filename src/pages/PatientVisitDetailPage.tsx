@@ -24,6 +24,7 @@ import {
 } from '../features/patients/patientDisplay'
 import { getPatientById } from '../features/patients/patientService'
 import type { DemoPatient } from '../features/patients/types'
+import { appointmentStatusLabels } from '../features/appointments/appointmentDisplay'
 import {
   fetchCompletedVisitById,
   type CompletedVisitDetail,
@@ -207,6 +208,11 @@ export function PatientVisitDetailPage() {
 
   const hasClinicalNote = Boolean(visit.clinicalNote.trim())
   const hasRecommendation = Boolean(visit.recommendation.trim())
+  const generatedAt = formatPatientDateTime(new Date().toISOString())
+
+  function handlePrintReview() {
+    window.print()
+  }
 
   return (
     <Page>
@@ -214,17 +220,29 @@ export function PatientVisitDetailPage() {
         title="Completed Visit Review"
         description={`Read-only clinical record for ${patientName}.`}
         actions={
-          <Button
-            onClick={() => navigate(getTimelinePath(patient.id))}
-            variant="secondary"
-          >
-            Back to timeline
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="print-hidden">
+              <Button onClick={handlePrintReview} variant="primary">
+                Print review
+              </Button>
+            </div>
+            <Button
+              onClick={() => navigate(getTimelinePath(patient.id))}
+              variant="secondary"
+            >
+              Back to timeline
+            </Button>
+          </div>
         }
       />
 
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-        <Card className="border-teal-100 bg-teal-50/30 shadow-sm">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 print-visit-detail">
+        <section className="print-only border-b border-slate-300 pb-3">
+          <h2 className="text-2xl font-semibold text-slate-950">DentApp Visit Review</h2>
+          <p className="mt-1 text-sm text-slate-700">Generated {generatedAt}</p>
+        </section>
+
+        <Card className="print-visit-detail-card border-teal-100 bg-teal-50/30 shadow-sm">
           <CardHeader>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -244,7 +262,7 @@ export function PatientVisitDetailPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
               <MetricTile
                 label="Patient"
                 value={patientName}
@@ -268,18 +286,22 @@ export function PatientVisitDetailPage() {
         </Card>
 
         {visit.linkedAppointment ? (
-          <Card className="border-cyan-200 bg-cyan-50/40 shadow-sm">
+          <Card className="print-visit-detail-card border-cyan-200 bg-cyan-50/40 shadow-sm">
             <CardHeader>
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle>Linked Appointment</CardTitle>
-                <Badge variant="info">{visit.linkedAppointment.status}</Badge>
+                <Badge variant="info">
+                  {appointmentStatusLabels[
+                    visit.linkedAppointment.status as keyof typeof appointmentStatusLabels
+                  ] ?? visit.linkedAppointment.status}
+                </Badge>
               </div>
               <CardDescription>
                 Scheduled {formatPatientDateTime(visit.linkedAppointment.scheduledStart)}.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+              <p className="whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
                 {visit.linkedAppointment.reason?.trim() ||
                   'No appointment reason recorded.'}
               </p>
@@ -292,7 +314,7 @@ export function PatientVisitDetailPage() {
           </Card>
         ) : null}
 
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="print-visit-detail-card border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle>Procedures</CardTitle>
             <CardDescription>
@@ -304,7 +326,7 @@ export function PatientVisitDetailPage() {
               <ol className="space-y-3">
                 {visit.procedures.map((procedure, index) => (
                   <li
-                    className="rounded-md border border-slate-200 bg-slate-50 p-4"
+                    className="print-procedure-item rounded-md border border-slate-200 bg-slate-50 p-4"
                     key={procedure.id}
                   >
                     <div className="flex flex-wrap items-center gap-2">
@@ -328,7 +350,7 @@ export function PatientVisitDetailPage() {
                       />
                     </div>
                     {procedure.note ? (
-                      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                      <p className="mt-3 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
                         {procedure.note}
                       </p>
                     ) : null}
@@ -344,12 +366,12 @@ export function PatientVisitDetailPage() {
         </Card>
 
         <div className="grid gap-5 lg:grid-cols-2">
-          <Card className="border-slate-200 shadow-sm">
+          <Card className="print-visit-detail-card border-slate-200 shadow-sm">
             <CardHeader>
               <CardTitle>Clinical Note</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
+              <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7 text-slate-700">
                 {hasClinicalNote
                   ? visit.clinicalNote
                   : 'No clinical note recorded.'}
@@ -357,12 +379,12 @@ export function PatientVisitDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 shadow-sm">
+          <Card className="print-visit-detail-card border-slate-200 shadow-sm">
             <CardHeader>
               <CardTitle>Recommendation</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
+              <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7 text-slate-700">
                 {hasRecommendation
                   ? visit.recommendation
                   : 'No recommendation recorded.'}

@@ -63,7 +63,7 @@ export function TopBar({ currentProfile, onOpenMobileMenu }: TopBarProps) {
   })()
 
   return (
-    <header className="border-b border-slate-200 bg-white/95 shadow-sm">
+    <header className="app-shell-topbar border-b border-slate-200 bg-white/95 shadow-sm">
       <div className="flex min-h-20 items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
           <button

@@ -26,7 +26,7 @@ export function AppShell() {
   }, [isMobileMenuOpen])
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-100 text-slate-950 md:flex">
+    <div className="app-shell min-h-screen overflow-x-hidden bg-slate-100 text-slate-950 md:flex">
       <SidebarNav currentProfile={currentProfile} />
       <MobileNavigationDrawer
         currentProfile={currentProfile}
@@ -34,12 +34,12 @@ export function AppShell() {
         onClose={() => setIsMobileMenuOpen(false)}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
+      <div className="app-shell-content flex min-w-0 flex-1 flex-col overflow-x-hidden">
         <TopBar
           currentProfile={currentProfile}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
         />
-        <main className="min-w-0 flex-1 overflow-x-hidden">
+        <main className="app-shell-main min-w-0 flex-1 overflow-x-hidden">
           <Outlet />
         </main>
       </div>

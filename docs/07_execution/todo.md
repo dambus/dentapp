@@ -177,6 +177,13 @@ Status legend:
   - [x] Task 43C: Patient Appointment UI + Follow-up Bridge
   - [x] Task 44: Appointment to Visit Workflow Bridge
   - [x] Task 45: Visit Detail / Completed Visit Review
+  - [x] Task 46: Visit Review Print/PDF Preparation
+  - [x] Task 47: Basic Appointments List / Schedule View
+  - [x] Task 48: Appointment Workflow Polish
+  - [x] Task 48B: Mobile Workflow Usability Pass
+  - [x] Task 49: Appointment Detail / Schedule Item Review
+  - [x] Task 50: Lightweight Weekly Schedule View
+  - [x] Task 51: Appointment Creation / Status Polish
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -213,8 +220,14 @@ Status legend:
 - [x] Task 43C - Patient Appointment UI + Follow-up Bridge
 - [x] Task 44 - Appointment to Visit Workflow Bridge
 - [x] Task 45 - Visit Detail / Completed Visit Review
-- [ ] Task 46 - Visit Review Print/PDF Preparation
-- [ ] Material suggestion model
+- [x] Task 46 - Visit Review Print/PDF Preparation
+- [x] Task 47 - Basic Appointments List / Schedule View
+- [x] Task 48 - Appointment Workflow Polish
+- [x] Task 48B - Mobile Workflow Usability Pass
+- [x] Task 49 - Appointment Detail / Schedule Item Review
+- [x] Task 50 - Lightweight Weekly Schedule View
+- [x] Task 51 - Appointment Creation / Status Polish
+- [ ] Task 52 - Manual Appointment UI/UX Review Pass
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
@@ -291,15 +304,46 @@ Completed direction:
 - make patient timeline visit cards easier to inspect,
 - keep editing/deleting completed visits out of scope unless explicitly needed.
 
+### Completed Recommended Task
+
+Task 49 - Appointment Detail / Schedule Item Review
+
+Completed direction:
+
+- add a dedicated view for a single appointment (date, time, patient, status, notes),
+- link schedule and patient appointment cards to appointment detail,
+- keep external calendar sync and recurring appointment logic out of scope.
+
+### Completed Recommended Task
+
+Task 50 - Lightweight Weekly Schedule View
+
+Completed direction:
+
+- add a compact week-based schedule view,
+- keep it list/grid-light rather than full calendar drag/drop,
+- avoid provider/chair/resource scheduling until the appointment model needs it.
+
+### Completed Recommended Task
+
+Task 51 - Appointment Creation / Status Polish
+
+Completed direction:
+
+- tightened appointment creation validation and user-facing errors,
+- prevented rapid double-submit from creating duplicate appointments,
+- polished appointment detail status actions and Start visit eligibility,
+- expanded browser smoke coverage for validation, status actions, and appointment detail behavior.
+
 ### Next Recommended Task
 
-Task 46 - Visit Review Print/PDF Preparation
+Task 52 - Manual Appointment UI/UX Review Pass
 
 Suggested direction:
 
-- prepare the completed visit review layout for printing,
-- add print-friendly CSS and structure,
-- do not build PDF generation until the printed layout is stable.
+- review appointment creation, schedule list, weekly view, appointment detail, and appointment-to-visit flow end to end,
+- check mobile/tablet/desktop usability with real clinic workflow expectations,
+- make only focused UI/UX adjustments before moving into larger scheduling features.
 
 ### Later Appointment Direction
 

@@ -181,19 +181,17 @@ export function PatientFollowUpSummary({
   return (
     <Card className="border-amber-200 bg-amber-50/40 shadow-sm">
       <CardHeader>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Follow-up / Next Step</CardTitle>
-              <Badge variant="warning">Pending next action</Badge>
-              {followUpVisits.length > 1 ? (
-                <Badge variant="info">{followUpVisits.length} recorded</Badge>
-              ) : null}
-            </div>
-            <CardDescription>
-              Latest recommendation from completed visit history.
-            </CardDescription>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <CardTitle>Follow-up / Next Step</CardTitle>
+          <Badge variant="warning">Pending next action</Badge>
+          {followUpVisits.length > 1 ? (
+            <Badge variant="info">{followUpVisits.length} recorded</Badge>
+          ) : null}
+        </div>
+        <CardDescription>
+          Latest recommendation from completed visit history.
+        </CardDescription>
+        <div className="flex flex-wrap gap-2 pt-1">
           <Button
             className="min-h-10"
             onClick={() => onOpenTimelineVisit(latestFollowUp.id)}
@@ -215,7 +213,7 @@ export function PatientFollowUpSummary({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           <MetricTile
             label="Source visit"
             value={formatPatientDate(
@@ -244,15 +242,14 @@ export function PatientFollowUpSummary({
           <div className="text-sm font-semibold text-slate-950">
             Recommendation
           </div>
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+          <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
             {latestFollowUp.recommendation.trim() ||
               'No written recommendation recorded.'}
           </p>
         </div>
 
         <InlineNotice variant="info">
-          This is a UI-only follow-up indicator from completed visit data. It
-          does not create an appointment, task, reminder, or handled status yet.
+          Follow-up is display-only. Appointments and reminders are not created automatically.
         </InlineNotice>
       </CardContent>
     </Card>

@@ -151,7 +151,7 @@ function VisitTimelineItem({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <MetricTile
               label="Procedure summary"
               value={procedureSummary}
@@ -171,11 +171,11 @@ function VisitTimelineItem({
           </div>
 
           {visit.procedures.length > 0 ? (
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
               <div className="text-sm font-semibold text-slate-950">
                 Procedures
               </div>
-              <ul className="mt-3 space-y-3">
+              <ul className="mt-2 space-y-2">
                 {visit.procedures.map((procedure) => (
                   <li
                     className="rounded-md border border-slate-200 bg-white px-3 py-2"
@@ -208,7 +208,7 @@ function VisitTimelineItem({
               <div className="text-sm font-semibold text-slate-950">
                 Clinical note
               </div>
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+              <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
                 {hasClinicalNote ? visit.clinicalNote : 'No clinical note recorded.'}
               </p>
             </div>
@@ -216,7 +216,7 @@ function VisitTimelineItem({
               <div className="text-sm font-semibold text-slate-950">
                 Recommendation
               </div>
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+              <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
                 {hasRecommendation
                   ? visit.recommendation
                   : 'No recommendation recorded.'}

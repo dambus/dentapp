@@ -20,10 +20,12 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const APP_URL = process.env.DENTAPP_APP_URL ?? 'http://127.0.0.1:5173'
 const PATIENT_ID = '22222222-2222-2222-2222-222222222201'
 const PATIENT_URL = `${APP_URL}/patients/${PATIENT_ID}`
+const APPOINTMENTS_URL = `${APP_URL}/appointments`
 const CHROME_PATH =
   process.env.CHROME_PATH ?? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 const EMAIL = 'doctor.demo@example.test'
 const EXPECTED_PREFILL = 'Task 44 appointment bridge recommendation'
+const CANCELLED_REASON = 'Task 51 cancelled appointment status check'
 const BRIDGE_PROCEDURE = 'Task 44 bridge procedure'
 const BRIDGE_NOTE = 'Task 44 bridge clinical note'
 const DEMO_CLINIC_ID = '11111111-1111-1111-1111-111111111111'
@@ -34,15 +36,30 @@ function delay(ms) {
 
 async function waitFor(predicate, label, timeoutMs = 20000) {
   const startedAt = Date.now()
+  let lastError = null
 
   while (Date.now() - startedAt < timeoutMs) {
-    const result = await predicate()
+    try {
+      const result = await predicate()
 
-    if (result) {
-      return result
+      if (result) {
+        return result
+      }
+    } catch (error) {
+      lastError = error
     }
 
     await delay(250)
+  }
+
+  if (lastError) {
+    throw new Error(
+      [
+        `Timed out waiting for ${label}.`,
+        'Last predicate error:',
+        lastError instanceof Error ? lastError.message : String(lastError),
+      ].join('\n'),
+    )
   }
 
   throw new Error(`Timed out waiting for ${label}`)
@@ -118,6 +135,61 @@ async function getCreatedAppointmentId() {
 
   if (error || !data) {
     throw new Error(error?.message ?? 'Created appointment was not found.')
+  }
+
+  return data.id
+}
+
+async function getCreatedAppointmentCount() {
+  const serviceClient = getServiceClient()
+  const { count, error } = await serviceClient
+    .from('appointments')
+    .select('id', { count: 'exact', head: true })
+    .eq('patient_id', PATIENT_ID)
+    .eq('reason', EXPECTED_PREFILL)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return count ?? 0
+}
+
+async function createServiceAppointment(reason) {
+  const serviceClient = getServiceClient()
+  const profileResult = await serviceClient
+    .from('profiles')
+    .select('id')
+    .eq('role', 'doctor')
+    .eq('clinic_id', DEMO_CLINIC_ID)
+    .eq('status', 'active')
+    .limit(1)
+    .maybeSingle()
+
+  if (profileResult.error || !profileResult.data) {
+    throw new Error(profileResult.error?.message ?? 'Missing active doctor profile.')
+  }
+
+  const scheduledStart = new Date(Date.now() + 4 * 60 * 60 * 1000)
+  const scheduledEnd = new Date(scheduledStart.getTime() + 30 * 60 * 1000)
+  const { data, error } = await serviceClient
+    .from('appointments')
+    .insert({
+      clinic_id: DEMO_CLINIC_ID,
+      patient_id: PATIENT_ID,
+      scheduled_start: scheduledStart.toISOString(),
+      scheduled_end: scheduledEnd.toISOString(),
+      status: 'scheduled',
+      reason,
+      notes: 'Created by browser smoke status polish check.',
+      created_by: profileResult.data.id,
+      updated_by: profileResult.data.id,
+    })
+    .select('id')
+    .single()
+
+  if (error || !data) {
+    throw new Error(error?.message ?? 'Could not create service appointment.')
   }
 
   return data.id
@@ -219,7 +291,40 @@ async function evaluate(cdp, expression) {
   })
 
   if (result.exceptionDetails) {
-    throw new Error(result.exceptionDetails.text)
+    const exceptionDetails = result.exceptionDetails
+    const exception = exceptionDetails.exception
+    const browserContext = await cdp
+      .command('Runtime.evaluate', {
+        awaitPromise: true,
+        expression: `(() => {
+          const dateInput = document.querySelector('[data-testid="appointments-date-input"]');
+          const body = document.body;
+
+          return {
+            url: location.href,
+            dateInputValue: dateInput instanceof HTMLInputElement ? dateInput.value : null,
+            bodyText: body ? body.innerText.slice(0, 400) : null,
+          };
+        })()`,
+        returnByValue: true,
+      })
+      .then((contextResult) => contextResult.result?.value ?? null)
+      .catch(() => null)
+
+    throw new Error(
+      [
+        'Uncaught browser error during evaluate.',
+        `name: ${exception?.className ?? 'unknown'}`,
+        `message: ${exception?.description ?? exceptionDetails.text ?? 'Unknown browser exception'}`,
+        `line: ${(exceptionDetails.lineNumber ?? 0) + 1}, column: ${(exceptionDetails.columnNumber ?? 0) + 1}`,
+        `expression: ${expression.slice(0, 220)}`,
+        browserContext
+          ? `context: ${JSON.stringify(browserContext, null, 2)}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    )
   }
 
   return result.result.value
@@ -254,6 +359,26 @@ async function clickByText(cdp, text, selector = 'button, a') {
   }
 }
 
+async function clickAppointmentCardAction(cdp, cardText, actionText) {
+  const clicked = await evaluate(
+    cdp,
+    `(() => {
+      const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+      const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(cardText)}));
+      if (!card) return false;
+      const action = Array.from(card.querySelectorAll('button, a'))
+        .find((element) => element.textContent?.trim() === ${JSON.stringify(actionText)});
+      if (!action) return false;
+      action.click();
+      return true;
+    })()`,
+  )
+
+  if (!clicked) {
+    throw new Error(`Could not click ${actionText} in appointment card containing ${cardText}`)
+  }
+}
+
 async function typeInto(cdp, selector, value) {
   const ok = await evaluate(
     cdp,
@@ -280,10 +405,115 @@ async function typeInto(cdp, selector, value) {
   }
 }
 
+async function setDateInput(cdp, selector, value) {
+  const ok = await evaluate(
+    cdp,
+    `(() => {
+      const input = document.querySelector(${JSON.stringify(selector)});
+      if (!(input instanceof HTMLInputElement)) {
+        return false;
+      }
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value',
+      )?.set;
+      setter?.call(input, ${JSON.stringify(value)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      return input.value === ${JSON.stringify(value)};
+    })()`,
+  )
+
+  if (!ok) {
+    throw new Error(`Could not set date input ${selector} to ${value}`)
+  }
+}
+
+async function waitForDateInputValue(cdp, selector, expectedValue) {
+  await waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `(() => {
+          const input = document.querySelector(${JSON.stringify(selector)});
+          return input instanceof HTMLInputElement
+            ? input.value === ${JSON.stringify(expectedValue)}
+            : false;
+        })()`,
+      ),
+    `date input value ${expectedValue}`,
+  )
+}
+
+async function getInputValue(cdp, selector) {
+  return evaluate(
+    cdp,
+    `(() => {
+      const input = document.querySelector(${JSON.stringify(selector)});
+      return input instanceof HTMLInputElement ? input.value : null;
+    })()`,
+  )
+}
+
+async function collectAppointmentsDebugSnapshot(cdp) {
+  return evaluate(
+    cdp,
+    `(() => {
+      const dateInput = document.querySelector('[data-testid="appointments-date-input"]');
+      const loading = document.querySelector('[data-testid="appointments-loading-state"]');
+      const emptyState = document.querySelector('[data-testid="appointments-empty-state"]');
+      const cards = document.querySelectorAll('[data-testid="appointment-card"]').length;
+      const bodyText = document.body ? document.body.innerText.slice(0, 600) : null;
+
+      return {
+        dateInputValue: dateInput instanceof HTMLInputElement ? dateInput.value : null,
+        loadingVisible: Boolean(loading),
+        emptyStateVisible: Boolean(emptyState),
+        appointmentCardCount: cards,
+        bodyText,
+      };
+    })()`,
+  )
+}
+
+async function waitForAppointmentsDateState(cdp) {
+  return waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `(() => {
+          const loading = document.querySelector('[data-testid="appointments-loading-state"]');
+          if (loading) {
+            return false;
+          }
+
+          const hasEmptyState = Boolean(
+            document.querySelector('[data-testid="appointments-empty-state"]'),
+          );
+          const cardCount = document.querySelectorAll('[data-testid="appointment-card"]').length;
+
+          if (hasEmptyState) {
+            return 'empty';
+          }
+
+          if (cardCount > 0) {
+            return 'cards';
+          }
+
+          return false;
+        })()`,
+      ),
+    'appointments date state ready',
+  )
+}
+
 async function textIncludes(cdp, text) {
   return evaluate(
     cdp,
-    `document.body.innerText.includes(${JSON.stringify(text)})`,
+    `(() => {
+      const body = document.body;
+      return body ? body.innerText.includes(${JSON.stringify(text)}) : false;
+    })()`,
   )
 }
 
@@ -352,12 +582,46 @@ async function main() {
       throw new Error(`Unexpected prefill value: ${prefillValue}`)
     }
 
+    const originalAppointmentDate = await getInputValue(
+      cdp,
+      '[data-testid="patient-appointment-date"]',
+    )
+    const originalAppointmentTime = await getInputValue(
+      cdp,
+      '[data-testid="patient-appointment-time"]',
+    )
+
+    await setDateInput(cdp, '[data-testid="patient-appointment-date"]', '')
+    await clickByText(cdp, 'Schedule appointment')
+    await waitFor(
+      () => textIncludes(cdp, 'Choose an appointment date.'),
+      'missing appointment date validation',
+    )
+
+    await setDateInput(
+      cdp,
+      '[data-testid="patient-appointment-date"]',
+      originalAppointmentDate,
+    )
+    await typeInto(cdp, '[data-testid="patient-appointment-time"]', '')
+    await clickByText(cdp, 'Schedule appointment')
+    await waitFor(
+      () => textIncludes(cdp, 'Choose an appointment time.'),
+      'missing appointment time validation',
+    )
+    await typeInto(
+      cdp,
+      '[data-testid="patient-appointment-time"]',
+      originalAppointmentTime,
+    )
+
+    const appointmentCountBeforeSubmit = await getCreatedAppointmentCount()
     const submitted = await evaluate(
       cdp,
       `(() => {
-        const button = Array.from(document.querySelectorAll('#patient-appointment-form button'))
-          .find((element) => element.textContent?.trim() === 'Schedule appointment');
+        const button = document.querySelector('[data-testid="patient-appointment-submit"]');
         if (!button) return false;
+        button.click();
         button.click();
         return true;
       })()`,
@@ -383,7 +647,161 @@ async function main() {
     )
 
     const appointmentId = await getCreatedAppointmentId()
+    const createdAppointmentCount = await getCreatedAppointmentCount()
 
+    if (createdAppointmentCount !== appointmentCountBeforeSubmit + 1) {
+      throw new Error(
+        `Expected one newly created appointment, count moved from ${appointmentCountBeforeSubmit} to ${createdAppointmentCount}.`,
+      )
+    }
+    const cancelledAppointmentId = await createServiceAppointment(CANCELLED_REASON)
+
+    await navigate(cdp, APPOINTMENTS_URL)
+    await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'appointments page')
+    await waitFor(
+      () => textIncludes(cdp, EXPECTED_PREFILL),
+      'appointment appears in appointments list',
+    )
+
+    await clickByText(cdp, 'Week')
+    await waitFor(() => textIncludes(cdp, 'Weekly schedule'), 'weekly schedule mode')
+    await waitFor(
+      () => textIncludes(cdp, EXPECTED_PREFILL),
+      'appointment appears in weekly appointments list',
+    )
+    const weekDayCount = await evaluate(
+      cdp,
+      `document.querySelectorAll('[data-testid="appointments-week-day"]').length`,
+    )
+
+    if (weekDayCount !== 7) {
+      throw new Error(`Expected 7 weekly day groups, found ${weekDayCount}.`)
+    }
+
+    await clickAppointmentCardAction(cdp, EXPECTED_PREFILL, 'Details')
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment Detail'),
+      'appointment detail page from weekly schedule',
+    )
+    await clickByText(cdp, 'Back to schedule')
+    await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'back to daily schedule')
+    await waitFor(
+      () => textIncludes(cdp, EXPECTED_PREFILL),
+      'appointment card visible after returning from weekly detail',
+    )
+
+    await navigate(cdp, `${APPOINTMENTS_URL}/${cancelledAppointmentId}`)
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment Detail'),
+      'status polish appointment detail page',
+    )
+    await waitFor(
+      () => textIncludes(cdp, CANCELLED_REASON),
+      'status polish appointment reason visible',
+    )
+    await clickByText(cdp, 'Cancel')
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment status was updated successfully.'),
+      'cancelled appointment status feedback',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Start visit is only available for scheduled appointments.'),
+      'cancelled appointment start visit hidden notice',
+    )
+    const cancelledStartVisitVisible = await evaluate(
+      cdp,
+      `Array.from(document.querySelectorAll('button, a')).some((element) => element.textContent?.trim() === 'Start visit')`,
+    )
+
+    if (cancelledStartVisitVisible) {
+      throw new Error('Cancelled appointment detail should not show Start visit.')
+    }
+
+    await navigate(cdp, APPOINTMENTS_URL)
+    await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'schedule after cancelled detail')
+    await waitFor(
+      () => textIncludes(cdp, EXPECTED_PREFILL),
+      'scheduled appointment card visible after cancelled detail',
+    )
+
+    await clickAppointmentCardAction(cdp, EXPECTED_PREFILL, 'Details')
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment Detail'),
+      'appointment detail page from schedule list',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Scheduled'),
+      'scheduled appointment status on detail page',
+    )
+    await waitFor(
+      () => textIncludes(cdp, EXPECTED_PREFILL),
+      'appointment reason on detail page',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'No appointment notes recorded.'),
+      'empty appointment notes on detail page',
+    )
+    await clickByText(cdp, 'Back to schedule')
+    await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'back to schedule')
+    await waitFor(
+      () => textIncludes(cdp, EXPECTED_PREFILL),
+      'appointment card visible after returning to schedule',
+    )
+
+    await clickAppointmentCardAction(cdp, EXPECTED_PREFILL, 'Open patient')
+    await waitFor(
+      () => evaluate(cdp, `location.pathname === ${JSON.stringify(`/patients/${PATIENT_ID}`)}`),
+      'open patient from appointments list',
+    )
+
+    await navigate(cdp, APPOINTMENTS_URL)
+    await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'appointments page reload')
+    const emptyDate = '2099-12-31'
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', emptyDate)
+    await waitForDateInputValue(
+      cdp,
+      '[data-testid="appointments-date-input"]',
+      emptyDate,
+    )
+
+    await waitForAppointmentsDateState(cdp)
+    const debugSnapshot = await collectAppointmentsDebugSnapshot(cdp)
+    const emptyDateStateOk =
+      debugSnapshot.dateInputValue === emptyDate &&
+      !debugSnapshot.loadingVisible &&
+      debugSnapshot.emptyStateVisible &&
+      debugSnapshot.appointmentCardCount === 0
+
+    if (!emptyDateStateOk) {
+      console.error(
+        '[browser smoke] appointments empty date assertion failed:',
+        JSON.stringify(
+          {
+            dateInputValue: debugSnapshot.dateInputValue,
+            expectedDateInputValue: emptyDate,
+            loadingVisible: debugSnapshot.loadingVisible,
+            emptyStateVisible: debugSnapshot.emptyStateVisible,
+            appointmentCardCount: debugSnapshot.appointmentCardCount,
+            bodyText: debugSnapshot.bodyText,
+          },
+          null,
+          2,
+        ),
+      )
+      throw new Error('Expected appointments empty state after selecting empty date.')
+    }
+
+    await clickByText(cdp, 'Today')
+    await waitFor(
+      () => textIncludes(cdp, EXPECTED_PREFILL),
+      'appointments today shortcut returns to scheduled appointment',
+    )
+
+    await clickAppointmentCardAction(cdp, EXPECTED_PREFILL, 'Details')
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment Detail'),
+      'scheduled appointment detail before visit start',
+    )
     await clickByText(cdp, 'Start visit')
     await waitFor(
       () =>
@@ -461,6 +879,42 @@ async function main() {
       () => textIncludes(cdp, 'Linked Appointment'),
       'linked appointment visible on detail page',
     )
+    await waitFor(
+      () => textIncludes(cdp, 'Print review'),
+      'print review action visible on detail page',
+    )
+
+    const printActionMarkedHidden = await evaluate(
+      cdp,
+      `(() => {
+        const actionContainer = document.querySelector('.print-hidden');
+        if (!actionContainer) return false;
+        return Array.from(actionContainer.querySelectorAll('button'))
+          .some((element) => element.textContent?.trim() === 'Print review');
+      })()`,
+    )
+
+    if (!printActionMarkedHidden) {
+      throw new Error('Print review button is missing print-hidden marker context.')
+    }
+
+    await evaluate(
+      cdp,
+      `(() => {
+        window.__dentappPrintCalled = false;
+        window.print = () => {
+          window.__dentappPrintCalled = true;
+          return undefined;
+        };
+        return true;
+      })()`,
+    )
+    await clickByText(cdp, 'Print review')
+    await waitFor(
+      () => evaluate(cdp, 'window.__dentappPrintCalled === true'),
+      'print review triggers browser print',
+    )
+
     const detailUrl = await evaluate(cdp, 'location.href')
     await navigate(cdp, detailUrl)
     await waitFor(
@@ -476,6 +930,28 @@ async function main() {
       () => textIncludes(cdp, 'No upcoming appointment is scheduled for this patient.'),
       'completed appointment removed from upcoming summary',
     )
+
+    await navigate(cdp, `${APPOINTMENTS_URL}/${appointmentId}`)
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment Detail'),
+      'completed appointment detail page',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Completed'),
+      'completed appointment status on detail page',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'View completed visit'),
+      'linked completed visit action on appointment detail',
+    )
+    const startVisitStillVisible = await evaluate(
+      cdp,
+      `Array.from(document.querySelectorAll('button, a')).some((element) => element.textContent?.trim() === 'Start visit')`,
+    )
+
+    if (startVisitStillVisible) {
+      throw new Error('Completed appointment detail should not show Start visit.')
+    }
 
     await navigate(cdp, `${PATIENT_URL}/visit-completion`)
     await waitFor(() => textIncludes(cdp, 'Visit Completion'), 'normal visit route')
@@ -498,10 +974,20 @@ async function main() {
           emptyStateVerified: true,
           followUpPrefillVerified: true,
           createAndRefreshVerified: true,
+          appointmentCreationValidationVerified: true,
+          appointmentDoubleSubmitHarmlessVerified: true,
+          appointmentsWeeklyViewVerified: true,
+          cancelledAppointmentStartVisitHiddenVerified: true,
+          appointmentDetailFromScheduleVerified: true,
+          appointmentsListRouteVerified: true,
+          appointmentsOpenPatientVerified: true,
+          appointmentsEmptyDateVerified: true,
           startVisitFromAppointmentVerified: true,
           appointmentContextVerified: true,
           linkedVisitCompletionVerified: true,
+          completedAppointmentDetailVerified: true,
           completedVisitDetailVerified: true,
+          printActionVerified: true,
           detailRefreshVerified: true,
           backToTimelineVerified: true,
           normalVisitCompletionWithoutAppointmentVerified: true,

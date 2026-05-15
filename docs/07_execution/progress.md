@@ -1723,6 +1723,360 @@ Initial stack:
 
 ---
 
+### Completed (Task 46)
+
+- Updated `PatientVisitDetailPage.tsx` for print-ready output.
+- Added a clear `Print review` action in completed visit review.
+- Wired `Print review` to browser print with `window.print()`.
+- Ensured visit review print content includes:
+	- app/clinic heading,
+	- patient context,
+	- visit date and completed status,
+	- linked appointment context when present,
+	- procedures,
+	- clinical note,
+	- recommendation,
+	- next step,
+	- generated timestamp.
+- Added print utility classes and print-specific layout hooks:
+	- hide app shell chrome (sidebar/topbar/mobile drawer),
+	- hide page/action controls in print,
+	- keep white print background,
+	- remove card shadows/background emphasis,
+	- improve print section breaks for cards and procedure blocks.
+- Updated shell/layout components to support targeted print hiding:
+	- `AppShell.tsx`,
+	- `TopBar.tsx`,
+	- `SidebarNav.tsx`,
+	- `PageHeader.tsx`.
+- Added print CSS in `src/index.css`.
+- Updated `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` to verify:
+	- `Print review` is visible on completed visit detail,
+	- print action is in print-hidden action context,
+	- clicking `Print review` triggers print behavior.
+- Created `docs/design/task-46-visit-review-print-pdf-preparation.md`.
+
+### Verification (Task 46)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- Follow-up fix: `Print review` now has an explicit `.print-hidden` wrapper in `PatientVisitDetailPage.tsx`, and shell-level `.print-hidden` markers were removed where dedicated print selectors already exist to avoid smoke selector ambiguity.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` is blocked in this environment due to missing `VITE_SUPABASE_URL/SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY`.
+- `node .\supabase\snippets\testAppointmentService.mjs` is blocked in this environment due to missing Supabase env keys (`VITE_SUPABASE_URL/SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY/SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
+- `node .\supabase\snippets\testAppointmentsRls.mjs` is blocked in this environment due to missing Supabase env keys (`VITE_SUPABASE_URL/SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY/SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` is blocked in this environment due to missing Supabase env keys (`VITE_SUPABASE_URL/SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY/SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
+
+### Known Limitations (Task 46)
+
+- Browser print/PDF-prep is implemented, but no real PDF file export is implemented.
+- No server-side PDF generation.
+- No jsPDF/html2canvas download flow.
+- No visit edit/delete behavior.
+- No email/export distribution workflow.
+
+---
+
+### Completed (Task 47)
+
+- Added new protected route:
+	- `/appointments`.
+- Added `AppointmentsPage` with a basic operational schedule list view.
+- Added `fetchAppointmentsForRange(startDate, endDate)` in `appointmentService`.
+- Range fetch behavior:
+	- loads appointments in the provided date range,
+	- orders by `scheduled_start` ascending,
+	- loads patient summary per appointment (`id`, `fullName`) via patient lookup,
+	- returns empty list for invalid range input,
+	- preserves existing Supabase/demo/error handling patterns.
+- Added appointments route access config using existing scheduling role set.
+- Added appointments navigation entry for desktop/mobile shell navigation.
+- Added appointments sidebar marker (`A`).
+- Added appointments page behavior:
+	- today by default,
+	- date picker plus `Today` and `Tomorrow` controls,
+	- loading, error, and empty-date states,
+	- card rows with time, patient name, reason fallback, and status badge,
+	- `Open patient` action,
+	- `Start visit` action for `scheduled` appointments,
+	- status actions for `scheduled` appointments (`completed`, `cancelled`, `no_show`).
+- Updated browser smoke script to cover basic appointments list workflow checks:
+	- `/appointments` loads,
+	- appointment appears in list,
+	- open patient from list works,
+	- empty state appears for far-future date,
+	- `Today` returns to populated list,
+	- start visit from appointments list continues appointment-to-visit flow.
+- Hardened browser smoke robustness for appointments date/empty-state checks:
+	- added stable appointments test selectors for date input, loading, empty state, list, and cards,
+	- replaced brittle date typing with a dedicated native date setter helper,
+	- added date input value synchronization wait before empty-state assertion,
+	- switched empty-date assertion to explicit state validation (`dateInputValue`, loading hidden, empty-state visible, zero cards),
+	- improved evaluate/wait diagnostics to surface real browser exception details and retry transient page-state errors.
+- Created `docs/design/task-47-basic-appointments-list-schedule-view.md`.
+
+### Verification (Task 47)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+
+### Known Limitations (Task 47)
+
+- This is a list-based schedule view only; no calendar grid/month view.
+- No drag/drop scheduling.
+- No provider/chair/resource scheduling.
+- No recurring appointments.
+- No reminders or external calendar sync.
+- No billing/analytics expansion.
+
+---
+
+## 2026-05-15
+
+### Completed (Task 48)
+
+- Created `docs/design/task-48-appointment-workflow-polish.md`.
+- Added shared appointment display helpers in `src/features/appointments/appointmentDisplay.ts` for status labels, badge variants, and time-range formatting.
+- Updated `AppointmentsPage` to use the shared appointment display helper and improve responsive/loading/empty-state polish.
+- Updated `PatientAppointmentSummary` to use shared appointment labels/badges and friendlier busy/error handling.
+- Updated `VisitCompletionFlow` to use shared appointment labels and wrap-safe appointment context copy.
+- Updated `VisitCompletionPage` to gracefully drop stale non-scheduled appointment context and continue visit completion without linking.
+- Updated `PatientVisitDetailPage` to use the shared appointment labels for linked appointment context.
+- Kept the change focused on presentation consistency and workflow resilience; no new scheduling model or persistence behavior was added.
+
+### Verification (Task 48)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `get_errors` returned no remaining errors for the touched Task 48 files.
+
+### Known Limitations (Task 48)
+
+- No calendar grid or drag/drop scheduling.
+- No provider/chair/resource scheduling.
+- No reminders, recurring appointments, or external calendar sync.
+- No new appointment persistence behavior beyond the existing service layer.
+
+---
+
+## 2026-05-15 (continued)
+
+### Completed (Task 48B — Mobile Workflow Usability Pass)
+
+- `PatientFullRecord`: tab/section navigation changed to a horizontal scroll strip on mobile (`overflow-x-auto flex-nowrap shrink-0`), reverting to wrapped layout on `sm:`.
+- `AppointmentsPage`: page description shortened; date controls made non-wrapping with horizontal scroll on mobile; redundant "Starts …" time duplicate line removed from appointment cards.
+- `PatientFollowUpSummary`: CardHeader action buttons moved to an inline `flex flex-wrap gap-2 pt-1` row below title/description; footer notice shortened; metric tile grid breakpoint lowered to `sm:`; `break-words` → `wrap-break-word`.
+- `PatientAppointmentSummary`: Date/Time/Duration form row breakpoint lowered from `md:grid-cols-3` → `sm:grid-cols-3`; helper text shortened; notes `Textarea` reduced from `min-h-24` → `min-h-16`.
+- `VisitCompletionFlow`: step-prompt side box hidden on mobile (`hidden sm:block`); planned-today description text hidden on mobile (`hidden sm:block`).
+- `PatientVisitTimeline`: MetricTile grid breakpoint lowered from `md:grid-cols-2` → `sm:grid-cols-2`; procedure list padding tightened; `break-words` → `wrap-break-word` in clinical note and recommendation paragraphs.
+- `PatientVisitDetailPage`: visit-header MetricTile grid changed from `md:grid-cols-3` → `sm:grid-cols-2 md:grid-cols-3`.
+
+### Verification (Task 48B)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes (including `break-words` → `wrap-break-word` fixes).
+- `get_errors` returned no errors for all touched files.
+
+### Known Limitations (Task 48B)
+
+- No new features or structural redesigns — pure mobile density and readability pass.
+- Tablet/desktop layouts unchanged.
+- No smoke tests (env vars unavailable in current environment).
+
+---
+
+## 2026-05-15 (continued)
+
+### Completed (Task 49)
+
+- Added read-only appointment detail route:
+	- `/appointments/:appointmentId`.
+- Created `src/pages/AppointmentDetailPage.tsx`.
+- Added route access for existing scheduling roles.
+- Added `fetchAppointmentById(appointmentId)` to `appointmentService`.
+- Appointment detail service loads:
+	- appointment id,
+	- patient summary,
+	- scheduled start/end,
+	- status,
+	- reason,
+	- notes,
+	- created/updated timestamps,
+	- latest linked completed visit when present.
+- Appointment detail page shows:
+	- patient name/context,
+	- date/time,
+	- status badge,
+	- reason,
+	- notes,
+	- linked completed visit summary.
+- Added appointment detail actions:
+	- Back to schedule,
+	- Open patient,
+	- Start visit only for `scheduled` appointments,
+	- View completed visit when linked visit exists.
+- Added `Details` action to `/appointments` schedule cards.
+- Added `Details` action to patient appointment summary.
+- Updated `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` to verify appointment detail from schedule list and completed appointment detail after visit completion.
+- Created `docs/design/task-49-appointment-detail-schedule-item-review.md`.
+
+### Verification (Task 49)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes:
+	- appointment detail opens from schedule list,
+	- appointment patient/date/status/reason/empty notes are visible,
+	- Start visit works from appointment detail,
+	- completed appointment detail shows completed status,
+	- linked completed visit action appears,
+	- completed appointment detail does not show Start visit.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` still passes.
+
+### Known Limitations (Task 49)
+
+- No appointment editing.
+- No calendar grid or weekly view.
+- No conflict detection.
+- No provider/chair/resource scheduling.
+- No recurring appointments.
+- No reminders or external calendar sync.
+- No billing/payment integration.
+
+---
+
+## 2026-05-15 (continued)
+
+### Completed (Task 50)
+
+- Extended `/appointments` with a lightweight schedule view mode switch:
+	- Day,
+	- Week.
+- Kept Day as the default mode.
+- Week mode uses existing `fetchAppointmentsForRange(startDate, endDate)`.
+- Added Monday-to-Sunday week range calculation.
+- Added week range label.
+- Added Week navigation:
+	- Previous week,
+	- This week,
+	- Next week,
+	- Refresh.
+- Preserved Day navigation:
+	- date input,
+	- Today,
+	- Tomorrow,
+	- Refresh.
+- Refactored `AppointmentsPage` to share the appointment card renderer between Day and Week modes.
+- Week mode groups appointments by day and shows compact empty-day states.
+- Weekly appointment cards show:
+	- time,
+	- patient,
+	- reason,
+	- status badge,
+	- Details,
+	- Open patient,
+	- Start visit only for scheduled appointments,
+	- existing status actions for scheduled appointments.
+- Updated `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` to verify Week mode.
+- Created `docs/design/task-50-lightweight-weekly-schedule-view.md`.
+
+### Verification (Task 50)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes:
+	- Week mode opens,
+	- weekly schedule label appears,
+	- created appointment appears in Week mode,
+	- seven day groups render,
+	- appointment detail opens from a weekly appointment card,
+	- existing appointment-to-visit and completed visit detail smoke coverage still passes.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` still passes.
+
+### Known Limitations (Task 50)
+
+- No calendar grid.
+- No month view.
+- No appointment creation from the schedule page.
+- No drag/drop scheduling.
+- No provider/chair/resource scheduling.
+- No recurring appointments.
+- No reminders or external calendar sync.
+- No conflict detection.
+
+---
+
+## 2026-05-15 (continued)
+
+### Completed (Task 51)
+
+- Polished appointment creation validation in the service layer and patient appointment form.
+- Added short user-facing validation for:
+	- missing date,
+	- missing time,
+	- invalid duration/end time,
+	- appointment end before start,
+	- overlong reason,
+	- overlong notes.
+- Added shared appointment reason and notes length constants.
+- Trimmed reason and notes before service validation.
+- Kept follow-up-to-appointment prefill behavior working.
+- Added a synchronous double-submit guard to patient appointment creation so rapid clicks create only one appointment.
+- Added stable appointment form test selectors for browser smoke coverage.
+- Polished status action handling on appointment detail:
+	- Complete,
+	- Cancel,
+	- No-show.
+- Appointment detail status actions now disable while an update is running and show success/failure feedback.
+- Added a stale-state guard so Start visit is blocked if an appointment is no longer scheduled.
+- Preserved status rules:
+	- only scheduled appointments can start a visit,
+	- cancelled/completed/no-show appointments do not show Start visit,
+	- patient upcoming summary only shows future scheduled appointments,
+	- completed linked appointments can still open the completed visit.
+- Updated `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` to cover:
+	- missing date validation,
+	- missing time validation,
+	- double-submit prevention,
+	- cancelled appointment Start visit hiding,
+	- existing appointment detail, appointment-to-visit, linked visit, print, and weekly schedule coverage.
+- Created `docs/design/task-51-appointment-creation-status-polish.md`.
+
+### Verification (Task 51)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes:
+	- appointment creation validation verified,
+	- double-submit is harmless,
+	- status action feedback verified,
+	- cancelled appointment does not show Start visit,
+	- scheduled appointment can still start Visit Completion,
+	- completed linked appointment does not show Start visit,
+	- appointment detail still works.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` still passes.
+
+### Known Limitations (Task 51)
+
+- No appointment editing.
+- No appointment deletion.
+- No conflict detection.
+- No provider/chair/resource scheduling.
+- No recurring appointments.
+- No reminders or external calendar sync.
+- No schedule-page appointment creation.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.

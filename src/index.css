@@ -28,3 +28,63 @@ textarea,
 select {
   font: inherit;
 }
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  :root {
+    background: #ffffff;
+    color: #0f172a;
+  }
+
+  body {
+    background: #ffffff;
+    color: #0f172a;
+  }
+
+  .print-hidden,
+  .app-shell-sidebar,
+  .app-shell-topbar,
+  .app-shell-mobile-drawer {
+    display: none !important;
+  }
+
+  .app-shell,
+  .app-shell-content,
+  .app-shell-main {
+    display: block !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-visit-detail {
+    max-width: none !important;
+    gap: 0.8rem !important;
+  }
+
+  .print-visit-detail-card {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-procedure-item {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

@@ -2,6 +2,8 @@ export const routePaths = {
   login: '/login',
   dashboard: '/',
   calendar: '/calendar',
+  appointments: '/appointments',
+  appointmentDetail: '/appointments/:appointmentId',
   patients: '/patients',
   patientCreate: '/patients/new',
   patientDetail: '/patients/:patientId',
@@ -19,6 +21,10 @@ export const routePaths = {
 
 export function getPatientDetailPath(patientId: string) {
   return `/patients/${patientId}`
+}
+
+export function getAppointmentDetailPath(appointmentId: string) {
+  return `/appointments/${appointmentId}`
 }
 
 export function getPatientEditPath(patientId: string) {

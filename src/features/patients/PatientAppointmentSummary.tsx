@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import {
@@ -20,6 +20,12 @@ import {
   TextInput,
 } from '../../components/ui'
 import {
+  appointmentStatusBadgeVariants,
+  appointmentStatusLabels,
+} from '../appointments/appointmentDisplay'
+import {
+  APPOINTMENT_NOTES_MAX_LENGTH,
+  APPOINTMENT_REASON_MAX_LENGTH,
   createAppointment,
   fetchUpcomingAppointmentsForPatient,
   updateAppointmentStatus,
@@ -27,7 +33,10 @@ import {
   type AppointmentStatus,
 } from '../appointments/appointmentService'
 import { formatPatientDateTime } from './patientDisplay'
-import { getPatientVisitCompletionPath } from '../../routes/routePaths'
+import {
+  getAppointmentDetailPath,
+  getPatientVisitCompletionPath,
+} from '../../routes/routePaths'
 
 type PatientAppointmentSummaryProps = {
   patientId: string
@@ -41,23 +50,6 @@ type AppointmentFormValues = {
   duration: string
   reason: string
   notes: string
-}
-
-const statusLabels: Record<AppointmentStatus, string> = {
-  scheduled: 'Scheduled',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-  no_show: 'No-show',
-}
-
-const statusBadgeVariants: Record<
-  AppointmentStatus,
-  'success' | 'warning' | 'danger' | 'info'
-> = {
-  scheduled: 'info',
-  completed: 'success',
-  cancelled: 'danger',
-  no_show: 'warning',
 }
 
 function getDefaultAppointmentValues(): AppointmentFormValues {
@@ -89,13 +81,29 @@ function getAppointmentErrorMessage(message: string | null) {
     normalizedMessage.includes('failed to fetch') ||
     normalizedMessage.includes('network')
   ) {
-    return 'Appointments could not be loaded. Check the local Supabase connection and try again.'
+    return 'Appointments could not be loaded. Try again.'
   }
 
-  return message || 'Appointments could not be loaded.'
+  return message || 'Appointments could not be loaded. Try again.'
 }
 
 function buildSchedule(values: AppointmentFormValues) {
+  if (!values.date) {
+    return {
+      error: 'Choose an appointment date.',
+      scheduledEnd: null,
+      scheduledStart: null,
+    }
+  }
+
+  if (!values.time) {
+    return {
+      error: 'Choose an appointment time.',
+      scheduledEnd: null,
+      scheduledStart: null,
+    }
+  }
+
   const scheduledStart = new Date(`${values.date}T${values.time}`)
   const durationMinutes = Number(values.duration)
 
@@ -110,6 +118,22 @@ function buildSchedule(values: AppointmentFormValues) {
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
     return {
       error: 'Choose a valid appointment duration.',
+      scheduledEnd: null,
+      scheduledStart: null,
+    }
+  }
+
+  if (values.reason.trim().length > APPOINTMENT_REASON_MAX_LENGTH) {
+    return {
+      error: `Reason must be ${APPOINTMENT_REASON_MAX_LENGTH} characters or fewer.`,
+      scheduledEnd: null,
+      scheduledStart: null,
+    }
+  }
+
+  if (values.notes.trim().length > APPOINTMENT_NOTES_MAX_LENGTH) {
+    return {
+      error: `Notes must be ${APPOINTMENT_NOTES_MAX_LENGTH} characters or fewer.`,
       scheduledEnd: null,
       scheduledStart: null,
     }
@@ -134,20 +158,20 @@ function getCreateErrorMessage(message: string | null) {
     normalizedMessage.includes('row-level security') ||
     normalizedMessage.includes('not allowed')
   ) {
-    return 'You do not have permission to create appointments for this patient.'
+    return 'Could not create appointment. Check your access and try again.'
   }
 
   if (normalizedMessage.includes('patient not found')) {
     return 'Patient could not be found for appointment scheduling.'
   }
 
-  return message || 'Appointment could not be created.'
+  return message || 'Could not create appointment. Try again.'
 }
 
 function AppointmentStatusBadge({ status }: { status: AppointmentStatus }) {
   return (
-    <Badge variant={statusBadgeVariants[status]}>
-      {statusLabels[status]}
+    <Badge variant={appointmentStatusBadgeVariants[status]}>
+      {appointmentStatusLabels[status]}
     </Badge>
   )
 }
@@ -170,6 +194,8 @@ export function PatientAppointmentSummary({
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [statusSubmitting, setStatusSubmitting] = useState<string | null>(null)
+  const createSubmittingRef = useRef(false)
+  const statusSubmittingRef = useRef(false)
 
   async function loadUpcomingAppointments(showLoading = true) {
     if (showLoading) {
@@ -252,6 +278,10 @@ export function PatientAppointmentSummary({
   const schedulePreview = useMemo(() => buildSchedule(formValues), [formValues])
 
   async function handleCreateAppointment() {
+    if (isLoading || isSubmitting || createSubmittingRef.current) {
+      return
+    }
+
     setFormError(null)
     setSuccessMessage(null)
 
@@ -260,6 +290,7 @@ export function PatientAppointmentSummary({
       return
     }
 
+    createSubmittingRef.current = true
     setIsSubmitting(true)
 
     const result = await createAppointment({
@@ -270,6 +301,7 @@ export function PatientAppointmentSummary({
       notes: formValues.notes,
     })
 
+    createSubmittingRef.current = false
     setIsSubmitting(false)
 
     if (!result.ok) {
@@ -283,12 +315,13 @@ export function PatientAppointmentSummary({
   }
 
   async function handleStatusUpdate(status: AppointmentStatus) {
-    if (!nextAppointment || statusSubmitting) {
+    if (!nextAppointment || statusSubmitting || statusSubmittingRef.current || isLoading) {
       return
     }
 
     setFormError(null)
     setSuccessMessage(null)
+    statusSubmittingRef.current = true
     setStatusSubmitting(status)
 
     const result = await updateAppointmentStatus({
@@ -296,18 +329,17 @@ export function PatientAppointmentSummary({
       status,
     })
 
+    statusSubmittingRef.current = false
     setStatusSubmitting(null)
 
     if (!result.ok) {
       setFormError(
-        result.error ?? result.message ?? 'Appointment status could not be updated.',
+        'Could not update appointment status. Try again.',
       )
       return
     }
 
-    setSuccessMessage(
-      result.message ?? 'Appointment status was updated successfully.',
-    )
+    setSuccessMessage(result.message ?? 'Appointment status updated.')
     await loadUpcomingAppointments(false)
   }
 
@@ -321,6 +353,10 @@ export function PatientAppointmentSummary({
   function startVisitFromAppointment(appointmentId: string) {
     const searchParams = new URLSearchParams({ appointmentId })
     navigate(`${getPatientVisitCompletionPath(patientId)}?${searchParams}`)
+  }
+
+  function openAppointmentDetail(appointmentId: string) {
+    navigate(getAppointmentDetailPath(appointmentId))
   }
 
   return (
@@ -387,14 +423,22 @@ export function PatientAppointmentSummary({
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
-                  disabled={Boolean(statusSubmitting)}
+                  disabled={Boolean(statusSubmitting) || isLoading}
+                  onClick={() => openAppointmentDetail(nextAppointment.id)}
+                  size="sm"
+                  variant="secondary"
+                >
+                  Details
+                </Button>
+                <Button
+                  disabled={Boolean(statusSubmitting) || isLoading}
                   onClick={() => startVisitFromAppointment(nextAppointment.id)}
                   size="sm"
                 >
                   Start visit
                 </Button>
                 <Button
-                  disabled={Boolean(statusSubmitting)}
+                  disabled={Boolean(statusSubmitting) || isLoading}
                   onClick={() => void handleStatusUpdate('completed')}
                   size="sm"
                   variant="secondary"
@@ -402,7 +446,7 @@ export function PatientAppointmentSummary({
                   {statusSubmitting === 'completed' ? 'Updating...' : 'Complete'}
                 </Button>
                 <Button
-                  disabled={Boolean(statusSubmitting)}
+                  disabled={Boolean(statusSubmitting) || isLoading}
                   onClick={() => void handleStatusUpdate('cancelled')}
                   size="sm"
                   variant="ghost"
@@ -410,7 +454,7 @@ export function PatientAppointmentSummary({
                   {statusSubmitting === 'cancelled' ? 'Updating...' : 'Cancel'}
                 </Button>
                 <Button
-                  disabled={Boolean(statusSubmitting)}
+                  disabled={Boolean(statusSubmitting) || isLoading}
                   onClick={() => void handleStatusUpdate('no_show')}
                   size="sm"
                   variant="ghost"
@@ -422,7 +466,7 @@ export function PatientAppointmentSummary({
           </div>
         ) : (
           <InlineNotice variant="neutral">
-            No upcoming appointment is scheduled for this patient.
+            No upcoming appointment is scheduled for this patient. Use the form below to add one.
           </InlineNotice>
         )}
 
@@ -443,8 +487,7 @@ export function PatientAppointmentSummary({
                 Schedule appointment
               </div>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Creates a scheduled appointment only. It does not create a visit,
-                reminder, or calendar event.
+              Creates a scheduled appointment linked to this patient. No visit, reminder, or calendar event is created.
               </p>
             </div>
             {schedulePreview.scheduledStart ? (
@@ -454,11 +497,12 @@ export function PatientAppointmentSummary({
             ) : null}
           </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <label>
               <FieldLabel>Date</FieldLabel>
               <TextInput
                 disabled={isSubmitting}
+                data-testid="patient-appointment-date"
                 type="date"
                 value={formValues.date}
                 onChange={(event) => updateFormValue('date', event.target.value)}
@@ -468,6 +512,7 @@ export function PatientAppointmentSummary({
               <FieldLabel>Time</FieldLabel>
               <TextInput
                 disabled={isSubmitting}
+                data-testid="patient-appointment-time"
                 type="time"
                 value={formValues.time}
                 onChange={(event) => updateFormValue('time', event.target.value)}
@@ -477,6 +522,7 @@ export function PatientAppointmentSummary({
               <FieldLabel>Duration</FieldLabel>
               <Select
                 disabled={isSubmitting}
+                data-testid="patient-appointment-duration"
                 value={formValues.duration}
                 onChange={(event) =>
                   updateFormValue('duration', event.target.value)
@@ -496,6 +542,7 @@ export function PatientAppointmentSummary({
               <FieldLabel>Reason</FieldLabel>
               <TextInput
                 disabled={isSubmitting}
+                maxLength={APPOINTMENT_REASON_MAX_LENGTH}
                 placeholder="Control visit, follow-up, consultation"
                 value={formValues.reason}
                 onChange={(event) =>
@@ -506,8 +553,9 @@ export function PatientAppointmentSummary({
             <label>
               <FieldLabel>Notes</FieldLabel>
               <Textarea
-                className="min-h-24"
+                className="min-h-16"
                 disabled={isSubmitting}
+                maxLength={APPOINTMENT_NOTES_MAX_LENGTH}
                 placeholder="Optional scheduling notes"
                 value={formValues.notes}
                 onChange={(event) => updateFormValue('notes', event.target.value)}
@@ -521,7 +569,8 @@ export function PatientAppointmentSummary({
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
-              disabled={isSubmitting || Boolean(schedulePreview.error)}
+              data-testid="patient-appointment-submit"
+              disabled={isSubmitting || isLoading || Boolean(schedulePreview.error)}
               onClick={() => void handleCreateAppointment()}
             >
               {isSubmitting ? 'Scheduling...' : 'Schedule appointment'}

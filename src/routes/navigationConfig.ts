@@ -18,6 +18,12 @@ export const navigationItems: NavigationItem[] = [
     description: 'Scheduling workspace',
   },
   {
+    label: 'Appointments',
+    path: routePaths.appointments,
+    allowedRoles: routeAllowedRoles[routePaths.appointments],
+    description: 'Operational appointment list',
+  },
+  {
     label: 'Patients',
     path: routePaths.patients,
     allowedRoles: routeAllowedRoles[routePaths.patients],

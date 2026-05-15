@@ -13,6 +13,7 @@ type SidebarNavProps = {
 const navigationMarkers: Record<string, string> = {
   [routePaths.dashboard]: 'D',
   [routePaths.calendar]: 'C',
+  [routePaths.appointments]: 'A',
   [routePaths.patients]: 'P',
   [routePaths.treatmentPlans]: 'TP',
   [routePaths.payments]: '$',
@@ -33,7 +34,7 @@ export function SidebarNav({ currentProfile }: SidebarNavProps) {
   const visibleNavigationItems = getVisibleNavigationItems(currentProfile)
 
   return (
-    <aside className="sticky top-0 hidden h-screen shrink-0 border-r border-slate-200 bg-white md:block md:w-20 xl:w-72">
+    <aside className="app-shell-sidebar sticky top-0 hidden h-screen shrink-0 border-r border-slate-200 bg-white md:block md:w-20 xl:w-72">
       <div className="flex h-full flex-col">
         <div className="flex min-h-20 items-center justify-center border-b border-slate-200 px-3 xl:justify-between xl:px-5">
           <div className="flex items-center gap-3">
@@ -111,7 +112,7 @@ export function MobileNavigationDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden">
+    <div className="app-shell-mobile-drawer fixed inset-0 z-50 md:hidden">
       <button
         aria-label="Close navigation menu"
         className="absolute inset-0 h-full w-full bg-slate-950/40"

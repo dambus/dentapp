@@ -2,6 +2,8 @@ import type { ReactElement } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
 import { AppShell } from '../layouts/AppShell'
+import { AppointmentDetailPage } from '../pages/AppointmentDetailPage'
+import { AppointmentsPage } from '../pages/AppointmentsPage'
 import { CalendarPage } from '../pages/CalendarPage'
 import { CommissionsPage } from '../pages/CommissionsPage'
 import { DashboardPage } from '../pages/DashboardPage'
@@ -54,6 +56,14 @@ export function AppRoutes() {
         <Route
           path={routePaths.calendar}
           element={withRoleGuard('calendar', <CalendarPage />)}
+        />
+        <Route
+          path={routePaths.appointments}
+          element={withRoleGuard('appointments', <AppointmentsPage />)}
+        />
+        <Route
+          path={routePaths.appointmentDetail}
+          element={withRoleGuard('appointmentDetail', <AppointmentDetailPage />)}
         />
         <Route
           path={routePaths.patients}
