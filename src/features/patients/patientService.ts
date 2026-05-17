@@ -53,6 +53,20 @@ const patientDataSource = normalizeDataSource(
   import.meta.env.VITE_PATIENT_DATA_SOURCE,
 )
 
+const demoPatientSupabaseIdsByRouteId: Record<string, string> = {
+  'demo-patient-001': '22222222-2222-2222-2222-222222222201',
+  'demo-patient-002': '22222222-2222-2222-2222-222222222202',
+  'demo-patient-003': '22222222-2222-2222-2222-222222222203',
+  'demo-patient-004': '22222222-2222-2222-2222-222222222204',
+  'demo-patient-005': '22222222-2222-2222-2222-222222222205',
+}
+
+const demoPatientRouteIdsBySupabaseId = Object.fromEntries(
+  Object.entries(demoPatientSupabaseIdsByRouteId).map(
+    ([routeId, supabaseId]) => [supabaseId, routeId],
+  ),
+) as Record<string, string>
+
 const matchesSearch = (patient: DemoPatient, normalizedSearch: string) => {
   if (!normalizedSearch) {
     return true
@@ -76,6 +90,30 @@ const mapPatientStatus = (status: string): DemoPatient['status'] => {
 
 const normalizeDateOfBirth = (value: string | null) => {
   return value ?? '1970-01-01'
+}
+
+export function getPatientRouteId(patientId: string | null | undefined) {
+  const normalizedPatientId = patientId?.trim() ?? ''
+
+  if (!normalizedPatientId) {
+    return ''
+  }
+
+  return (
+    demoPatientRouteIdsBySupabaseId[normalizedPatientId] ?? normalizedPatientId
+  )
+}
+
+export function getPatientPersistenceId(patientId: string | null | undefined) {
+  const normalizedPatientId = patientId?.trim() ?? ''
+
+  if (!normalizedPatientId) {
+    return ''
+  }
+
+  return (
+    demoPatientSupabaseIdsByRouteId[normalizedPatientId] ?? normalizedPatientId
+  )
 }
 
 const mapSupabasePatientToDemoPatient = (
@@ -341,7 +379,7 @@ async function getPatientByIdFromSupabase(
   }
 
   if (!patientData) {
-    return undefined
+    return demoPatients.find((patient) => patient.id === patientId)
   }
 
   const patient = patientData as SupabasePatientRow

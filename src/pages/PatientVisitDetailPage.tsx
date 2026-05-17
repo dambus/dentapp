@@ -24,7 +24,11 @@ import {
 } from '../features/patients/patientDisplay'
 import { getPatientById } from '../features/patients/patientService'
 import type { DemoPatient } from '../features/patients/types'
-import { appointmentStatusLabels } from '../features/appointments/appointmentDisplay'
+import {
+  appointmentStatusBadgeVariants,
+  appointmentStatusLabels,
+  formatAppointmentTimeRange,
+} from '../features/appointments/appointmentDisplay'
 import {
   fetchCompletedVisitById,
   type CompletedVisitDetail,
@@ -290,14 +294,25 @@ export function PatientVisitDetailPage() {
             <CardHeader>
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle>Linked Appointment</CardTitle>
-                <Badge variant="info">
+                <Badge
+                  variant={
+                    appointmentStatusBadgeVariants[
+                      visit.linkedAppointment.status as keyof typeof appointmentStatusBadgeVariants
+                    ] ?? 'info'
+                  }
+                >
                   {appointmentStatusLabels[
                     visit.linkedAppointment.status as keyof typeof appointmentStatusLabels
                   ] ?? visit.linkedAppointment.status}
                 </Badge>
               </div>
               <CardDescription>
-                Scheduled {formatPatientDateTime(visit.linkedAppointment.scheduledStart)}.
+                Scheduled{' '}
+                {formatAppointmentTimeRange(
+                  visit.linkedAppointment.scheduledStart,
+                  visit.linkedAppointment.scheduledEnd,
+                )}
+                .
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">

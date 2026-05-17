@@ -2077,6 +2077,126 @@ Initial stack:
 
 ---
 
+### Fix (Task 51 — Manual Appointment Creation)
+
+- Fixed manual appointment creation from the legacy demo patient route `/patients/demo-patient-002`.
+- Root cause: the appointment service was still tied to `VITE_PATIENT_DATA_SOURCE`; when the patient page used demo patient IDs, appointment creation could return before opening the Supabase client, so no network request was made and the UI showed a generic failure.
+- Added a small demo-patient-to-seeded-Supabase-ID resolver for appointment persistence so demo patient routes can create appointments against the local seeded patient UUIDs while RLS/session checks still happen in Supabase.
+- Removed the patient-data-source gate from appointment fetch/create/status service calls.
+- Tightened appointment form timestamp creation to use canonical native input values only:
+	- date must be `YYYY-MM-DD`,
+	- time must be `HH:mm`,
+	- timestamps are built as `${date}T${time}:00`.
+- Added development-only appointment-create diagnostics for validation failures and caught exceptions.
+- Updated browser smoke coverage to create an appointment through `/patients/demo-patient-002` with:
+	- Date: `2026-05-18`,
+	- Time: `11:00`,
+	- Duration: `30 min`,
+	- Reason: `Consultation`,
+	- Notes: `Optional note demo`,
+	and assert an appointment network request is made, the appointment persists after refresh, and the generic create failure is not shown.
+
+### Verification (Task 51 Fix)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+
+---
+
+### Follow-up Fix (Task 51 — Appointment Patient Routes)
+
+- Fixed appointment actions that used raw Supabase patient UUIDs in patient routes.
+- Root cause: appointment rows correctly store `patient_id` as a Supabase UUID, but the current demo patient routes expect demo slugs such as `demo-patient-002`.
+- Centralized patient id conversion in `patientService.ts`:
+	- `getPatientPersistenceId(...)` maps demo slugs to seeded Supabase UUIDs for appointment reads/writes,
+	- `getPatientRouteId(...)` maps seeded Supabase UUIDs back to demo slugs for app navigation.
+- Extended appointment patient summaries with `routeId`.
+- Updated `/appointments` list actions:
+	- `Open patient`,
+	- `Start visit`.
+- Updated `/appointments/:appointmentId` detail actions:
+	- `Open patient`,
+	- `Start visit`,
+	- linked completed visit navigation.
+- Kept appointment database writes and joins on Supabase UUIDs.
+- Updated browser smoke coverage to assert appointment list/detail navigation for demo patient 002 uses `/patients/demo-patient-002`, including Visit Completion routes, and rejects raw UUID patient routes.
+
+### Verification (Task 51 Route Fix)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+
+---
+
+### Completed (Task 52)
+
+- Created `docs/design/task-52-appointment-module-qa-ux-notes.md`.
+- Reviewed appointment module workflows in code and against existing browser smoke coverage:
+	- patient appointment summary,
+	- appointment creation form,
+	- follow-up-to-appointment bridge,
+	- `/appointments` Day and Week schedule list,
+	- appointment detail page,
+	- status actions,
+	- start visit from appointment,
+	- completed appointment linked to visit,
+	- completed visit detail linked appointment context,
+	- demo patient persistence/route id behavior.
+- Documented a functional QA checklist covering creation, validation, persistence, schedule visibility, detail visibility, status transitions, visit bridge, refresh behavior, and route-id correctness.
+- Documented UX notes by severity:
+	- no must-fix blockers before broader testing,
+	- should-fix-soon items around action density, status confidence, feedback placement, mobile scroll length, schedule readability, detail hierarchy, and wording consistency,
+	- nice-to-have later improvements around status history, counters, filtering, navigation, empty-state routing, and mobile action grouping.
+- Documented known appointment module limitations:
+	- no full calendar,
+	- no calendar grid,
+	- no provider/chair scheduling,
+	- no conflict detection,
+	- no reminders,
+	- no recurring appointments,
+	- no edit/delete,
+	- no automatic follow-up handled state,
+	- no status history UI.
+- No new code fixes were made for Task 52; the review found no small obvious blocker that was safer to patch than document.
+
+### Verification (Task 52)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes after retrying transient Chrome startup/crash failures.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+
+---
+
+### Completed (Task 52 Visit Completion Demo Route Fix)
+
+- Fixed Visit Completion persistence for seeded demo patient routes such as `/patients/demo-patient-002`.
+- Root cause: visit completion service functions still treated route-facing demo slugs as non-persistent IDs and gated writes before resolving them to seeded Supabase patient UUIDs.
+- Updated visit completion service boundaries to resolve patient route IDs through `getPatientPersistenceId(...)` before fetching open drafts, saving drafts, replacing procedures, completing visits, marking linked appointments completed, and loading completed visit history/detail.
+- Kept patient route slugs for navigation/display while using Supabase UUIDs for visit persistence.
+- Updated browser smoke coverage to complete both an ad-hoc demo-slug visit and an appointment-linked demo-slug visit, assert `/rest/v1/visits` requests are made, reject the demo-only persistence warning, and verify the linked appointment becomes completed.
+
+### Verification (Task 52 Visit Completion Demo Route Fix)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.

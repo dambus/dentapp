@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Page } from '../components/layout/Page'
@@ -39,6 +39,11 @@ import {
 type StatusUpdateState = {
   appointmentId: string
   status: AppointmentStatus
+} | null
+
+type ActionFeedback = {
+  message: string
+  variant: 'danger' | 'success' | 'warning'
 } | null
 
 type ScheduleViewMode = 'day' | 'week'
@@ -115,7 +120,7 @@ function getLoadErrorMessage(message: string | null) {
     return 'Appointments could not be loaded. Check the local Supabase connection and try again.'
   }
 
-  return message || 'Appointments could not be loaded.'
+  return 'Appointments could not be loaded. Try again.'
 }
 
 function groupAppointmentsByDay(appointments: AppointmentRangeItem[]) {
@@ -140,7 +145,8 @@ export function AppointmentsPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [statusUpdateState, setStatusUpdateState] =
     useState<StatusUpdateState>(null)
-  const [actionFeedback, setActionFeedback] = useState<string | null>(null)
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback>(null)
+  const statusUpdateRef = useRef(false)
   const todayDateValue = useMemo(() => getTodayDateInputValue(), [])
   const isTodaySelected = selectedDate === todayDateValue
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate])
@@ -233,31 +239,46 @@ export function AppointmentsPage() {
     appointment: AppointmentRangeItem,
     status: AppointmentStatus,
   ) {
-    if (statusUpdateState) {
+    if (statusUpdateState || statusUpdateRef.current) {
       return
     }
 
     setActionFeedback(null)
+    statusUpdateRef.current = true
     setStatusUpdateState({ appointmentId: appointment.id, status })
 
-    const result = await updateAppointmentStatus({
-      appointmentId: appointment.id,
-      status,
-    })
+    try {
+      const result = await updateAppointmentStatus({
+        appointmentId: appointment.id,
+        status,
+      })
 
-    setStatusUpdateState(null)
+      if (!result.ok) {
+        setActionFeedback({
+          message: 'Could not update appointment status. Try again.',
+          variant: 'danger',
+        })
+        return
+      }
 
-    if (!result.ok) {
-      setActionFeedback('Could not update appointment status. Try again.')
-      return
+      setActionFeedback({
+        message: result.message ?? 'Appointment status updated.',
+        variant: 'success',
+      })
+      await loadAppointments(false)
+    } catch {
+      setActionFeedback({
+        message: 'Could not update appointment status. Try again.',
+        variant: 'danger',
+      })
+    } finally {
+      statusUpdateRef.current = false
+      setStatusUpdateState(null)
     }
-
-    setActionFeedback(result.message ?? 'Appointment status updated.')
-    await loadAppointments(false)
   }
 
   function navigateToPatient(appointment: AppointmentRangeItem) {
-    navigate(getPatientDetailPath(appointment.patient_id))
+    navigate(getPatientDetailPath(appointment.patient?.routeId ?? appointment.patient_id))
   }
 
   function navigateToAppointment(appointment: AppointmentRangeItem) {
@@ -265,9 +286,19 @@ export function AppointmentsPage() {
   }
 
   function startVisit(appointment: AppointmentRangeItem) {
+    if (appointment.status !== 'scheduled') {
+      setActionFeedback({
+        message: 'Only scheduled appointments can start a visit.',
+        variant: 'warning',
+      })
+      return
+    }
+
     const searchParams = new URLSearchParams({ appointmentId: appointment.id })
     navigate(
-      `${getPatientVisitCompletionPath(appointment.patient_id)}?${searchParams}`,
+      `${getPatientVisitCompletionPath(
+        appointment.patient?.routeId ?? appointment.patient_id,
+      )}?${searchParams}`,
     )
   }
 
@@ -329,11 +360,11 @@ export function AppointmentsPage() {
                   onClick={() => startVisit(appointment)}
                   size="sm"
                 >
-                  {isBusy ? 'Opening...' : 'Start visit'}
+                  Start visit
                 </Button>
                 <Button
                   className="w-full sm:w-auto"
-                  disabled={Boolean(isStatusUpdating)}
+                  disabled={isBusy}
                   onClick={() => void handleStatusUpdate(appointment, 'completed')}
                   size="sm"
                   variant="secondary"
@@ -344,7 +375,7 @@ export function AppointmentsPage() {
                 </Button>
                 <Button
                   className="w-full sm:w-auto"
-                  disabled={Boolean(isStatusUpdating)}
+                  disabled={isBusy}
                   onClick={() => void handleStatusUpdate(appointment, 'cancelled')}
                   size="sm"
                   variant="ghost"
@@ -355,7 +386,7 @@ export function AppointmentsPage() {
                 </Button>
                 <Button
                   className="w-full sm:w-auto"
-                  disabled={Boolean(isStatusUpdating)}
+                  disabled={isBusy}
                   onClick={() => void handleStatusUpdate(appointment, 'no_show')}
                   size="sm"
                   variant="ghost"
@@ -589,7 +620,9 @@ export function AppointmentsPage() {
           ) : null}
 
           {actionFeedback ? (
-            <InlineNotice variant="info">{actionFeedback}</InlineNotice>
+            <InlineNotice variant={actionFeedback.variant}>
+              {actionFeedback.message}
+            </InlineNotice>
           ) : null}
         </CardContent>
       </Card>

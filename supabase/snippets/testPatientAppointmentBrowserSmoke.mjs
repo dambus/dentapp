@@ -20,14 +20,23 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const APP_URL = process.env.DENTAPP_APP_URL ?? 'http://127.0.0.1:5173'
 const PATIENT_ID = '22222222-2222-2222-2222-222222222201'
 const PATIENT_URL = `${APP_URL}/patients/${PATIENT_ID}`
+const DEMO_SLUG_PATIENT_ID = 'demo-patient-002'
+const DEMO_SLUG_SUPABASE_PATIENT_ID = '22222222-2222-2222-2222-222222222202'
+const DEMO_SLUG_PATIENT_URL = `${APP_URL}/patients/${DEMO_SLUG_PATIENT_ID}`
 const APPOINTMENTS_URL = `${APP_URL}/appointments`
 const CHROME_PATH =
   process.env.CHROME_PATH ?? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 const EMAIL = 'doctor.demo@example.test'
 const EXPECTED_PREFILL = 'Task 44 appointment bridge recommendation'
+const MANUAL_CREATION_REASON = 'Consultation'
+const MANUAL_CREATION_NOTES = 'Optional note demo'
 const CANCELLED_REASON = 'Task 51 cancelled appointment status check'
 const BRIDGE_PROCEDURE = 'Task 44 bridge procedure'
 const BRIDGE_NOTE = 'Task 44 bridge clinical note'
+const DEMO_ADHOC_PROCEDURE = 'Task 52 demo slug ad hoc procedure'
+const DEMO_ADHOC_NOTE = 'Task 52 demo slug ad hoc clinical note'
+const DEMO_LINKED_PROCEDURE = 'Task 52 demo slug linked procedure'
+const DEMO_LINKED_NOTE = 'Task 52 demo slug linked clinical note'
 const DEMO_CLINIC_ID = '11111111-1111-1111-1111-111111111111'
 
 function delay(ms) {
@@ -86,13 +95,18 @@ async function prepareFixture() {
 
   await serviceClient.from('appointments').delete().eq('patient_id', PATIENT_ID)
   await serviceClient
+    .from('appointments')
+    .delete()
+    .eq('patient_id', DEMO_SLUG_SUPABASE_PATIENT_ID)
+    .eq('reason', MANUAL_CREATION_REASON)
+  await serviceClient
     .from('visits')
     .update({
       status: 'archived',
       deleted_at: new Date().toISOString(),
       updated_by: profileResult.data.id,
     })
-    .eq('patient_id', PATIENT_ID)
+    .in('patient_id', [PATIENT_ID, DEMO_SLUG_SUPABASE_PATIENT_ID])
     .in('status', ['draft', 'in_progress'])
     .is('deleted_at', null)
 
@@ -155,6 +169,41 @@ async function getCreatedAppointmentCount() {
   return count ?? 0
 }
 
+async function getManualCreatedAppointmentCount() {
+  const serviceClient = getServiceClient()
+  const { count, error } = await serviceClient
+    .from('appointments')
+    .select('id', { count: 'exact', head: true })
+    .eq('patient_id', DEMO_SLUG_SUPABASE_PATIENT_ID)
+    .eq('reason', MANUAL_CREATION_REASON)
+    .eq('notes', MANUAL_CREATION_NOTES)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return count ?? 0
+}
+
+async function getManualCreatedAppointmentId() {
+  const serviceClient = getServiceClient()
+  const { data, error } = await serviceClient
+    .from('appointments')
+    .select('id')
+    .eq('patient_id', DEMO_SLUG_SUPABASE_PATIENT_ID)
+    .eq('reason', MANUAL_CREATION_REASON)
+    .eq('notes', MANUAL_CREATION_NOTES)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) {
+    throw new Error(error?.message ?? 'Manual created appointment was not found.')
+  }
+
+  return data.id
+}
+
 async function createServiceAppointment(reason) {
   const serviceClient = getServiceClient()
   const profileResult = await serviceClient
@@ -195,7 +244,10 @@ async function createServiceAppointment(reason) {
   return data.id
 }
 
-async function verifyCompletedAppointmentLink(appointmentId) {
+async function verifyCompletedAppointmentLink(
+  appointmentId,
+  patientId = PATIENT_ID,
+) {
   const serviceClient = getServiceClient()
   const appointment = await serviceClient
     .from('appointments')
@@ -206,7 +258,7 @@ async function verifyCompletedAppointmentLink(appointmentId) {
     .from('visits')
     .select('id, status, appointment_id')
     .eq('appointment_id', appointmentId)
-    .eq('patient_id', PATIENT_ID)
+    .eq('patient_id', patientId)
     .eq('status', 'completed')
     .maybeSingle()
 
@@ -254,6 +306,7 @@ async function connectToChrome(port) {
 
   let nextId = 1
   const pending = new Map()
+  const eventListeners = new Map()
 
   socket.addEventListener('message', (event) => {
     const message = JSON.parse(event.data)
@@ -266,6 +319,10 @@ async function connectToChrome(port) {
         reject(new Error(message.error.message))
       } else {
         resolve(message.result)
+      }
+    } else if (message.method && eventListeners.has(message.method)) {
+      for (const listener of eventListeners.get(message.method)) {
+        listener(message.params)
       }
     }
   })
@@ -280,7 +337,17 @@ async function connectToChrome(port) {
     })
   }
 
-  return { command, close: () => socket.close() }
+  function on(method, listener) {
+    const listeners = eventListeners.get(method) ?? new Set()
+    listeners.add(listener)
+    eventListeners.set(method, listeners)
+
+    return () => {
+      listeners.delete(listener)
+    }
+  }
+
+  return { command, close: () => socket.close(), on }
 }
 
 async function evaluate(cdp, expression) {
@@ -356,6 +423,22 @@ async function clickByText(cdp, text, selector = 'button, a') {
 
   if (!clicked) {
     throw new Error(`Could not click ${text}`)
+  }
+}
+
+async function clickSelector(cdp, selector) {
+  const clicked = await evaluate(
+    cdp,
+    `(() => {
+      const target = document.querySelector(${JSON.stringify(selector)});
+      if (!target) return false;
+      target.click();
+      return true;
+    })()`,
+  )
+
+  if (!clicked) {
+    throw new Error(`Could not click ${selector}`)
   }
 }
 
@@ -455,6 +538,16 @@ async function getInputValue(cdp, selector) {
   )
 }
 
+async function assertInputValue(cdp, selector, expectedValue) {
+  const actualValue = await getInputValue(cdp, selector)
+
+  if (actualValue !== expectedValue) {
+    throw new Error(
+      `Expected ${selector} value ${expectedValue}, received ${actualValue}`,
+    )
+  }
+}
+
 async function collectAppointmentsDebugSnapshot(cdp) {
   return evaluate(
     cdp,
@@ -517,6 +610,39 @@ async function textIncludes(cdp, text) {
   )
 }
 
+async function completeVisibleVisit(cdp, procedureName, clinicalNote) {
+  await clickByText(cdp, 'Next')
+  await waitFor(() => textIncludes(cdp, 'What was done?'), 'procedures step')
+  await typeInto(
+    cdp,
+    'input[placeholder="Composite filling"]',
+    procedureName,
+  )
+  await typeInto(cdp, 'input[placeholder="16, upper right, full mouth"]', '16')
+  await clickByText(cdp, 'Next')
+  await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'notes step')
+  await typeInto(
+    cdp,
+    'textarea[placeholder="What was observed and completed today?"]',
+    clinicalNote,
+  )
+  await clickByText(cdp, 'Next')
+  await waitFor(() => textIncludes(cdp, 'What happens next?'), 'next step')
+  await clickByText(cdp, 'Next')
+  await waitFor(() => textIncludes(cdp, 'Review and complete'), 'review step')
+  await clickByText(cdp, 'Complete Visit')
+  await waitFor(
+    () => textIncludes(cdp, 'Confirm Visit Completion'),
+    'completion confirmation',
+  )
+  await clickByText(cdp, 'Confirm completion')
+  await waitFor(() => textIncludes(cdp, 'Visit Completed'), 'visit completed')
+  await waitFor(
+    () => textIncludes(cdp, 'Visit was completed successfully.'),
+    'visit completion success message',
+  )
+}
+
 async function main() {
   const fixtureVisitId = await prepareFixture()
   const profileDir = await mkdtemp(join(tmpdir(), 'dentapp-task43c-'))
@@ -540,6 +666,7 @@ async function main() {
   try {
     await cdp.command('Page.enable')
     await cdp.command('Runtime.enable')
+    await cdp.command('Network.enable')
     await navigate(cdp, PATIENT_URL)
 
     await waitFor(
@@ -614,6 +741,24 @@ async function main() {
       '[data-testid="patient-appointment-time"]',
       originalAppointmentTime,
     )
+    await typeInto(cdp, '[data-testid="patient-appointment-reason"]', '   ')
+    await clickByText(cdp, 'Schedule appointment')
+    await waitFor(
+      () => textIncludes(cdp, 'Reason cannot be only spaces.'),
+      'whitespace appointment reason validation',
+    )
+    await typeInto(
+      cdp,
+      '[data-testid="patient-appointment-reason"]',
+      EXPECTED_PREFILL,
+    )
+    await typeInto(cdp, '[data-testid="patient-appointment-notes"]', '   ')
+    await clickByText(cdp, 'Schedule appointment')
+    await waitFor(
+      () => textIncludes(cdp, 'Notes cannot be only spaces.'),
+      'whitespace appointment notes validation',
+    )
+    await typeInto(cdp, '[data-testid="patient-appointment-notes"]', '')
 
     const appointmentCountBeforeSubmit = await getCreatedAppointmentCount()
     const submitted = await evaluate(
@@ -654,7 +799,259 @@ async function main() {
         `Expected one newly created appointment, count moved from ${appointmentCountBeforeSubmit} to ${createdAppointmentCount}.`,
       )
     }
+
+    await navigate(cdp, DEMO_SLUG_PATIENT_URL)
+    await waitFor(
+      () => textIncludes(cdp, 'Schedule appointment'),
+      'demo slug patient appointment form',
+    )
+    await setDateInput(cdp, '[data-testid="patient-appointment-date"]', '2026-05-18')
+    await typeInto(cdp, '[data-testid="patient-appointment-time"]', '11:00')
+    await typeInto(cdp, '[data-testid="patient-appointment-reason"]', MANUAL_CREATION_REASON)
+    await typeInto(cdp, '[data-testid="patient-appointment-notes"]', MANUAL_CREATION_NOTES)
+    await assertInputValue(cdp, '[data-testid="patient-appointment-date"]', '2026-05-18')
+    await assertInputValue(cdp, '[data-testid="patient-appointment-time"]', '11:00')
+
+    const manualAppointmentCountBeforeSubmit = await getManualCreatedAppointmentCount()
+    let manualAppointmentNetworkRequests = 0
+    const unsubscribeManualNetworkCheck = cdp.on(
+      'Network.requestWillBeSent',
+      (params) => {
+        const request = params?.request
+
+        if (
+          request?.method === 'POST' &&
+          request?.url?.includes('/rest/v1/appointments')
+        ) {
+          manualAppointmentNetworkRequests += 1
+        }
+      },
+    )
+    await clickSelector(cdp, '[data-testid="patient-appointment-submit"]')
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment was created successfully.'),
+      'manual demo slug appointment create success',
+    )
+    unsubscribeManualNetworkCheck()
+
+    if (manualAppointmentNetworkRequests === 0) {
+      throw new Error('Manual appointment creation did not make an appointments network request.')
+    }
+
+    const genericCreateErrorVisible = await textIncludes(
+      cdp,
+      'Could not create appointment. Try again.',
+    )
+
+    if (genericCreateErrorVisible) {
+      throw new Error('Manual appointment creation showed generic create failure.')
+    }
+
+    await waitFor(
+      () => textIncludes(cdp, MANUAL_CREATION_REASON),
+      'manual demo slug appointment reason shown',
+    )
+
+    const manualAppointmentCountAfterSubmit = await getManualCreatedAppointmentCount()
+
+    if (manualAppointmentCountAfterSubmit !== manualAppointmentCountBeforeSubmit + 1) {
+      throw new Error(
+        `Expected one manual demo slug appointment, count moved from ${manualAppointmentCountBeforeSubmit} to ${manualAppointmentCountAfterSubmit}.`,
+      )
+    }
+
+    await navigate(cdp, DEMO_SLUG_PATIENT_URL)
+    await waitFor(
+      () => textIncludes(cdp, MANUAL_CREATION_REASON),
+      'manual demo slug appointment survives refresh',
+    )
+    const manualAppointmentId = await getManualCreatedAppointmentId()
+
+    await navigate(cdp, `${DEMO_SLUG_PATIENT_URL}/visit-completion`)
+    await waitFor(() => textIncludes(cdp, 'Visit Completion'), 'demo slug ad hoc visit route')
+    await waitFor(
+      () => textIncludes(cdp, 'New visit completion ready.'),
+      'demo slug ad hoc visit ready',
+    )
+    let demoAdHocVisitNetworkRequests = 0
+    const unsubscribeDemoAdHocVisitNetworkCheck = cdp.on(
+      'Network.requestWillBeSent',
+      (params) => {
+        const request = params?.request
+
+        if (
+          ['POST', 'PATCH'].includes(request?.method) &&
+          request?.url?.includes('/rest/v1/visits')
+        ) {
+          demoAdHocVisitNetworkRequests += 1
+        }
+      },
+    )
+    await completeVisibleVisit(cdp, DEMO_ADHOC_PROCEDURE, DEMO_ADHOC_NOTE)
+    unsubscribeDemoAdHocVisitNetworkCheck()
+
+    if (demoAdHocVisitNetworkRequests === 0) {
+      throw new Error('Demo slug ad hoc visit completion did not make a visits network request.')
+    }
+
+    const demoAdHocPersistenceWarningVisible = await textIncludes(
+      cdp,
+      'Demo mode only. No visit completion changes were saved.',
+    )
+
+    if (demoAdHocPersistenceWarningVisible) {
+      throw new Error('Demo slug ad hoc Visit Completion showed demo-only persistence warning.')
+    }
+
+    await clickByText(cdp, 'View visit history')
+    await waitFor(
+      () => textIncludes(cdp, DEMO_ADHOC_PROCEDURE),
+      'demo slug ad hoc completed visit visible in timeline',
+    )
+
     const cancelledAppointmentId = await createServiceAppointment(CANCELLED_REASON)
+
+    await navigate(cdp, APPOINTMENTS_URL)
+    await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'appointments page for manual route checks')
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', '2026-05-18')
+    await waitForDateInputValue(
+      cdp,
+      '[data-testid="appointments-date-input"]',
+      '2026-05-18',
+    )
+    await waitFor(
+      () => textIncludes(cdp, MANUAL_CREATION_REASON),
+      'manual appointment appears in appointments list',
+    )
+    await clickAppointmentCardAction(cdp, MANUAL_CREATION_REASON, 'Open patient')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `location.pathname === ${JSON.stringify(`/patients/${DEMO_SLUG_PATIENT_ID}`)}`,
+        ),
+      'appointments Open patient uses demo slug route',
+    )
+    const openPatientUsedUuid = await evaluate(
+      cdp,
+      `location.pathname.includes(${JSON.stringify(DEMO_SLUG_SUPABASE_PATIENT_ID)})`,
+    )
+
+    if (openPatientUsedUuid) {
+      throw new Error('Appointments Open patient used raw Supabase patient UUID.')
+    }
+
+    await navigate(cdp, APPOINTMENTS_URL)
+    await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'appointments page before manual start visit')
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', '2026-05-18')
+    await waitFor(
+      () => textIncludes(cdp, MANUAL_CREATION_REASON),
+      'manual appointment visible before Start visit',
+    )
+    await clickAppointmentCardAction(cdp, MANUAL_CREATION_REASON, 'Start visit')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `location.pathname === ${JSON.stringify(`/patients/${DEMO_SLUG_PATIENT_ID}/visit-completion`)} && location.search.includes(${JSON.stringify(manualAppointmentId)})`,
+        ),
+      'appointments Start visit uses demo slug route',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment context'),
+      'manual appointment Visit Completion context',
+    )
+
+    await navigate(cdp, `${APPOINTMENTS_URL}/${manualAppointmentId}`)
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment Detail'),
+      'manual appointment detail page',
+    )
+    await clickByText(cdp, 'Open patient')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `location.pathname === ${JSON.stringify(`/patients/${DEMO_SLUG_PATIENT_ID}`)}`,
+        ),
+      'appointment detail Open patient uses demo slug route',
+    )
+
+    await navigate(cdp, `${APPOINTMENTS_URL}/${manualAppointmentId}`)
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment Detail'),
+      'manual appointment detail before Start visit',
+    )
+    await clickByText(cdp, 'Start visit')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `location.pathname === ${JSON.stringify(`/patients/${DEMO_SLUG_PATIENT_ID}/visit-completion`)} && location.search.includes(${JSON.stringify(manualAppointmentId)})`,
+        ),
+      'appointment detail Start visit uses demo slug route',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment context'),
+      'manual appointment detail Visit Completion context',
+    )
+
+    let demoLinkedVisitNetworkRequests = 0
+    const unsubscribeDemoLinkedVisitNetworkCheck = cdp.on(
+      'Network.requestWillBeSent',
+      (params) => {
+        const request = params?.request
+
+        if (
+          ['POST', 'PATCH'].includes(request?.method) &&
+          request?.url?.includes('/rest/v1/visits')
+        ) {
+          demoLinkedVisitNetworkRequests += 1
+        }
+      },
+    )
+    await completeVisibleVisit(cdp, DEMO_LINKED_PROCEDURE, DEMO_LINKED_NOTE)
+    unsubscribeDemoLinkedVisitNetworkCheck()
+
+    if (demoLinkedVisitNetworkRequests === 0) {
+      throw new Error('Demo slug linked visit completion did not make a visits network request.')
+    }
+
+    const demoLinkedPersistenceWarningVisible = await textIncludes(
+      cdp,
+      'Demo mode only. No visit completion changes were saved.',
+    )
+
+    if (demoLinkedPersistenceWarningVisible) {
+      throw new Error('Demo slug linked Visit Completion showed demo-only persistence warning.')
+    }
+
+    await verifyCompletedAppointmentLink(
+      manualAppointmentId,
+      DEMO_SLUG_SUPABASE_PATIENT_ID,
+    )
+    await clickByText(cdp, 'View visit history')
+    await waitFor(
+      () => textIncludes(cdp, DEMO_LINKED_PROCEDURE),
+      'demo slug linked completed visit visible in timeline',
+    )
+    await navigate(cdp, `${APPOINTMENTS_URL}/${manualAppointmentId}`)
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment Detail'),
+      'manual completed appointment detail page',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Completed'),
+      'manual appointment completed after linked visit',
+    )
+    const manualCompletedStartVisitVisible = await evaluate(
+      cdp,
+      `Array.from(document.querySelectorAll('button, a')).some((element) => element.textContent?.trim() === 'Start visit')`,
+    )
+
+    if (manualCompletedStartVisitVisible) {
+      throw new Error('Demo slug completed appointment detail should not show Start visit.')
+    }
 
     await navigate(cdp, APPOINTMENTS_URL)
     await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'appointments page')
@@ -750,7 +1147,7 @@ async function main() {
 
     await clickAppointmentCardAction(cdp, EXPECTED_PREFILL, 'Open patient')
     await waitFor(
-      () => evaluate(cdp, `location.pathname === ${JSON.stringify(`/patients/${PATIENT_ID}`)}`),
+      () => evaluate(cdp, `location.pathname === ${JSON.stringify('/patients/demo-patient-001')}`),
       'open patient from appointments list',
     )
 
@@ -974,7 +1371,19 @@ async function main() {
           emptyStateVerified: true,
           followUpPrefillVerified: true,
           createAndRefreshVerified: true,
+          manualDemoSlugAppointmentCreateVerified: true,
+          manualDemoSlugAppointmentNetworkRequestVerified: true,
+          demoSlugAdHocVisitCompletionVerified: true,
+          demoSlugAdHocVisitNetworkRequestVerified: true,
+          demoSlugLinkedVisitCompletionVerified: true,
+          demoSlugLinkedVisitNetworkRequestVerified: true,
+          demoSlugLinkedAppointmentCompletedVerified: true,
+          appointmentListPatientRouteSlugVerified: true,
+          appointmentListStartVisitRouteSlugVerified: true,
+          appointmentDetailPatientRouteSlugVerified: true,
+          appointmentDetailStartVisitRouteSlugVerified: true,
           appointmentCreationValidationVerified: true,
+          appointmentWhitespaceValidationVerified: true,
           appointmentDoubleSubmitHarmlessVerified: true,
           appointmentsWeeklyViewVerified: true,
           cancelledAppointmentStartVisitHiddenVerified: true,

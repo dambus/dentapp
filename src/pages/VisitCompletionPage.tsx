@@ -23,6 +23,27 @@ const visitCompletionRoles: AppRole[] = [
   'assistant',
 ]
 
+function getAppointmentContextErrorMessage(message: string | null) {
+  const normalizedMessage = message?.toLowerCase() ?? ''
+
+  if (
+    normalizedMessage.includes('permission') ||
+    normalizedMessage.includes('row-level security') ||
+    normalizedMessage.includes('not allowed')
+  ) {
+    return 'Appointment context could not be loaded for the current role. Visit completion can continue without appointment linking.'
+  }
+
+  if (
+    normalizedMessage.includes('failed to fetch') ||
+    normalizedMessage.includes('network')
+  ) {
+    return 'Appointment context could not be loaded. Check the local Supabase connection and try again.'
+  }
+
+  return 'Appointment context could not be loaded. Visit completion can continue without appointment linking.'
+}
+
 export function VisitCompletionPage() {
   const { patientId } = useParams()
   const navigate = useNavigate()
@@ -94,9 +115,9 @@ export function VisitCompletionPage() {
       } catch (error) {
         if (isCurrent) {
           setAppointmentContextError(
-            error instanceof Error
-              ? error.message
-              : 'Appointment context could not be loaded.',
+            getAppointmentContextErrorMessage(
+              error instanceof Error ? error.message : null,
+            ),
           )
         }
       }

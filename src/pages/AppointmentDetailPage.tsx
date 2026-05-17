@@ -57,7 +57,7 @@ function getAppointmentDetailErrorMessage(message: string | null) {
     return 'Appointment detail could not be loaded. Check the local Supabase connection and try again.'
   }
 
-  return message || 'Appointment detail could not be loaded.'
+  return 'Appointment detail could not be loaded. Try again.'
 }
 
 export function AppointmentDetailPage() {
@@ -119,8 +119,10 @@ export function AppointmentDetailPage() {
     }
 
     const searchParams = new URLSearchParams({ appointmentId: appointment.id })
+    const patientRouteId = appointment.patient?.routeId ?? appointment.patient_id
+
     navigate(
-      `${getPatientVisitCompletionPath(appointment.patient_id)}?${searchParams}`,
+      `${getPatientVisitCompletionPath(patientRouteId)}?${searchParams}`,
     )
   }
 
@@ -138,24 +140,28 @@ export function AppointmentDetailPage() {
     statusSubmittingRef.current = true
     setStatusSubmitting(status)
 
-    const result = await updateAppointmentStatus({
-      appointmentId: appointment.id,
-      status,
-    })
+    try {
+      const result = await updateAppointmentStatus({
+        appointmentId: appointment.id,
+        status,
+      })
 
-    statusSubmittingRef.current = false
-    setStatusSubmitting(null)
+      if (!result.ok || !result.appointment) {
+        setActionFeedback('Could not update appointment status. Try again.')
+        return
+      }
 
-    if (!result.ok || !result.appointment) {
+      setAppointment({
+        ...appointment,
+        ...result.appointment,
+      })
+      setActionFeedback(result.message ?? 'Appointment status updated.')
+    } catch {
       setActionFeedback('Could not update appointment status. Try again.')
-      return
+    } finally {
+      statusSubmittingRef.current = false
+      setStatusSubmitting(null)
     }
-
-    setAppointment({
-      ...appointment,
-      ...result.appointment,
-    })
-    setActionFeedback(result.message ?? 'Appointment status updated.')
   }
 
   if (isLoading) {
@@ -204,6 +210,7 @@ export function AppointmentDetailPage() {
   }
 
   const patientName = appointment.patient?.fullName ?? 'Unknown patient'
+  const patientRouteId = appointment.patient?.routeId ?? appointment.patient_id
   const canStartVisit = appointment.status === 'scheduled'
 
   return (
@@ -217,7 +224,7 @@ export function AppointmentDetailPage() {
               Back to schedule
             </Button>
             <Button
-              onClick={() => navigate(getPatientDetailPath(appointment.patient_id))}
+              onClick={() => navigate(getPatientDetailPath(patientRouteId))}
               variant="secondary"
             >
               Open patient
@@ -258,7 +265,7 @@ export function AppointmentDetailPage() {
                 onClick={() =>
                   navigate(
                     getPatientVisitDetailPath(
-                      appointment.patient_id,
+                      patientRouteId,
                       appointment.linkedVisit?.id ?? '',
                     ),
                   )

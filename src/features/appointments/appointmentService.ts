@@ -1,4 +1,7 @@
-type PatientDataSource = 'demo' | 'supabase'
+import {
+  getPatientPersistenceId,
+  getPatientRouteId,
+} from '../patients/patientService'
 
 export type AppointmentStatus =
   | 'scheduled'
@@ -24,6 +27,7 @@ export type Appointment = {
 export type AppointmentPatientSummary = {
   id: string
   fullName: string
+  routeId: string
   phone?: string | null
   email?: string | null
 }
@@ -103,14 +107,6 @@ const appointmentStatuses = new Set<AppointmentStatus>([
 export const APPOINTMENT_REASON_MAX_LENGTH = 160
 export const APPOINTMENT_NOTES_MAX_LENGTH = 500
 
-const patientDataSource = normalizeDataSource(
-  import.meta.env.VITE_PATIENT_DATA_SOURCE,
-)
-
-function normalizeDataSource(value: string | undefined): PatientDataSource {
-  return value?.toLowerCase() === 'supabase' ? 'supabase' : 'demo'
-}
-
 function normalizeText(value: string | null | undefined) {
   return value?.trim() ?? ''
 }
@@ -188,6 +184,11 @@ function getPatientFullNameFromRow(
 function validateCreateAppointmentInput(
   input: CreateAppointmentInput,
 ): string | null {
+  const reason = input.reason ?? ''
+  const notes = input.notes ?? ''
+  const normalizedReason = normalizeText(reason)
+  const normalizedNotes = normalizeText(notes)
+
   if (!normalizeText(input.patientId)) {
     return 'Patient ID is required to create an appointment.'
   }
@@ -214,11 +215,19 @@ function validateCreateAppointmentInput(
     }
   }
 
-  if (normalizeText(input.reason).length > APPOINTMENT_REASON_MAX_LENGTH) {
+  if (reason.length > 0 && !normalizedReason) {
+    return 'Reason cannot be only spaces.'
+  }
+
+  if (notes.length > 0 && !normalizedNotes) {
+    return 'Notes cannot be only spaces.'
+  }
+
+  if (normalizedReason.length > APPOINTMENT_REASON_MAX_LENGTH) {
     return `Reason must be ${APPOINTMENT_REASON_MAX_LENGTH} characters or fewer.`
   }
 
-  if (normalizeText(input.notes).length > APPOINTMENT_NOTES_MAX_LENGTH) {
+  if (normalizedNotes.length > APPOINTMENT_NOTES_MAX_LENGTH) {
     return `Notes must be ${APPOINTMENT_NOTES_MAX_LENGTH} characters or fewer.`
   }
 
@@ -298,11 +307,9 @@ async function getSupabasePatientForAppointment(
 export async function fetchAppointmentsForPatient(
   patientId: string,
 ): Promise<Appointment[]> {
-  if (!patientId?.trim()) {
-    return []
-  }
+  const resolvedPatientId = getPatientPersistenceId(patientId)
 
-  if (patientDataSource !== 'supabase') {
+  if (!resolvedPatientId) {
     return []
   }
 
@@ -317,7 +324,7 @@ export async function fetchAppointmentsForPatient(
     .select(
       'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
     )
-    .eq('patient_id', patientId)
+    .eq('patient_id', resolvedPatientId)
     .order('scheduled_start', { ascending: false })
 
   if (error) {
@@ -333,11 +340,9 @@ export async function fetchAppointmentsForPatient(
 export async function fetchUpcomingAppointmentsForPatient(
   patientId: string,
 ): Promise<Appointment[]> {
-  if (!patientId?.trim()) {
-    return []
-  }
+  const resolvedPatientId = getPatientPersistenceId(patientId)
 
-  if (patientDataSource !== 'supabase') {
+  if (!resolvedPatientId) {
     return []
   }
 
@@ -352,7 +357,7 @@ export async function fetchUpcomingAppointmentsForPatient(
     .select(
       'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
     )
-    .eq('patient_id', patientId)
+    .eq('patient_id', resolvedPatientId)
     .eq('status', 'scheduled')
     .gte('scheduled_start', new Date().toISOString())
     .order('scheduled_start', { ascending: true })
@@ -374,11 +379,9 @@ export async function fetchAppointmentForPatient(
   patientId: string,
   appointmentId: string,
 ): Promise<Appointment | null> {
-  if (!patientId?.trim() || !appointmentId?.trim()) {
-    return null
-  }
+  const resolvedPatientId = getPatientPersistenceId(patientId)
 
-  if (patientDataSource !== 'supabase') {
+  if (!resolvedPatientId || !appointmentId?.trim()) {
     return null
   }
 
@@ -394,7 +397,7 @@ export async function fetchAppointmentForPatient(
       'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
     )
     .eq('id', appointmentId)
-    .eq('patient_id', patientId)
+    .eq('patient_id', resolvedPatientId)
     .maybeSingle()
 
   if (error) {
@@ -409,10 +412,6 @@ export async function fetchAppointmentById(
   appointmentId: string,
 ): Promise<AppointmentDetail | null> {
   if (!appointmentId?.trim()) {
-    return null
-  }
-
-  if (patientDataSource !== 'supabase') {
     return null
   }
 
@@ -481,6 +480,7 @@ export async function fetchAppointmentById(
       ? {
           id: patient.id,
           fullName: getPatientFullNameFromRow(patient),
+          routeId: getPatientRouteId(patient.id),
           phone: patient.phone ?? null,
           email: patient.email ?? null,
         }
@@ -505,10 +505,6 @@ export async function fetchAppointmentsForRange(
   const rangeEnd = toRangeDateBoundary(endDate, 'end')
 
   if (!rangeStart || !rangeEnd || rangeEnd < rangeStart) {
-    return []
-  }
-
-  if (patientDataSource !== 'supabase') {
     return []
   }
 
@@ -559,6 +555,7 @@ export async function fetchAppointmentsForRange(
       {
         id: patient.id,
         fullName: getPatientFullNameFromRow(patient),
+        routeId: getPatientRouteId(patient.id),
       } satisfies AppointmentPatientSummary,
     ]),
   )
@@ -572,16 +569,12 @@ export async function fetchAppointmentsForRange(
 export async function createAppointment(
   input: CreateAppointmentInput,
 ): Promise<AppointmentWriteResult> {
-  if (patientDataSource !== 'supabase') {
-    return {
-      ok: false,
-      appointment: null,
-      message: 'Demo mode only. Appointment changes were not saved.',
-      reason: 'demo_mode',
-    }
-  }
+  const resolvedPatientId = getPatientPersistenceId(input.patientId)
 
-  const validationError = validateCreateAppointmentInput(input)
+  const validationError = validateCreateAppointmentInput({
+    ...input,
+    patientId: resolvedPatientId,
+  })
 
   if (validationError) {
     return {
@@ -618,7 +611,7 @@ export async function createAppointment(
   }
 
   const patient = await getSupabasePatientForAppointment(
-    input.patientId,
+    resolvedPatientId,
     profileContext.clinic_id,
   )
 
@@ -672,15 +665,6 @@ export async function createAppointment(
 export async function updateAppointmentStatus(
   input: UpdateAppointmentStatusInput,
 ): Promise<AppointmentWriteResult> {
-  if (patientDataSource !== 'supabase') {
-    return {
-      ok: false,
-      appointment: null,
-      message: 'Demo mode only. Appointment changes were not saved.',
-      reason: 'demo_mode',
-    }
-  }
-
   if (!normalizeText(input.appointmentId)) {
     return {
       ok: false,

@@ -52,6 +52,15 @@ type AppointmentFormValues = {
   notes: string
 }
 
+type AppointmentSchedulePreview = {
+  error: string | null
+  scheduledEnd: string | null
+  scheduledStart: string | null
+}
+
+const dateInputPattern = /^\d{4}-\d{2}-\d{2}$/
+const timeInputPattern = /^\d{2}:\d{2}$/
+
 function getDefaultAppointmentValues(): AppointmentFormValues {
   const now = new Date()
   const nextHour = new Date(now)
@@ -84,11 +93,18 @@ function getAppointmentErrorMessage(message: string | null) {
     return 'Appointments could not be loaded. Try again.'
   }
 
-  return message || 'Appointments could not be loaded. Try again.'
+  return 'Appointments could not be loaded. Try again.'
 }
 
-function buildSchedule(values: AppointmentFormValues) {
-  if (!values.date) {
+function buildSchedule(values: AppointmentFormValues): AppointmentSchedulePreview {
+  const reason = values.reason
+  const notes = values.notes
+  const normalizedReason = reason.trim()
+  const normalizedNotes = notes.trim()
+  const dateValue = values.date.trim()
+  const timeValue = values.time.trim()
+
+  if (!dateValue) {
     return {
       error: 'Choose an appointment date.',
       scheduledEnd: null,
@@ -96,7 +112,7 @@ function buildSchedule(values: AppointmentFormValues) {
     }
   }
 
-  if (!values.time) {
+  if (!timeValue) {
     return {
       error: 'Choose an appointment time.',
       scheduledEnd: null,
@@ -104,12 +120,20 @@ function buildSchedule(values: AppointmentFormValues) {
     }
   }
 
-  const scheduledStart = new Date(`${values.date}T${values.time}`)
+  if (!dateInputPattern.test(dateValue) || !timeInputPattern.test(timeValue)) {
+    return {
+      error: 'Please choose a valid date and time.',
+      scheduledEnd: null,
+      scheduledStart: null,
+    }
+  }
+
+  const scheduledStart = new Date(`${dateValue}T${timeValue}:00`)
   const durationMinutes = Number(values.duration)
 
   if (Number.isNaN(scheduledStart.getTime())) {
     return {
-      error: 'Choose a valid appointment date and time.',
+      error: 'Please choose a valid date and time.',
       scheduledEnd: null,
       scheduledStart: null,
     }
@@ -123,7 +147,23 @@ function buildSchedule(values: AppointmentFormValues) {
     }
   }
 
-  if (values.reason.trim().length > APPOINTMENT_REASON_MAX_LENGTH) {
+  if (reason.length > 0 && !normalizedReason) {
+    return {
+      error: 'Reason cannot be only spaces.',
+      scheduledEnd: null,
+      scheduledStart: null,
+    }
+  }
+
+  if (notes.length > 0 && !normalizedNotes) {
+    return {
+      error: 'Notes cannot be only spaces.',
+      scheduledEnd: null,
+      scheduledStart: null,
+    }
+  }
+
+  if (normalizedReason.length > APPOINTMENT_REASON_MAX_LENGTH) {
     return {
       error: `Reason must be ${APPOINTMENT_REASON_MAX_LENGTH} characters or fewer.`,
       scheduledEnd: null,
@@ -131,7 +171,7 @@ function buildSchedule(values: AppointmentFormValues) {
     }
   }
 
-  if (values.notes.trim().length > APPOINTMENT_NOTES_MAX_LENGTH) {
+  if (normalizedNotes.length > APPOINTMENT_NOTES_MAX_LENGTH) {
     return {
       error: `Notes must be ${APPOINTMENT_NOTES_MAX_LENGTH} characters or fewer.`,
       scheduledEnd: null,
@@ -142,6 +182,14 @@ function buildSchedule(values: AppointmentFormValues) {
   const scheduledEnd = new Date(
     scheduledStart.getTime() + durationMinutes * 60 * 1000,
   )
+
+  if (Number.isNaN(scheduledEnd.getTime()) || scheduledEnd <= scheduledStart) {
+    return {
+      error: 'Appointment end must be after start.',
+      scheduledEnd: null,
+      scheduledStart: null,
+    }
+  }
 
   return {
     error: null,
@@ -165,7 +213,53 @@ function getCreateErrorMessage(message: string | null) {
     return 'Patient could not be found for appointment scheduling.'
   }
 
-  return message || 'Could not create appointment. Try again.'
+  if (normalizedMessage.includes('demo mode')) {
+    return 'Appointment persistence is not available in demo mode.'
+  }
+
+  if (
+    normalizedMessage.includes('valid appointment') ||
+    normalizedMessage.includes('valid date') ||
+    normalizedMessage.includes('duration') ||
+    normalizedMessage.includes('reason') ||
+    normalizedMessage.includes('notes') ||
+    normalizedMessage.includes('after start')
+  ) {
+    return message ?? 'Appointment details need a quick check.'
+  }
+
+  return 'Could not create appointment. Try again.'
+}
+
+function logAppointmentCreateDiagnostics({
+  error,
+  formValues,
+  schedulePreview,
+  validationErrors,
+}: {
+  error?: unknown
+  formValues: AppointmentFormValues
+  schedulePreview: AppointmentSchedulePreview
+  validationErrors?: string | null
+}) {
+  if (!import.meta.env.DEV) {
+    return
+  }
+
+  console.error('[appointment create]', {
+    dateValue: formValues.date,
+    timeValue: formValues.time,
+    durationValue: formValues.duration,
+    scheduledStart: schedulePreview.scheduledStart,
+    scheduledEnd: schedulePreview.scheduledEnd,
+    validationErrors,
+    error:
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : error,
+  })
 }
 
 function AppointmentStatusBadge({ status }: { status: AppointmentStatus }) {
@@ -286,6 +380,11 @@ export function PatientAppointmentSummary({
     setSuccessMessage(null)
 
     if (schedulePreview.error || !schedulePreview.scheduledStart) {
+      logAppointmentCreateDiagnostics({
+        formValues,
+        schedulePreview,
+        validationErrors: schedulePreview.error ?? 'Missing scheduled start.',
+      })
       setFormError(schedulePreview.error ?? 'Appointment time is required.')
       return
     }
@@ -293,25 +392,40 @@ export function PatientAppointmentSummary({
     createSubmittingRef.current = true
     setIsSubmitting(true)
 
-    const result = await createAppointment({
-      patientId,
-      scheduledStart: schedulePreview.scheduledStart,
-      scheduledEnd: schedulePreview.scheduledEnd,
-      reason: formValues.reason,
-      notes: formValues.notes,
-    })
+    try {
+      const result = await createAppointment({
+        patientId,
+        scheduledStart: schedulePreview.scheduledStart,
+        scheduledEnd: schedulePreview.scheduledEnd,
+        reason: formValues.reason.trim(),
+        notes: formValues.notes.trim(),
+      })
 
-    createSubmittingRef.current = false
-    setIsSubmitting(false)
+      if (!result.ok) {
+        logAppointmentCreateDiagnostics({
+          error: result.error ?? result.message,
+          formValues,
+          schedulePreview,
+          validationErrors: result.error ?? result.message,
+        })
+        setFormError(getCreateErrorMessage(result.error ?? result.message))
+        return
+      }
 
-    if (!result.ok) {
-      setFormError(getCreateErrorMessage(result.error ?? result.message))
-      return
+      setSuccessMessage(result.message ?? 'Appointment was created successfully.')
+      setFormValues(getDefaultAppointmentValues())
+      await loadUpcomingAppointments(false)
+    } catch (error) {
+      logAppointmentCreateDiagnostics({
+        error,
+        formValues,
+        schedulePreview,
+      })
+      setFormError('Could not create appointment. Try again.')
+    } finally {
+      createSubmittingRef.current = false
+      setIsSubmitting(false)
     }
-
-    setSuccessMessage(result.message ?? 'Appointment was created successfully.')
-    setFormValues(getDefaultAppointmentValues())
-    await loadUpcomingAppointments(false)
   }
 
   async function handleStatusUpdate(status: AppointmentStatus) {
@@ -324,23 +438,27 @@ export function PatientAppointmentSummary({
     statusSubmittingRef.current = true
     setStatusSubmitting(status)
 
-    const result = await updateAppointmentStatus({
-      appointmentId: nextAppointment.id,
-      status,
-    })
+    try {
+      const result = await updateAppointmentStatus({
+        appointmentId: nextAppointment.id,
+        status,
+      })
 
-    statusSubmittingRef.current = false
-    setStatusSubmitting(null)
+      if (!result.ok) {
+        setFormError(
+          'Could not update appointment status. Try again.',
+        )
+        return
+      }
 
-    if (!result.ok) {
-      setFormError(
-        'Could not update appointment status. Try again.',
-      )
-      return
+      setSuccessMessage(result.message ?? 'Appointment status updated.')
+      await loadUpcomingAppointments(false)
+    } catch {
+      setFormError('Could not update appointment status. Try again.')
+    } finally {
+      statusSubmittingRef.current = false
+      setStatusSubmitting(null)
     }
-
-    setSuccessMessage(result.message ?? 'Appointment status updated.')
-    await loadUpcomingAppointments(false)
   }
 
   function updateFormValue(field: keyof AppointmentFormValues, value: string) {
@@ -351,6 +469,12 @@ export function PatientAppointmentSummary({
   }
 
   function startVisitFromAppointment(appointmentId: string) {
+    if (nextAppointment?.status !== 'scheduled') {
+      setFormError('Only scheduled appointments can start a visit.')
+      setSuccessMessage(null)
+      return
+    }
+
     const searchParams = new URLSearchParams({ appointmentId })
     navigate(`${getPatientVisitCompletionPath(patientId)}?${searchParams}`)
   }
@@ -431,7 +555,11 @@ export function PatientAppointmentSummary({
                   Details
                 </Button>
                 <Button
-                  disabled={Boolean(statusSubmitting) || isLoading}
+                  disabled={
+                    Boolean(statusSubmitting) ||
+                    isLoading ||
+                    nextAppointment.status !== 'scheduled'
+                  }
                   onClick={() => startVisitFromAppointment(nextAppointment.id)}
                   size="sm"
                 >
@@ -541,6 +669,7 @@ export function PatientAppointmentSummary({
             <label>
               <FieldLabel>Reason</FieldLabel>
               <TextInput
+                data-testid="patient-appointment-reason"
                 disabled={isSubmitting}
                 maxLength={APPOINTMENT_REASON_MAX_LENGTH}
                 placeholder="Control visit, follow-up, consultation"
@@ -554,6 +683,7 @@ export function PatientAppointmentSummary({
               <FieldLabel>Notes</FieldLabel>
               <Textarea
                 className="min-h-16"
+                data-testid="patient-appointment-notes"
                 disabled={isSubmitting}
                 maxLength={APPOINTMENT_NOTES_MAX_LENGTH}
                 placeholder="Optional scheduling notes"

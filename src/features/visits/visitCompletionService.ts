@@ -1,4 +1,4 @@
-type PatientDataSource = 'demo' | 'supabase'
+import { getPatientPersistenceId } from '../patients/patientService'
 
 export type VisitStatus =
   | 'draft'
@@ -201,10 +201,6 @@ type AuditAction =
   | 'visit.draft_updated'
   | 'visit.completed'
 
-const patientDataSource = normalizeDataSource(
-  import.meta.env.VITE_PATIENT_DATA_SOURCE,
-)
-
 const validVisitStatuses = new Set<VisitStatus>([
   'draft',
   'in_progress',
@@ -228,12 +224,31 @@ const clinicalNoteWriteRoles = new Set([
   'specialist',
 ])
 
-function normalizeDataSource(value: string | undefined): PatientDataSource {
-  return value?.toLowerCase() === 'supabase' ? 'supabase' : 'demo'
-}
-
 function normalizeText(value: string | null | undefined) {
   return value?.trim() ?? ''
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value,
+  )
+}
+
+function resolvePersistencePatientId(patientId: string | null | undefined) {
+  const persistencePatientId = getPatientPersistenceId(patientId)
+
+  return isUuid(persistencePatientId) ? persistencePatientId : ''
+}
+
+function normalizeVisitInputPatientId(input: VisitCompletionDraftInput) {
+  const persistencePatientId = resolvePersistencePatientId(input.patientId)
+
+  return persistencePatientId
+    ? {
+        ...input,
+        patientId: persistencePatientId,
+      }
+    : null
 }
 
 function normalizeVisitStatus(value: string): VisitStatus {
@@ -942,7 +957,9 @@ export async function fetchLatestOpenVisitCompletion(
     return null
   }
 
-  if (patientDataSource !== 'supabase') {
+  const persistencePatientId = resolvePersistencePatientId(patientId)
+
+  if (!persistencePatientId) {
     return null
   }
 
@@ -957,7 +974,7 @@ export async function fetchLatestOpenVisitCompletion(
     .select(
       'id, patient_id, appointment_id, status, visit_date, started_at, completed_at, completed_by, clinical_note_id, recommendation, next_step, created_at, updated_at, deleted_at',
     )
-    .eq('patient_id', patientId)
+    .eq('patient_id', persistencePatientId)
     .in('status', ['draft', 'in_progress'])
     .is('deleted_at', null)
     .order('updated_at', { ascending: false })
@@ -987,7 +1004,9 @@ export async function fetchCompletedVisitsForPatient(
     return []
   }
 
-  if (patientDataSource !== 'supabase') {
+  const persistencePatientId = resolvePersistencePatientId(patientId)
+
+  if (!persistencePatientId) {
     return []
   }
 
@@ -1002,7 +1021,7 @@ export async function fetchCompletedVisitsForPatient(
     .select(
       'id, patient_id, appointment_id, status, visit_date, started_at, completed_at, completed_by, clinical_note_id, recommendation, next_step, created_at, updated_at, deleted_at',
     )
-    .eq('patient_id', patientId)
+    .eq('patient_id', persistencePatientId)
     .eq('status', 'completed')
     .is('deleted_at', null)
     .order('completed_at', { ascending: false, nullsFirst: false })
@@ -1071,7 +1090,9 @@ export async function fetchCompletedVisitById(
     return null
   }
 
-  if (patientDataSource !== 'supabase') {
+  const persistencePatientId = resolvePersistencePatientId(patientId)
+
+  if (!persistencePatientId) {
     return null
   }
 
@@ -1087,7 +1108,7 @@ export async function fetchCompletedVisitById(
       'id, patient_id, appointment_id, status, visit_date, started_at, completed_at, completed_by, clinical_note_id, recommendation, next_step, created_at, updated_at, deleted_at',
     )
     .eq('id', visitId)
-    .eq('patient_id', patientId)
+    .eq('patient_id', persistencePatientId)
     .is('deleted_at', null)
     .maybeSingle()
 
@@ -1122,16 +1143,6 @@ export async function replaceVisitProcedures(
   patientId: string,
   procedures: VisitProcedureDraftInput[] = [],
 ): Promise<VisitCompletionWriteResult> {
-  if (patientDataSource !== 'supabase') {
-    return {
-      ok: false,
-      procedures: [],
-      message: 'Demo mode only. No procedure changes were saved.',
-      warnings: [makeDemoModeWarning()],
-      reason: 'demo_mode',
-    }
-  }
-
   if (!visitId?.trim() || !patientId?.trim()) {
     return {
       ok: false,
@@ -1139,6 +1150,18 @@ export async function replaceVisitProcedures(
       message: null,
       error: 'Visit ID and patient ID are required to save procedures.',
       reason: 'validation',
+    }
+  }
+
+  const persistencePatientId = resolvePersistencePatientId(patientId)
+
+  if (!persistencePatientId) {
+    return {
+      ok: false,
+      procedures: [],
+      message: 'Demo mode only. No procedure changes were saved.',
+      warnings: [makeDemoModeWarning()],
+      reason: 'demo_mode',
     }
   }
 
@@ -1168,7 +1191,7 @@ export async function replaceVisitProcedures(
 
   const existingVisit = await findExistingVisitForDraft(
     visitId,
-    patientId,
+    persistencePatientId,
     profileContext.clinic_id,
   )
 
@@ -1190,7 +1213,7 @@ export async function replaceVisitProcedures(
       updated_by: profileContext.id,
     })
     .eq('visit_id', visitId)
-    .eq('patient_id', patientId)
+    .eq('patient_id', persistencePatientId)
     .eq('clinic_id', profileContext.clinic_id)
     .is('deleted_at', null)
 
@@ -1217,7 +1240,7 @@ export async function replaceVisitProcedures(
   const insertRows = normalizedProcedures.map((procedure, index) => ({
     clinic_id: profileContext.clinic_id,
     visit_id: visitId,
-    patient_id: patientId,
+    patient_id: persistencePatientId,
     procedure_name: procedure.procedureName,
     tooth_or_region: procedure.toothOrRegion || null,
     quantity_or_duration: procedure.quantityOrDuration || null,
@@ -1257,16 +1280,6 @@ export async function replaceVisitProcedures(
 export async function saveVisitCompletionDraft(
   input: VisitCompletionDraftInput,
 ): Promise<VisitCompletionWriteResult> {
-  if (patientDataSource !== 'supabase') {
-    return {
-      ok: false,
-      draft: null,
-      message: 'Demo mode only. No visit completion changes were saved.',
-      warnings: [makeDemoModeWarning()],
-      reason: 'demo_mode',
-    }
-  }
-
   if (!input.patientId?.trim()) {
     return {
       ok: false,
@@ -1274,6 +1287,18 @@ export async function saveVisitCompletionDraft(
       message: null,
       error: 'Patient ID is required to save a visit completion draft.',
       reason: 'validation',
+    }
+  }
+
+  const persistentInput = normalizeVisitInputPatientId(input)
+
+  if (!persistentInput) {
+    return {
+      ok: false,
+      draft: null,
+      message: 'Demo mode only. No visit completion changes were saved.',
+      warnings: [makeDemoModeWarning()],
+      reason: 'demo_mode',
     }
   }
 
@@ -1289,7 +1314,7 @@ export async function saveVisitCompletionDraft(
     }
   }
 
-  const visitResult = await saveVisitCore(input, profileContext)
+  const visitResult = await saveVisitCore(persistentInput, profileContext)
 
   if (visitResult.error || !visitResult.visit) {
     return {
@@ -1303,8 +1328,8 @@ export async function saveVisitCompletionDraft(
 
   const procedureResult = await replaceVisitProcedures(
     visitResult.visit.id,
-    input.patientId,
-    input.procedures ?? [],
+    persistentInput.patientId,
+    persistentInput.procedures ?? [],
   )
 
   if (!procedureResult.ok) {
@@ -1321,7 +1346,7 @@ export async function saveVisitCompletionDraft(
   const warnings = [...(procedureResult.warnings ?? [])]
   const noteResult = await saveClinicalNoteForVisit(
     visitResult.visit,
-    input.clinicalNote ?? '',
+    persistentInput.clinicalNote ?? '',
     profileContext,
   )
 
@@ -1343,7 +1368,7 @@ export async function saveVisitCompletionDraft(
   const linkedVisit = noteResult.note
     ? await linkClinicalNoteToVisit(
         visitResult.visit.id,
-        input.patientId,
+        persistentInput.patientId,
         noteResult.note.id,
         profileContext,
       )
@@ -1386,11 +1411,9 @@ export async function saveVisitCompletionDraft(
 export async function completeVisit(
   input: VisitCompletionDraftInput,
 ): Promise<VisitCompletionWriteResult> {
-  const normalizedProcedures = normalizeProcedures(input.procedures)
-  const hasClinicalNote = Boolean(normalizeText(input.clinicalNote))
-  const hasNextStep = Boolean(normalizeNextStep(input.nextStep))
+  const persistentInput = normalizeVisitInputPatientId(input)
 
-  if (patientDataSource !== 'supabase') {
+  if (!persistentInput) {
     return {
       ok: false,
       draft: null,
@@ -1399,6 +1422,10 @@ export async function completeVisit(
       reason: 'demo_mode',
     }
   }
+
+  const normalizedProcedures = normalizeProcedures(persistentInput.procedures)
+  const hasClinicalNote = Boolean(normalizeText(persistentInput.clinicalNote))
+  const hasNextStep = Boolean(normalizeNextStep(persistentInput.nextStep))
 
   const profileContext = await getCurrentSupabaseProfileContext()
   const canPersistClinicalNote = profileContext
@@ -1425,7 +1452,7 @@ export async function completeVisit(
     }
   }
 
-  const draftResult = await saveVisitCompletionDraft(input)
+  const draftResult = await saveVisitCompletionDraft(persistentInput)
 
   if (!draftResult.ok || !draftResult.draft) {
     return draftResult
@@ -1464,7 +1491,7 @@ export async function completeVisit(
       updated_by: profileContext.id,
     })
     .eq('id', draftResult.draft.id)
-    .eq('patient_id', input.patientId)
+    .eq('patient_id', persistentInput.patientId)
     .eq('clinic_id', profileContext.clinic_id)
     .is('deleted_at', null)
     .select(
@@ -1492,7 +1519,7 @@ export async function completeVisit(
   const completionWarnings = [...(draftResult.warnings ?? [])]
   const appointmentStatusResult = await markLinkedAppointmentCompleted(
     completedDraft.appointmentId,
-    input.patientId,
+    persistentInput.patientId,
     profileContext,
   )
 

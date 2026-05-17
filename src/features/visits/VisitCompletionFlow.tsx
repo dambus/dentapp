@@ -17,7 +17,9 @@ import {
 } from '../../components/ui'
 import { classNames } from '../../lib/classNames'
 import {
+  appointmentStatusBadgeVariants,
   appointmentStatusLabels,
+  formatAppointmentTimeRange,
 } from '../appointments/appointmentDisplay'
 import type { Appointment } from '../appointments/appointmentService'
 import {
@@ -741,14 +743,17 @@ function AppointmentContextNotice({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">Appointment context</Badge>
-            <Badge variant="neutral">
+            <Badge variant={appointmentStatusBadgeVariants[appointment.status]}>
               {appointmentStatusLabels[appointment.status] ?? appointment.status}
             </Badge>
           </div>
           <p className="mt-2 text-sm leading-6 text-slate-700">
             Started from appointment scheduled for{' '}
             <span className="font-semibold text-slate-950">
-              {formatPatientDateTime(appointment.scheduled_start)}
+              {formatAppointmentTimeRange(
+                appointment.scheduled_start,
+                appointment.scheduled_end,
+              )}
             </span>
             .
           </p>
