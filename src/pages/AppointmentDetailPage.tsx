@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { CalendarX, CheckCircle2, UserX } from 'lucide-react'
 
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
 import {
+  ActionMenu,
   Badge,
   Button,
   Card,
@@ -16,10 +18,9 @@ import {
   InlineNotice,
   LoadingState,
   MetricTile,
+  StatusBadge,
 } from '../components/ui'
 import {
-  appointmentStatusBadgeVariants,
-  appointmentStatusLabels,
   formatAppointmentTimeRange,
 } from '../features/appointments/appointmentDisplay'
 import {
@@ -237,27 +238,41 @@ export function AppointmentDetailPage() {
                 >
                   Start visit
                 </Button>
-                <Button
+                <ActionMenu
                   disabled={Boolean(statusSubmitting)}
-                  onClick={() => void handleStatusUpdate('completed')}
-                  variant="secondary"
-                >
-                  {statusSubmitting === 'completed' ? 'Updating...' : 'Complete'}
-                </Button>
-                <Button
-                  disabled={Boolean(statusSubmitting)}
-                  onClick={() => void handleStatusUpdate('cancelled')}
-                  variant="ghost"
-                >
-                  {statusSubmitting === 'cancelled' ? 'Updating...' : 'Cancel'}
-                </Button>
-                <Button
-                  disabled={Boolean(statusSubmitting)}
-                  onClick={() => void handleStatusUpdate('no_show')}
-                  variant="ghost"
-                >
-                  {statusSubmitting === 'no_show' ? 'Updating...' : 'No-show'}
-                </Button>
+                  items={[
+                    {
+                      disabled: Boolean(statusSubmitting),
+                      icon: CheckCircle2,
+                      label:
+                        statusSubmitting === 'completed'
+                          ? 'Updating...'
+                          : 'Complete',
+                      onSelect: () => void handleStatusUpdate('completed'),
+                    },
+                    {
+                      disabled: Boolean(statusSubmitting),
+                      icon: CalendarX,
+                      label:
+                        statusSubmitting === 'cancelled'
+                          ? 'Updating...'
+                          : 'Cancel',
+                      onSelect: () => void handleStatusUpdate('cancelled'),
+                      tone: 'danger',
+                    },
+                    {
+                      disabled: Boolean(statusSubmitting),
+                      icon: UserX,
+                      label:
+                        statusSubmitting === 'no_show'
+                          ? 'Updating...'
+                          : 'No-show',
+                      onSelect: () => void handleStatusUpdate('no_show'),
+                      tone: 'danger',
+                    },
+                  ]}
+                  label="Appointment status actions"
+                />
               </>
             ) : null}
             {appointment.linkedVisit ? (
@@ -286,9 +301,7 @@ export function AppointmentDetailPage() {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle>{patientName}</CardTitle>
-                  <Badge variant={appointmentStatusBadgeVariants[appointment.status]}>
-                    {appointmentStatusLabels[appointment.status]}
-                  </Badge>
+                  <StatusBadge status={appointment.status} />
                 </div>
                 <CardDescription>
                   {formatAppointmentTimeRange(

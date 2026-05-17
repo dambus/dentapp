@@ -2197,6 +2197,181 @@ Initial stack:
 
 ---
 
+### Completed (Task D1 - Design System Icon & Action Pattern)
+
+- Added `lucide-react` as the single icon pack for DentApp UI work.
+- Added shared UI primitives:
+	- `IconButton`,
+	- `ActionMenu`,
+	- `StatusBadge`,
+	- `TypeBadge`.
+- Documented the action hierarchy pattern in `docs/design/task-d1-design-system-icon-action-pattern.md`:
+	- primary actions stay visible as labeled buttons,
+	- common secondary actions may remain visible,
+	- less common/destructive/status actions move into overflow,
+	- icon-only buttons require accessible labels,
+	- appointment cards should not expose four or five equal-weight buttons.
+- Applied the pattern lightly to appointment surfaces:
+	- `/appointments` cards keep `Start visit`, `Details`, and `Open patient` visible while status actions move into `ActionMenu`,
+	- patient appointment summary keeps `Details` and `Start visit` visible while status actions move into `ActionMenu`,
+	- appointment detail keeps navigation and `Start visit` visible while status actions move into `ActionMenu`.
+- Updated browser smoke coverage for the status action menu path.
+
+### Verification (Task D1)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes with `CHROME_PATH` pointed at Edge Chromium after local Chrome target-startup crashes.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+
+### Next Recommended Task
+
+- Task D2 - Appointment Card Redesign.
+
+---
+
+### Completed (Task D2 - Appointment Card Redesign)
+
+- Added reusable `AppointmentCard` for scan-focused appointment surfaces.
+- Improved appointment card hierarchy:
+	- time range is now the strongest visual element,
+	- patient name is more prominent and can open the patient record,
+	- reason is shown as a compact `TypeBadge`,
+	- status uses `StatusBadge`,
+	- provider placeholder is present without changing the data model,
+	- primary action remains visible.
+- Applied the redesigned card to:
+	- `/appointments` daily/weekly appointment lists,
+	- patient appointment summary.
+- Kept appointment status actions in `ActionMenu`.
+- Kept `Start visit` visible only for scheduled appointments.
+- Kept `Details` visible as the common secondary action.
+- Updated browser smoke helpers for overflow-menu patient navigation.
+
+### Verification (Task D2)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+
+---
+
+### Completed (Task D3 - Appointment Type & 15-Min Duration Standardization)
+
+- Added frontend appointment type configuration in `src/features/appointments/appointmentTypes.ts`.
+- Added standardized 15-minute duration options:
+	- 15,
+	- 30,
+	- 45,
+	- 60,
+	- 75,
+	- 90,
+	- 120 minutes.
+- Updated patient appointment creation form:
+	- added appointment type select,
+	- selecting type updates duration to the type default,
+	- duration select now uses the standardized options,
+	- reason/context remains optional free text.
+- Kept persistence in the existing `appointments.reason` field:
+	- custom reason/context is stored when provided,
+	- selected type label is stored when reason/context is empty.
+- Updated appointment card type display to detect known types from reason text and use configured `TypeBadge` variants.
+- Kept follow-up scheduling behavior predictable:
+	- copied recommendation context still populates reason/context,
+	- likely type is inferred with `Control` as the fallback,
+	- follow-up is not marked handled.
+- Documented the no-migration limitation in `docs/design/task-d3-appointment-type-duration-standardization.md`.
+- Updated browser smoke coverage for type selection and duration default behavior.
+
+### Verification (Task D3)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes with `CHROME_PATH` pointed at Edge Chromium after local Chrome DevTools startup failed.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+
+### Next Recommended Task
+
+- Task D5 - Patient Detail Mobile Navigation Redesign.
+
+---
+
+### Completed (Task D5 - Patient Detail Mobile Navigation Redesign)
+
+- Replaced the mobile horizontal Full Record section strip with a labeled native section selector.
+- Kept desktop/tablet section tabs intact from `sm` upward.
+- Kept existing patient detail section state and `?section=` query behavior:
+	- mobile selector updates the same section state,
+	- direct links such as `?section=timeline` still initialize the section,
+	- non-timeline section changes still clear `visitId`.
+- Used actual available Full Record sections only:
+	- Medical,
+	- Odontogram,
+	- Plans,
+	- Notes,
+	- Documents,
+	- Timeline.
+- Added smoke coverage for the mobile selector at a mobile viewport width.
+- Documented the pattern in `docs/design/task-d5-patient-detail-mobile-navigation-redesign.md`.
+
+### Verification (Task D5)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes with `CHROME_PATH` pointed at Edge Chromium after local Chrome target-startup crashes.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+
+### Next Recommended Task
+
+- Task D6 - Visit Completion Mobile Sticky Progress.
+
+---
+
+### Completed (Task D6 - Visit Completion Mobile Sticky Progress)
+
+- Improved Visit Completion mobile orientation without changing persistence logic.
+- Added a mobile-only sticky workflow header showing:
+	- Visit Completion,
+	- current step count,
+	- current step label/title,
+	- compact accessible progress bar.
+- Added a mobile-first bottom action bar for editing state:
+	- Back,
+	- Save Draft,
+	- Next,
+	- Complete Visit on the final step.
+- Added a sticky confirmation action bar for confirmation state:
+	- Confirm completion,
+	- Continue review.
+- Kept desktop/tablet workflow layout stable with the existing stepper and static actions.
+- Preserved existing handlers for draft save, completion, appointment-linked completion, warnings, errors, and completion success.
+- Updated browser smoke coverage to assert the Visit Completion progress/action elements render.
+- Documented the pattern in `docs/design/task-d6-visit-completion-mobile-sticky-progress.md`.
+
+### Verification (Task D6)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes with `CHROME_PATH` pointed at Edge Chromium.
+- `node .\supabase\snippets\testAppointmentService.mjs` passes.
+- `node .\supabase\snippets\testAppointmentsRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.

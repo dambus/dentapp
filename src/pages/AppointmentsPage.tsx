@@ -18,11 +18,7 @@ import {
   LoadingState,
   TextInput,
 } from '../components/ui'
-import {
-  appointmentStatusBadgeVariants,
-  appointmentStatusLabels,
-  formatAppointmentTimeRange,
-} from '../features/appointments/appointmentDisplay'
+import { AppointmentCard } from '../features/appointments/AppointmentCard'
 import {
   fetchAppointmentsForRange,
   updateAppointmentStatus,
@@ -307,99 +303,16 @@ export function AppointmentsPage() {
     const isBusy = isLoading || Boolean(statusUpdateState)
 
     return (
-      <div
-        className="rounded-md border border-slate-200 bg-white p-4 shadow-sm"
-        data-testid="appointment-card"
+      <AppointmentCard
+        appointment={appointment}
+        isBusy={isBusy}
         key={appointment.id}
-      >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="text-sm font-semibold text-slate-950">
-                {formatAppointmentTimeRange(
-                  appointment.scheduled_start,
-                  appointment.scheduled_end,
-                )}
-              </div>
-              <Badge variant={appointmentStatusBadgeVariants[appointment.status]}>
-                {appointmentStatusLabels[appointment.status]}
-              </Badge>
-            </div>
-            <div className="wrap-break-word text-base font-semibold text-slate-950">
-              {appointment.patient?.fullName || 'Unknown patient'}
-            </div>
-            <p className="wrap-break-word text-sm leading-6 text-slate-600">
-              {appointment.reason?.trim() || 'No appointment reason recorded.'}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2 lg:justify-end">
-            <Button
-              className="w-full sm:w-auto"
-              disabled={isBusy}
-              onClick={() => navigateToAppointment(appointment)}
-              size="sm"
-              variant="secondary"
-            >
-              Details
-            </Button>
-            <Button
-              className="w-full sm:w-auto"
-              disabled={isBusy}
-              onClick={() => navigateToPatient(appointment)}
-              size="sm"
-              variant="secondary"
-            >
-              Open patient
-            </Button>
-            {appointment.status === 'scheduled' ? (
-              <>
-                <Button
-                  className="w-full sm:w-auto"
-                  disabled={isBusy}
-                  onClick={() => startVisit(appointment)}
-                  size="sm"
-                >
-                  Start visit
-                </Button>
-                <Button
-                  className="w-full sm:w-auto"
-                  disabled={isBusy}
-                  onClick={() => void handleStatusUpdate(appointment, 'completed')}
-                  size="sm"
-                  variant="secondary"
-                >
-                  {isStatusUpdating && statusUpdateState?.status === 'completed'
-                    ? 'Updating...'
-                    : 'Complete'}
-                </Button>
-                <Button
-                  className="w-full sm:w-auto"
-                  disabled={isBusy}
-                  onClick={() => void handleStatusUpdate(appointment, 'cancelled')}
-                  size="sm"
-                  variant="ghost"
-                >
-                  {isStatusUpdating && statusUpdateState?.status === 'cancelled'
-                    ? 'Updating...'
-                    : 'Cancel'}
-                </Button>
-                <Button
-                  className="w-full sm:w-auto"
-                  disabled={isBusy}
-                  onClick={() => void handleStatusUpdate(appointment, 'no_show')}
-                  size="sm"
-                  variant="ghost"
-                >
-                  {isStatusUpdating && statusUpdateState?.status === 'no_show'
-                    ? 'Updating...'
-                    : 'No-show'}
-                </Button>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </div>
+        onOpenDetails={() => navigateToAppointment(appointment)}
+        onOpenPatient={() => navigateToPatient(appointment)}
+        onStartVisit={() => startVisit(appointment)}
+        onStatusChange={(status) => void handleStatusUpdate(appointment, status)}
+        statusUpdateStatus={isStatusUpdating ? statusUpdateState?.status : null}
+      />
     )
   }
 

@@ -2,7 +2,12 @@ import type { HTMLAttributes } from 'react'
 
 import { classNames } from '../../lib/classNames'
 
-type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info'
+export type BadgeVariant =
+  | 'neutral'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'info'
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
   variant?: BadgeVariant

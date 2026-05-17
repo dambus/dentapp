@@ -184,6 +184,12 @@ Status legend:
   - [x] Task 49: Appointment Detail / Schedule Item Review
   - [x] Task 50: Lightweight Weekly Schedule View
   - [x] Task 51: Appointment Creation / Status Polish
+  - [x] Task 52: Appointment Module QA & UX Notes
+  - [x] Task D1: Design System Icon & Action Pattern
+  - [x] Task D2: Appointment Card Redesign
+  - [x] Task D3: Appointment Type & 15-Min Duration Standardization
+  - [x] Task D5: Patient Detail Mobile Navigation Redesign
+  - [x] Task D6: Visit Completion Mobile Sticky Progress
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -227,7 +233,13 @@ Status legend:
 - [x] Task 49 - Appointment Detail / Schedule Item Review
 - [x] Task 50 - Lightweight Weekly Schedule View
 - [x] Task 51 - Appointment Creation / Status Polish
-- [ ] Task 52 - Manual Appointment UI/UX Review Pass
+- [x] Task 52 - Appointment Module QA & UX Notes
+- [x] Task D1 - Design System Icon & Action Pattern
+- [x] Task D2 - Appointment Card Redesign
+- [x] Task D3 - Appointment Type & 15-Min Duration Standardization
+- [x] Task D5 - Patient Detail Mobile Navigation Redesign
+- [x] Task D6 - Visit Completion Mobile Sticky Progress
+- [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
@@ -335,15 +347,79 @@ Completed direction:
 - polished appointment detail status actions and Start visit eligibility,
 - expanded browser smoke coverage for validation, status actions, and appointment detail behavior.
 
+### Completed Recommended Task
+
+Task 52 - Appointment Module QA & UX Notes
+
+Completed direction:
+
+- documented appointment QA checklist,
+- documented UX notes by severity,
+- documented known limitations and next improvement areas.
+
+### Completed Recommended Task
+
+Task D1 - Design System Icon & Action Pattern
+
+Completed direction:
+
+- added Lucide icon foundation,
+- added reusable `IconButton`, `ActionMenu`, `StatusBadge`, and `TypeBadge`,
+- moved appointment status actions into overflow menus where safe,
+- documented action hierarchy rules.
+
+### Completed Recommended Task
+
+Task D2 - Appointment Card Redesign
+
+Completed direction:
+
+- make appointment time and patient identity the dominant scan targets,
+- use status/type badges consistently,
+- keep primary action and details visible,
+- move secondary/status actions into overflow,
+- improve card density without introducing a full calendar.
+
+### Completed Recommended Task
+
+Task D3 - Appointment Type & Duration Standardization
+
+Completed direction:
+
+- define appointment type constants,
+- keep duration options standardized around 15-minute increments,
+- prepare type labels/default durations for a future persistence model,
+- avoid schema changes until the type model is agreed.
+
+### Completed Recommended Task
+
+Task D5 - Patient Detail Mobile Navigation Redesign
+
+Completed direction:
+
+- replace horizontal-scroll patient detail tabs on mobile with a clearer selector,
+- keep desktop behavior stable,
+- improve section discoverability without redesigning patient detail content.
+
+### Completed Recommended Task
+
+Task D6 - Visit Completion Mobile Sticky Progress
+
+Completed direction:
+
+- improve mobile orientation in Visit Completion,
+- keep desktop workflow stepper stable,
+- make progress and current step visible during mobile scrolling.
+
 ### Next Recommended Task
 
-Task 52 - Manual Appointment UI/UX Review Pass
+Checkpoint B - Product Roadmap Re-balance
 
 Suggested direction:
 
-- review appointment creation, schedule list, weekly view, appointment detail, and appointment-to-visit flow end to end,
-- check mobile/tablet/desktop usability with real clinic workflow expectations,
-- make only focused UI/UX adjustments before moving into larger scheduling features.
+- review the current product/design implementation phase,
+- rebalance upcoming work after D1-D6,
+- decide whether scheduling, patient detail IA, or visit workflow polish should come next.
 
 ### Later Appointment Direction
 

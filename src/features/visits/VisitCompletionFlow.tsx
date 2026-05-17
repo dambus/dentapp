@@ -486,7 +486,7 @@ export function VisitCompletionFlow({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 sm:gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 pb-28 sm:gap-6 sm:pb-0">
       {isLoadingDraft ? (
         <InlineNotice variant="info">Loading open visit draft...</InlineNotice>
       ) : null}
@@ -605,7 +605,7 @@ export function VisitCompletionFlow({
       </Card>
 
       {completionState === 'confirming' ? (
-        <Card className="border-amber-200 bg-amber-50/60 shadow-sm">
+        <Card className="border-amber-200 bg-amber-50/60 shadow-sm sm:mb-0">
           <CardHeader>
             <CardTitle>Confirm Visit Completion</CardTitle>
             <CardDescription>
@@ -613,67 +613,26 @@ export function VisitCompletionFlow({
               completed.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              className="min-h-11"
-              disabled={isCompleting}
-              onClick={confirmCompletion}
-            >
-              {isCompleting ? 'Completing...' : 'Confirm completion'}
-            </Button>
-            <Button
-              className="min-h-11"
-              disabled={isCompleting}
-              onClick={() => setCompletionState('editing')}
-              variant="secondary"
-            >
-              Continue review
-            </Button>
+          <CardContent>
+            <VisitCompletionConfirmActions
+              isCompleting={isCompleting}
+              onConfirm={() => void confirmCompletion()}
+              onContinueReview={() => setCompletionState('editing')}
+            />
           </CardContent>
         </Card>
       ) : (
-        <div className="sticky bottom-0 z-10 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Button
-              className="min-h-11"
-              disabled={activeStepIndex === 0 || isBusy}
-              onClick={goToPreviousStep}
-              variant="secondary"
-            >
-              Back
-            </Button>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button
-                className="min-h-11"
-                disabled={
-                  !hasMeaningfulDraftData ||
-                  isBusy
-                }
-                onClick={handleSaveDraft}
-                variant="secondary"
-              >
-                {isSavingDraft ? 'Saving...' : 'Save Draft'}
-              </Button>
-              {activeStepIndex < workflowSteps.length - 1 ? (
-                <Button
-                  className="min-h-11"
-                  disabled={isBusy}
-                  onClick={goToNextStep}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button
-                  className="min-h-11"
-                  disabled={isBusy}
-                  onClick={startCompletion}
-                >
-                  {isCompleting ? 'Completing...' : 'Complete Visit'}
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
+        <VisitCompletionEditingActions
+          activeStepIndex={activeStepIndex}
+          hasMeaningfulDraftData={hasMeaningfulDraftData}
+          isBusy={isBusy}
+          isCompleting={isCompleting}
+          isSavingDraft={isSavingDraft}
+          onBack={goToPreviousStep}
+          onComplete={startCompletion}
+          onNext={goToNextStep}
+          onSaveDraft={() => void handleSaveDraft()}
+        />
       )}
     </div>
   )
@@ -783,25 +742,143 @@ function MobileWorkflowHeader({
   const progressPercent = ((activeStepIndex + 1) / workflowSteps.length) * 100
 
   return (
-    <div className="sticky top-0 z-20 -mx-4 border-y border-slate-200 bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur sm:hidden">
+    <div
+      className="sticky top-0 z-40 -mx-4 self-stretch border-y border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:hidden"
+      data-testid="visit-mobile-progress-header"
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-semibold uppercase tracking-normal text-teal-700">
-            Complete Visit
+            Visit Completion
+          </div>
+          <div className="truncate text-sm font-semibold text-slate-950">
+            Step {activeStepIndex + 1} of {workflowSteps.length} -{' '}
+            {activeStep.label}
           </div>
           <div className="truncate text-base font-semibold text-slate-950">
-            {activeStep.label}: {activeStep.title}
+            {activeStep.title}
           </div>
         </div>
         <Badge variant={isReady ? 'success' : 'neutral'}>
-          {activeStepIndex + 1}/{workflowSteps.length}
+          {isReady ? 'Ready' : `${activeStepIndex + 1}/${workflowSteps.length}`}
         </Badge>
       </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+      <div
+        aria-label={`Visit Completion progress: step ${activeStepIndex + 1} of ${workflowSteps.length}`}
+        className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"
+        role="progressbar"
+        aria-valuemax={workflowSteps.length}
+        aria-valuemin={1}
+        aria-valuenow={activeStepIndex + 1}
+      >
         <div
           className="h-full rounded-full bg-teal-700 transition-all"
           style={{ width: `${progressPercent}%` }}
         />
+      </div>
+    </div>
+  )
+}
+
+function VisitCompletionEditingActions({
+  activeStepIndex,
+  hasMeaningfulDraftData,
+  isBusy,
+  isCompleting,
+  isSavingDraft,
+  onBack,
+  onComplete,
+  onNext,
+  onSaveDraft,
+}: {
+  activeStepIndex: number
+  hasMeaningfulDraftData: boolean
+  isBusy: boolean
+  isCompleting: boolean
+  isSavingDraft: boolean
+  onBack: () => void
+  onComplete: () => void
+  onNext: () => void
+  onSaveDraft: () => void
+}) {
+  const isFinalStep = activeStepIndex >= workflowSteps.length - 1
+
+  return (
+    <div
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+      data-testid="visit-mobile-action-bar"
+    >
+      <div className="mx-auto grid max-w-5xl gap-2 sm:flex sm:items-center sm:justify-between">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
+          <Button
+            className="min-h-11"
+            disabled={activeStepIndex === 0 || isBusy}
+            onClick={onBack}
+            variant="secondary"
+          >
+            Back
+          </Button>
+          <Button
+            className="min-h-11"
+            disabled={!hasMeaningfulDraftData || isBusy}
+            onClick={onSaveDraft}
+            variant="secondary"
+          >
+            {isSavingDraft ? 'Saving...' : 'Save Draft'}
+          </Button>
+        </div>
+        {isFinalStep ? (
+          <Button
+            className="min-h-11 w-full sm:w-auto"
+            disabled={isBusy}
+            onClick={onComplete}
+          >
+            {isCompleting ? 'Completing...' : 'Complete Visit'}
+          </Button>
+        ) : (
+          <Button
+            className="min-h-11 w-full sm:w-auto"
+            disabled={isBusy}
+            onClick={onNext}
+          >
+            Next
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function VisitCompletionConfirmActions({
+  isCompleting,
+  onConfirm,
+  onContinueReview,
+}: {
+  isCompleting: boolean
+  onConfirm: () => void
+  onContinueReview: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-amber-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+      data-testid="visit-mobile-confirm-action-bar"
+    >
+      <div className="mx-auto grid max-w-5xl gap-2 sm:flex">
+        <Button
+          className="min-h-11"
+          disabled={isCompleting}
+          onClick={onConfirm}
+        >
+          {isCompleting ? 'Completing...' : 'Confirm completion'}
+        </Button>
+        <Button
+          className="min-h-11"
+          disabled={isCompleting}
+          onClick={onContinueReview}
+          variant="secondary"
+        >
+          Continue review
+        </Button>
       </div>
     </div>
   )

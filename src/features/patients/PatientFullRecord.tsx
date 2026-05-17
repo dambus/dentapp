@@ -8,6 +8,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  FieldLabel,
+  Select,
 } from '../../components/ui'
 import { classNames } from '../../lib/classNames'
 import { ClinicalNotesSection } from './ClinicalNotesSection'
@@ -81,12 +83,14 @@ function RecordSection({ title, description, children }: RecordSectionProps) {
   )
 }
 
-function getSectionLabel(section: PatientFullRecordSection) {
+function getPatientFullRecordSectionLabel(
+  section: PatientFullRecordSection,
+) {
   const labels: Record<PatientFullRecordSection, string> = {
-    'medical-record': 'Medical Record',
+    'medical-record': 'Medical',
     odontogram: 'Odontogram',
-    'treatment-plans': 'Treatment Plans',
-    'clinical-notes': 'Clinical Notes',
+    'treatment-plans': 'Plans',
+    'clinical-notes': 'Notes',
     documents: 'Documents',
     timeline: 'Timeline',
   }
@@ -144,8 +148,29 @@ export function PatientFullRecord({
       </CardHeader>
 
       <CardContent className="space-y-5">
-        <div className="-mx-4 sm:mx-0">
-          <div className="flex gap-1.5 overflow-x-auto px-4 pb-1 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+        <div className="sticky top-0 z-10 -mx-4 border-y border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:hidden">
+          <label>
+            <FieldLabel>Section</FieldLabel>
+            <Select
+              aria-label="Patient record section"
+              className="mt-1"
+              data-testid="patient-section-selector"
+              onChange={(event) =>
+                onSectionChange(event.target.value as PatientFullRecordSection)
+              }
+              value={selectedSection}
+            >
+              {availableSections.map((section) => (
+                <option key={section} value={section}>
+                  {getPatientFullRecordSectionLabel(section)}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+
+        <div className="hidden sm:block">
+          <div className="flex flex-wrap gap-1.5">
             {availableSections.map((section) => {
               const isSelected = selectedSection === section
 
@@ -157,7 +182,7 @@ export function PatientFullRecord({
                   size="sm"
                   variant={isSelected ? 'primary' : 'secondary'}
                 >
-                  {getSectionLabel(section)}
+                  {getPatientFullRecordSectionLabel(section)}
                 </Button>
               )
             })}

@@ -54,3 +54,48 @@ export function formatAppointmentTimeRange(
 
   return `${startTime} - ${formatPatientDateTime(scheduledEnd)}`
 }
+
+export function formatAppointmentClockRange(
+  scheduledStart: string,
+  scheduledEnd: string | null,
+) {
+  const startDate = new Date(scheduledStart)
+
+  if (Number.isNaN(startDate.getTime())) {
+    return formatAppointmentTimeRange(scheduledStart, scheduledEnd)
+  }
+
+  if (!scheduledEnd) {
+    return appointmentTimeFormatter.format(startDate)
+  }
+
+  const endDate = new Date(scheduledEnd)
+
+  if (Number.isNaN(endDate.getTime())) {
+    return appointmentTimeFormatter.format(startDate)
+  }
+
+  return `${appointmentTimeFormatter.format(startDate)} - ${appointmentTimeFormatter.format(endDate)}`
+}
+
+export function getAppointmentDurationLabel(
+  scheduledStart: string,
+  scheduledEnd: string | null,
+) {
+  if (!scheduledEnd) {
+    return null
+  }
+
+  const startDate = new Date(scheduledStart)
+  const endDate = new Date(scheduledEnd)
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return null
+  }
+
+  const durationMinutes = Math.round(
+    (endDate.getTime() - startDate.getTime()) / 60000,
+  )
+
+  return durationMinutes > 0 ? `${durationMinutes} min` : null
+}

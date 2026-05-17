@@ -19,10 +19,7 @@ import {
   Textarea,
   TextInput,
 } from '../../components/ui'
-import {
-  appointmentStatusBadgeVariants,
-  appointmentStatusLabels,
-} from '../appointments/appointmentDisplay'
+import { AppointmentCard } from '../appointments/AppointmentCard'
 import {
   APPOINTMENT_NOTES_MAX_LENGTH,
   APPOINTMENT_REASON_MAX_LENGTH,
@@ -32,6 +29,16 @@ import {
   type Appointment,
   type AppointmentStatus,
 } from '../appointments/appointmentService'
+import {
+  appointmentDurationOptions,
+  appointmentTypes,
+  defaultAppointmentTypeId,
+  detectAppointmentTypeFromReason,
+  getAppointmentTypeById,
+  getDefaultAppointmentType,
+  isAppointmentDurationOption,
+  type AppointmentTypeId,
+} from '../appointments/appointmentTypes'
 import { formatPatientDateTime } from './patientDisplay'
 import {
   getAppointmentDetailPath,
@@ -45,6 +52,7 @@ type PatientAppointmentSummaryProps = {
 }
 
 type AppointmentFormValues = {
+  appointmentTypeId: AppointmentTypeId
   date: string
   time: string
   duration: string
@@ -64,12 +72,14 @@ const timeInputPattern = /^\d{2}:\d{2}$/
 function getDefaultAppointmentValues(): AppointmentFormValues {
   const now = new Date()
   const nextHour = new Date(now)
+  const defaultAppointmentType = getDefaultAppointmentType()
   nextHour.setHours(now.getHours() + 1, 0, 0, 0)
 
   return {
+    appointmentTypeId: defaultAppointmentType.id,
     date: nextHour.toISOString().slice(0, 10),
     time: nextHour.toTimeString().slice(0, 5),
-    duration: '30',
+    duration: String(defaultAppointmentType.defaultDurationMinutes),
     reason: '',
     notes: '',
   }
@@ -103,6 +113,7 @@ function buildSchedule(values: AppointmentFormValues): AppointmentSchedulePrevie
   const normalizedNotes = notes.trim()
   const dateValue = values.date.trim()
   const timeValue = values.time.trim()
+  const appointmentType = getAppointmentTypeById(values.appointmentTypeId)
 
   if (!dateValue) {
     return {
@@ -131,6 +142,14 @@ function buildSchedule(values: AppointmentFormValues): AppointmentSchedulePrevie
   const scheduledStart = new Date(`${dateValue}T${timeValue}:00`)
   const durationMinutes = Number(values.duration)
 
+  if (!appointmentType) {
+    return {
+      error: 'Choose an appointment type.',
+      scheduledEnd: null,
+      scheduledStart: null,
+    }
+  }
+
   if (Number.isNaN(scheduledStart.getTime())) {
     return {
       error: 'Please choose a valid date and time.',
@@ -139,9 +158,12 @@ function buildSchedule(values: AppointmentFormValues): AppointmentSchedulePrevie
     }
   }
 
-  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+  if (
+    !Number.isFinite(durationMinutes) ||
+    !isAppointmentDurationOption(durationMinutes)
+  ) {
     return {
-      error: 'Choose a valid appointment duration.',
+      error: 'Choose a valid 15-minute duration.',
       scheduledEnd: null,
       scheduledStart: null,
     }
@@ -262,12 +284,15 @@ function logAppointmentCreateDiagnostics({
   })
 }
 
-function AppointmentStatusBadge({ status }: { status: AppointmentStatus }) {
-  return (
-    <Badge variant={appointmentStatusBadgeVariants[status]}>
-      {appointmentStatusLabels[status]}
-    </Badge>
-  )
+function buildAppointmentReason(values: AppointmentFormValues) {
+  const appointmentType = getAppointmentTypeById(values.appointmentTypeId)
+  const normalizedReason = values.reason.trim()
+
+  return normalizedReason || appointmentType?.label || 'Appointment'
+}
+
+function getAppointmentTypeForPrefill(reason: string) {
+  return detectAppointmentTypeFromReason(reason)?.id ?? 'control'
 }
 
 export function PatientAppointmentSummary({
@@ -287,7 +312,8 @@ export function PatientAppointmentSummary({
   const [formError, setFormError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [statusSubmitting, setStatusSubmitting] = useState<string | null>(null)
+  const [statusSubmitting, setStatusSubmitting] =
+    useState<AppointmentStatus | null>(null)
   const createSubmittingRef = useRef(false)
   const statusSubmittingRef = useRef(false)
 
@@ -355,6 +381,7 @@ export function PatientAppointmentSummary({
     const timeoutId = window.setTimeout(() => {
       setFormValues((currentValues) => ({
         ...currentValues,
+        appointmentTypeId: getAppointmentTypeForPrefill(prefillReason),
         reason: prefillReason.trim(),
       }))
       setSuccessMessage('Follow-up context copied into appointment reason.')
@@ -397,7 +424,7 @@ export function PatientAppointmentSummary({
         patientId,
         scheduledStart: schedulePreview.scheduledStart,
         scheduledEnd: schedulePreview.scheduledEnd,
-        reason: formValues.reason.trim(),
+        reason: buildAppointmentReason(formValues),
         notes: formValues.notes.trim(),
       })
 
@@ -468,6 +495,21 @@ export function PatientAppointmentSummary({
     }))
   }
 
+  function updateAppointmentType(value: string) {
+    const appointmentType =
+      getAppointmentTypeById(value) ?? getAppointmentTypeById(defaultAppointmentTypeId)
+
+    if (!appointmentType) {
+      return
+    }
+
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      appointmentTypeId: appointmentType.id,
+      duration: String(appointmentType.defaultDurationMinutes),
+    }))
+  }
+
   function startVisitFromAppointment(appointmentId: string) {
     if (nextAppointment?.status !== 'scheduled') {
       setFormError('Only scheduled appointments can start a visit.')
@@ -534,62 +576,24 @@ export function PatientAppointmentSummary({
               tone="info"
             />
             <div className="rounded-md border border-cyan-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-wrap items-center gap-2">
-                <AppointmentStatusBadge status={nextAppointment.status} />
-                {additionalAppointmentCount > 0 ? (
+              <AppointmentCard
+                appointment={nextAppointment}
+                className="border-0 p-0 shadow-none hover:border-transparent"
+                isBusy={Boolean(statusSubmitting) || isLoading}
+                onOpenDetails={() => openAppointmentDetail(nextAppointment.id)}
+                onStartVisit={() => startVisitFromAppointment(nextAppointment.id)}
+                onStatusChange={(status) => void handleStatusUpdate(status)}
+                patientName="Current patient"
+                statusUpdateStatus={statusSubmitting}
+                variant="compact"
+              />
+              {additionalAppointmentCount > 0 ? (
+                <div className="mt-3">
                   <Badge variant="neutral">
-                    +{additionalAppointmentCount} more
+                    +{additionalAppointmentCount} more upcoming
                   </Badge>
-                ) : null}
-              </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                {nextAppointment.notes?.trim() || 'No appointment notes recorded.'}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  disabled={Boolean(statusSubmitting) || isLoading}
-                  onClick={() => openAppointmentDetail(nextAppointment.id)}
-                  size="sm"
-                  variant="secondary"
-                >
-                  Details
-                </Button>
-                <Button
-                  disabled={
-                    Boolean(statusSubmitting) ||
-                    isLoading ||
-                    nextAppointment.status !== 'scheduled'
-                  }
-                  onClick={() => startVisitFromAppointment(nextAppointment.id)}
-                  size="sm"
-                >
-                  Start visit
-                </Button>
-                <Button
-                  disabled={Boolean(statusSubmitting) || isLoading}
-                  onClick={() => void handleStatusUpdate('completed')}
-                  size="sm"
-                  variant="secondary"
-                >
-                  {statusSubmitting === 'completed' ? 'Updating...' : 'Complete'}
-                </Button>
-                <Button
-                  disabled={Boolean(statusSubmitting) || isLoading}
-                  onClick={() => void handleStatusUpdate('cancelled')}
-                  size="sm"
-                  variant="ghost"
-                >
-                  {statusSubmitting === 'cancelled' ? 'Updating...' : 'Cancel'}
-                </Button>
-                <Button
-                  disabled={Boolean(statusSubmitting) || isLoading}
-                  onClick={() => void handleStatusUpdate('no_show')}
-                  size="sm"
-                  variant="ghost"
-                >
-                  {statusSubmitting === 'no_show' ? 'Updating...' : 'No-show'}
-                </Button>
-              </div>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : (
@@ -625,7 +629,7 @@ export function PatientAppointmentSummary({
             ) : null}
           </div>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label>
               <FieldLabel>Date</FieldLabel>
               <TextInput
@@ -647,6 +651,21 @@ export function PatientAppointmentSummary({
               />
             </label>
             <label>
+              <FieldLabel>Type</FieldLabel>
+              <Select
+                disabled={isSubmitting}
+                data-testid="patient-appointment-type"
+                value={formValues.appointmentTypeId}
+                onChange={(event) => updateAppointmentType(event.target.value)}
+              >
+                {appointmentTypes.map((appointmentType) => (
+                  <option key={appointmentType.id} value={appointmentType.id}>
+                    {appointmentType.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label>
               <FieldLabel>Duration</FieldLabel>
               <Select
                 disabled={isSubmitting}
@@ -656,23 +675,23 @@ export function PatientAppointmentSummary({
                   updateFormValue('duration', event.target.value)
                 }
               >
-                <option value="15">15 min</option>
-                <option value="30">30 min</option>
-                <option value="45">45 min</option>
-                <option value="60">60 min</option>
-                <option value="90">90 min</option>
+                {appointmentDurationOptions.map((durationMinutes) => (
+                  <option key={durationMinutes} value={durationMinutes}>
+                    {durationMinutes} min
+                  </option>
+                ))}
               </Select>
             </label>
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <label>
-              <FieldLabel>Reason</FieldLabel>
+              <FieldLabel>Reason / context</FieldLabel>
               <TextInput
                 data-testid="patient-appointment-reason"
                 disabled={isSubmitting}
                 maxLength={APPOINTMENT_REASON_MAX_LENGTH}
-                placeholder="Control visit, follow-up, consultation"
+                placeholder="Optional context for this appointment"
                 value={formValues.reason}
                 onChange={(event) =>
                   updateFormValue('reason', event.target.value)

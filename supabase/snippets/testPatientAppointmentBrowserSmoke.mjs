@@ -462,6 +462,27 @@ async function clickAppointmentCardAction(cdp, cardText, actionText) {
   }
 }
 
+async function clickAppointmentCardMenuAction(cdp, cardText, actionText) {
+  const opened = await evaluate(
+    cdp,
+    `(() => {
+      const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+      const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(cardText)}));
+      if (!card) return false;
+      const menuTrigger = card.querySelector('[aria-label="Appointment actions"]');
+      if (!(menuTrigger instanceof HTMLButtonElement)) return false;
+      menuTrigger.click();
+      return true;
+    })()`,
+  )
+
+  if (!opened) {
+    throw new Error(`Could not open appointment action menu in card containing ${cardText}`)
+  }
+
+  await clickByText(cdp, actionText)
+}
+
 async function typeInto(cdp, selector, value) {
   const ok = await evaluate(
     cdp,
@@ -512,6 +533,30 @@ async function setDateInput(cdp, selector, value) {
   }
 }
 
+async function setSelectValue(cdp, selector, value) {
+  const ok = await evaluate(
+    cdp,
+    `(() => {
+      const input = document.querySelector(${JSON.stringify(selector)});
+      if (!(input instanceof HTMLSelectElement)) {
+        return false;
+      }
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLSelectElement.prototype,
+        'value',
+      )?.set;
+      setter?.call(input, ${JSON.stringify(value)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      return input.value === ${JSON.stringify(value)};
+    })()`,
+  )
+
+  if (!ok) {
+    throw new Error(`Could not set select ${selector} to ${value}`)
+  }
+}
+
 async function waitForDateInputValue(cdp, selector, expectedValue) {
   await waitFor(
     () =>
@@ -538,8 +583,28 @@ async function getInputValue(cdp, selector) {
   )
 }
 
+async function getSelectValue(cdp, selector) {
+  return evaluate(
+    cdp,
+    `(() => {
+      const input = document.querySelector(${JSON.stringify(selector)});
+      return input instanceof HTMLSelectElement ? input.value : null;
+    })()`,
+  )
+}
+
 async function assertInputValue(cdp, selector, expectedValue) {
   const actualValue = await getInputValue(cdp, selector)
+
+  if (actualValue !== expectedValue) {
+    throw new Error(
+      `Expected ${selector} value ${expectedValue}, received ${actualValue}`,
+    )
+  }
+}
+
+async function assertSelectValue(cdp, selector, expectedValue) {
+  const actualValue = await getSelectValue(cdp, selector)
 
   if (actualValue !== expectedValue) {
     throw new Error(
@@ -694,6 +759,51 @@ async function main() {
       'follow-up recommendation',
     )
 
+    await waitFor(
+      () => textIncludes(cdp, 'Full Record'),
+      'patient full record',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="patient-section-selector"]') instanceof HTMLSelectElement`,
+        ),
+      'mobile patient section selector',
+    )
+    await setSelectValue(cdp, '[data-testid="patient-section-selector"]', 'timeline')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `location.search.includes('section=timeline') && document.querySelector('[data-testid="patient-section-selector"]')?.value === 'timeline'`,
+        ),
+      'mobile section selector updates timeline query',
+    )
+    await navigate(cdp, `${PATIENT_URL}?section=timeline`)
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="patient-section-selector"]')?.value === 'timeline'`,
+        ),
+      'mobile section selector preserves timeline query on refresh',
+    )
+    await setSelectValue(cdp, '[data-testid="patient-section-selector"]', 'medical-record')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `location.search.includes('section=medical-record') && document.querySelector('[data-testid="patient-section-selector"]')?.value === 'medical-record'`,
+        ),
+      'mobile section selector updates medical query',
+    )
+    await navigate(cdp, PATIENT_URL)
+    await waitFor(
+      () => textIncludes(cdp, EXPECTED_PREFILL),
+      'follow-up recommendation after viewport reset',
+    )
+
     await clickByText(cdp, 'Schedule appointment')
     await waitFor(
       () => textIncludes(cdp, 'Follow-up context copied into appointment reason.'),
@@ -702,7 +812,7 @@ async function main() {
 
     const prefillValue = await evaluate(
       cdp,
-      `document.querySelector('#patient-appointment-form input[placeholder="Control visit, follow-up, consultation"]')?.value`,
+      `document.querySelector('[data-testid="patient-appointment-reason"]')?.value`,
     )
 
     if (prefillValue !== EXPECTED_PREFILL) {
@@ -805,6 +915,15 @@ async function main() {
       () => textIncludes(cdp, 'Schedule appointment'),
       'demo slug patient appointment form',
     )
+    await assertSelectValue(cdp, '[data-testid="patient-appointment-type"]', 'consultation')
+    await setSelectValue(cdp, '[data-testid="patient-appointment-type"]', 'filling')
+    await assertSelectValue(cdp, '[data-testid="patient-appointment-type"]', 'filling')
+    await assertSelectValue(cdp, '[data-testid="patient-appointment-duration"]', '45')
+    await setSelectValue(cdp, '[data-testid="patient-appointment-duration"]', '75')
+    await assertSelectValue(cdp, '[data-testid="patient-appointment-duration"]', '75')
+    await setSelectValue(cdp, '[data-testid="patient-appointment-type"]', 'consultation')
+    await assertSelectValue(cdp, '[data-testid="patient-appointment-type"]', 'consultation')
+    await assertSelectValue(cdp, '[data-testid="patient-appointment-duration"]', '30')
     await setDateInput(cdp, '[data-testid="patient-appointment-date"]', '2026-05-18')
     await typeInto(cdp, '[data-testid="patient-appointment-time"]', '11:00')
     await typeInto(cdp, '[data-testid="patient-appointment-reason"]', MANUAL_CREATION_REASON)
@@ -923,7 +1042,7 @@ async function main() {
       () => textIncludes(cdp, MANUAL_CREATION_REASON),
       'manual appointment appears in appointments list',
     )
-    await clickAppointmentCardAction(cdp, MANUAL_CREATION_REASON, 'Open patient')
+    await clickAppointmentCardMenuAction(cdp, MANUAL_CREATION_REASON, 'Open patient')
     await waitFor(
       () =>
         evaluate(
@@ -1096,6 +1215,7 @@ async function main() {
       () => textIncludes(cdp, CANCELLED_REASON),
       'status polish appointment reason visible',
     )
+    await clickSelector(cdp, '[aria-label="Appointment status actions"]')
     await clickByText(cdp, 'Cancel')
     await waitFor(
       () => textIncludes(cdp, 'Appointment status was updated successfully.'),
@@ -1145,7 +1265,7 @@ async function main() {
       'appointment card visible after returning to schedule',
     )
 
-    await clickAppointmentCardAction(cdp, EXPECTED_PREFILL, 'Open patient')
+    await clickAppointmentCardMenuAction(cdp, EXPECTED_PREFILL, 'Open patient')
     await waitFor(
       () => evaluate(cdp, `location.pathname === ${JSON.stringify('/patients/demo-patient-001')}`),
       'open patient from appointments list',
@@ -1352,6 +1472,14 @@ async function main() {
 
     await navigate(cdp, `${PATIENT_URL}/visit-completion`)
     await waitFor(() => textIncludes(cdp, 'Visit Completion'), 'normal visit route')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="visit-mobile-progress-header"]') instanceof HTMLElement && document.querySelector('[data-testid="visit-mobile-action-bar"]') instanceof HTMLElement`,
+        ),
+      'visit completion mobile progress and action elements exist',
+    )
     const normalRouteHasAppointmentContext = await textIncludes(
       cdp,
       'Appointment context',
