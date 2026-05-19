@@ -212,7 +212,10 @@ export function PatientVisitDetailPage() {
 
   const hasClinicalNote = Boolean(visit.clinicalNote.trim())
   const hasRecommendation = Boolean(visit.recommendation.trim())
+  const hasNextStep = Boolean(visit.nextStep)
+  const hasFollowUp = hasRecommendation || (hasNextStep && visit.nextStep !== 'no_follow_up')
   const generatedAt = formatPatientDateTime(new Date().toISOString())
+  const providerLabel = visit.completedByName ?? 'Provider not recorded'
 
   function handlePrintReview() {
     window.print()
@@ -246,17 +249,26 @@ export function PatientVisitDetailPage() {
           <p className="mt-1 text-sm text-slate-700">Generated {generatedAt}</p>
         </section>
 
-        <Card className="print-visit-detail-card border-teal-100 bg-teal-50/30 shadow-sm">
+        <Card
+          className="print-visit-detail-card border-teal-100 bg-teal-50/30 shadow-sm"
+          data-testid="completed-visit-detail-overview"
+        >
           <CardHeader>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle>{formatPatientDate(visit.visitDate)}</CardTitle>
+                  <CardTitle>
+                    Completed visit - {formatPatientDate(visit.visitDate)}
+                  </CardTitle>
                   <Badge variant="success">Completed</Badge>
                   <Badge variant="neutral">Read-only</Badge>
+                  {visit.linkedAppointment ? (
+                    <Badge variant="info">Appointment-linked</Badge>
+                  ) : null}
                 </div>
                 <CardDescription>
-                  Completed {formatPatientDateTime(visit.completedAt)}.
+                  Completed {formatPatientDateTime(visit.completedAt)} by{' '}
+                  {providerLabel}.
                 </CardDescription>
               </div>
               <Badge variant={visit.procedures.length > 0 ? 'info' : 'neutral'}>
@@ -266,7 +278,7 @@ export function PatientVisitDetailPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <MetricTile
                 label="Patient"
                 value={patientName}
@@ -285,12 +297,21 @@ export function PatientVisitDetailPage() {
                 description="Captured during Visit Completion."
                 tone={visit.nextStep ? 'warning' : 'default'}
               />
+              <MetricTile
+                label="Provider"
+                value={providerLabel}
+                description="Completed-by profile when available."
+                tone={visit.completedByName ? 'success' : 'default'}
+              />
             </div>
           </CardContent>
         </Card>
 
         {visit.linkedAppointment ? (
-          <Card className="print-visit-detail-card border-cyan-200 bg-cyan-50/40 shadow-sm">
+          <Card
+            className="print-visit-detail-card border-cyan-200 bg-cyan-50/40 shadow-sm"
+            data-testid="completed-visit-appointment-context"
+          >
             <CardHeader>
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle>Linked Appointment</CardTitle>
@@ -329,7 +350,10 @@ export function PatientVisitDetailPage() {
           </Card>
         ) : null}
 
-        <Card className="print-visit-detail-card border-slate-200 shadow-sm">
+        <Card
+          className="print-visit-detail-card border-slate-200 shadow-sm"
+          data-testid="completed-visit-detail-procedures"
+        >
           <CardHeader>
             <CardTitle>Procedures</CardTitle>
             <CardDescription>
@@ -374,14 +398,19 @@ export function PatientVisitDetailPage() {
               </ol>
             ) : (
               <InlineNotice variant="neutral">
-                No procedures were recorded for this completed visit.
+                No procedures were recorded for this completed visit. Review
+                the clinical note, recommendation, and next step for the
+                completed record.
               </InlineNotice>
             )}
           </CardContent>
         </Card>
 
         <div className="grid gap-5 lg:grid-cols-2">
-          <Card className="print-visit-detail-card border-slate-200 shadow-sm">
+          <Card
+            className="print-visit-detail-card border-slate-200 shadow-sm"
+            data-testid="completed-visit-detail-clinical-note"
+          >
             <CardHeader>
               <CardTitle>Clinical Note</CardTitle>
             </CardHeader>
@@ -389,12 +418,15 @@ export function PatientVisitDetailPage() {
               <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7 text-slate-700">
                 {hasClinicalNote
                   ? visit.clinicalNote
-                  : 'No clinical note recorded.'}
+                  : 'No clinical note recorded for this completed visit.'}
               </p>
             </CardContent>
           </Card>
 
-          <Card className="print-visit-detail-card border-slate-200 shadow-sm">
+          <Card
+            className="print-visit-detail-card border-slate-200 shadow-sm"
+            data-testid="completed-visit-detail-recommendation"
+          >
             <CardHeader>
               <CardTitle>Recommendation</CardTitle>
             </CardHeader>
@@ -408,9 +440,63 @@ export function PatientVisitDetailPage() {
           </Card>
         </div>
 
+        <Card
+          className="print-visit-detail-card border-amber-200 bg-amber-50/40 shadow-sm"
+          data-testid="completed-visit-detail-follow-up"
+        >
+          <CardHeader>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Follow-up Guidance</CardTitle>
+              {hasFollowUp ? (
+                <Badge variant="warning">Review next action</Badge>
+              ) : (
+                <Badge variant="neutral">No follow-up signal</Badge>
+              )}
+            </div>
+            <CardDescription>
+              Clinical guidance recorded during Visit Completion.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MetricTile
+                label="Source visit"
+                value={formatPatientDate(visit.visitDate)}
+                description={
+                  visit.linkedAppointment
+                    ? 'Recorded from an appointment-linked completed visit.'
+                    : 'Recorded from a completed visit.'
+                }
+                tone="warning"
+              />
+              <MetricTile
+                label="Suggested next step"
+                value={getNextStepLabel(visit.nextStep)}
+                description="Captured as clinical guidance, not scheduling."
+                tone={hasNextStep ? 'success' : 'default'}
+              />
+            </div>
+            {hasRecommendation ? (
+              <div className="rounded-md border border-amber-200 bg-white p-4">
+                <div className="text-sm font-semibold text-slate-950">
+                  Recommendation
+                </div>
+                <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-7 text-slate-700">
+                  {visit.recommendation}
+                </p>
+              </div>
+            ) : null}
+            <InlineNotice variant="info">
+              This follow-up guidance does not create an appointment,
+              treatment-plan task, reminder, billing item, or material record.
+            </InlineNotice>
+          </CardContent>
+        </Card>
+
         {visit.warnings.map((warning) => (
           <InlineNotice
             key={`${warning.code}-${warning.message}`}
+            data-testid="completed-visit-detail-warning"
             variant={
               warning.code === 'clinical_note_unavailable' ? 'warning' : 'info'
             }

@@ -11,6 +11,7 @@ import {
 
 import {
   ActionMenu,
+  Badge,
   Button,
   StatusBadge,
   TypeBadge,
@@ -24,12 +25,14 @@ import { detectAppointmentTypeFromReason } from './appointmentTypes'
 import type {
   Appointment,
   AppointmentLinkedVisitSummary,
+  AppointmentOpenVisitSummary,
   AppointmentPatientSummary,
   AppointmentStatus,
 } from './appointmentService'
 
 type CardAppointment = Appointment & {
   linkedVisit?: AppointmentLinkedVisitSummary | null
+  openVisit?: AppointmentOpenVisitSummary | null
   patient?: AppointmentPatientSummary | null
 }
 
@@ -56,6 +59,29 @@ function getAppointmentTypeLabel(appointment: Appointment) {
   }
 }
 
+const nextStepLabels: Record<string, string> = {
+  no_follow_up: 'No follow-up needed',
+  follow_up_recommended: 'Follow-up recommended',
+  schedule_control_visit: 'Schedule control visit',
+  continue_treatment_plan: 'Continue treatment plan',
+  additional_diagnostics: 'Additional diagnostics',
+  referral: 'Referral / specialist consultation',
+}
+
+function getFollowUpLabel(visit: AppointmentLinkedVisitSummary | null | undefined) {
+  if (!visit) {
+    return null
+  }
+
+  const recommendation = visit.recommendation.trim()
+
+  if (recommendation) {
+    return recommendation
+  }
+
+  return visit.nextStep ? nextStepLabels[visit.nextStep] ?? visit.nextStep : null
+}
+
 export function AppointmentCard({
   appointment,
   className,
@@ -71,8 +97,11 @@ export function AppointmentCard({
 }: AppointmentCardProps) {
   const displayPatientName =
     patientName ?? appointment.patient?.fullName ?? 'Unknown patient'
-  const canStartVisit = appointment.status === 'scheduled' && onStartVisit
+  const hasOpenVisit = Boolean(appointment.openVisit)
+  const canStartOrContinueVisit =
+    appointment.status === 'scheduled' && onStartVisit && !appointment.linkedVisit
   const canViewVisit = appointment.linkedVisit && onViewVisit
+  const followUpLabel = getFollowUpLabel(appointment.linkedVisit)
   const durationLabel = getAppointmentDurationLabel(
     appointment.scheduled_start,
     appointment.scheduled_end,
@@ -96,7 +125,7 @@ export function AppointmentCard({
           onSelect: onOpenPatient,
         }
       : null,
-    appointment.status === 'scheduled' && onStatusChange
+    appointment.status === 'scheduled' && !appointment.openVisit && onStatusChange
       ? {
           disabled: isBusy,
           icon: CheckCircle2,
@@ -173,6 +202,10 @@ export function AppointmentCard({
 
           <div className="flex shrink-0 items-center gap-2">
             <StatusBadge status={appointment.status} />
+            {hasOpenVisit ? <Badge variant="warning">Visit in progress</Badge> : null}
+            {appointment.linkedVisit ? (
+              <Badge variant="success">Visit completed</Badge>
+            ) : null}
             {menuItems.length > 0 ? (
               <ActionMenu
                 disabled={isBusy}
@@ -201,6 +234,39 @@ export function AppointmentCard({
           ) : null}
         </div>
 
+        {hasOpenVisit ? (
+          <div
+            className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900"
+            data-testid="appointment-open-visit-state"
+          >
+            Visit Completion draft is in progress. Continue the visit to save
+            more changes or complete it.
+          </div>
+        ) : appointment.linkedVisit ? (
+          <div
+            className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800"
+            data-testid="appointment-completed-visit-state"
+          >
+            Completed visit is linked to this appointment.
+          </div>
+        ) : appointment.status === 'scheduled' ? (
+          <div
+            className="rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-medium text-cyan-900"
+            data-testid="appointment-ready-state"
+          >
+            Ready to start Visit Completion.
+          </div>
+        ) : null}
+
+        {followUpLabel ? (
+          <div
+            className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900"
+            data-testid="appointment-follow-up-signal"
+          >
+            Follow-up from completed visit: {followUpLabel}
+          </div>
+        ) : null}
+
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
             <CalendarClock aria-hidden className="h-4 w-4" />
@@ -208,14 +274,14 @@ export function AppointmentCard({
           </div>
 
           <div className="flex flex-wrap gap-2 sm:justify-end">
-            {canStartVisit ? (
+            {canStartOrContinueVisit ? (
               <Button
                 className="w-full sm:w-auto"
                 disabled={isBusy}
                 onClick={onStartVisit}
                 size="sm"
               >
-                Start visit
+                {hasOpenVisit ? 'Continue visit' : 'Start visit'}
               </Button>
             ) : null}
             {canViewVisit ? (

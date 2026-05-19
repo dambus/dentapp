@@ -81,6 +81,7 @@ export type VisitCompletionDraft = {
   startedAt: string | null
   completedAt: string | null
   completedBy: string | null
+  completedByName: string | null
   clinicalNoteId: string | null
   clinicalNote: string
   recommendation: string
@@ -132,6 +133,10 @@ type SupabaseProfileContextRow = {
 type SupabasePatientRow = {
   id: string
   clinic_id: string
+}
+
+type SupabaseVisitProviderRow = {
+  full_name: string | null
 }
 
 type SupabaseVisitRow = {
@@ -377,6 +382,7 @@ function mapRowsToDraft(
   visit: SupabaseVisitRow,
   procedures: VisitProcedureDraft[],
   clinicalNote: VisitClinicalNoteDraft | null,
+  completedByName: string | null,
   warnings: VisitCompletionServiceWarning[] = [],
 ): VisitCompletionDraft {
   return {
@@ -388,6 +394,7 @@ function mapRowsToDraft(
     startedAt: visit.started_at,
     completedAt: visit.completed_at,
     completedBy: visit.completed_by,
+    completedByName,
     clinicalNoteId: visit.clinical_note_id,
     clinicalNote: clinicalNote?.content ?? '',
     recommendation: visit.recommendation ?? '',
@@ -571,9 +578,10 @@ async function hydrateVisitDraft(
   visit: SupabaseVisitRow,
   extraWarnings: VisitCompletionServiceWarning[] = [],
 ) {
-  const [procedures, clinicalNoteResult] = await Promise.all([
+  const [procedures, clinicalNoteResult, completedByName] = await Promise.all([
     fetchVisitProcedures(visit.id),
     fetchClinicalNoteForVisit(visit),
+    fetchCompletedByName(visit.completed_by),
   ])
   const warnings = [...extraWarnings]
 
@@ -581,7 +589,40 @@ async function hydrateVisitDraft(
     warnings.push(clinicalNoteResult.warning)
   }
 
-  return mapRowsToDraft(visit, procedures, clinicalNoteResult.note, warnings)
+  return mapRowsToDraft(
+    visit,
+    procedures,
+    clinicalNoteResult.note,
+    completedByName,
+    warnings,
+  )
+}
+
+async function fetchCompletedByName(profileId: string | null) {
+  if (!profileId) {
+    return null
+  }
+
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    return null
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', profileId)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('[visitCompletionService] Completed-by profile could not be loaded.', error)
+    return null
+  }
+
+  const profile = data as SupabaseVisitProviderRow | null
+
+  return profile?.full_name?.trim() || null
 }
 
 async function createVisitAuditLog(
@@ -952,6 +993,7 @@ async function linkClinicalNoteToVisit(
 
 export async function fetchLatestOpenVisitCompletion(
   patientId: string,
+  appointmentId?: string | null,
 ): Promise<VisitCompletionDraft | null> {
   if (!patientId?.trim()) {
     return null
@@ -969,7 +1011,7 @@ export async function fetchLatestOpenVisitCompletion(
     return null
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('visits')
     .select(
       'id, patient_id, appointment_id, status, visit_date, started_at, completed_at, completed_by, clinical_note_id, recommendation, next_step, created_at, updated_at, deleted_at',
@@ -977,6 +1019,12 @@ export async function fetchLatestOpenVisitCompletion(
     .eq('patient_id', persistencePatientId)
     .in('status', ['draft', 'in_progress'])
     .is('deleted_at', null)
+
+  if (appointmentId?.trim()) {
+    query = query.eq('appointment_id', appointmentId.trim())
+  }
+
+  const { data, error } = await query
     .order('updated_at', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(1)

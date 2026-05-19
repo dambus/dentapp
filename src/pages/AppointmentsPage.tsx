@@ -29,6 +29,7 @@ import { formatPatientDate } from '../features/patients/patientDisplay'
 import {
   getAppointmentDetailPath,
   getPatientDetailPath,
+  getPatientVisitDetailPath,
   getPatientVisitCompletionPath,
 } from '../routes/routePaths'
 
@@ -298,6 +299,19 @@ export function AppointmentsPage() {
     )
   }
 
+  function viewCompletedVisit(appointment: AppointmentRangeItem) {
+    if (!appointment.linkedVisit) {
+      return
+    }
+
+    navigate(
+      getPatientVisitDetailPath(
+        appointment.patient?.routeId ?? appointment.patient_id,
+        appointment.linkedVisit.id,
+      ),
+    )
+  }
+
   function renderAppointmentCard(appointment: AppointmentRangeItem) {
     const isStatusUpdating = statusUpdateState?.appointmentId === appointment.id
     const isBusy = isLoading || Boolean(statusUpdateState)
@@ -311,6 +325,9 @@ export function AppointmentsPage() {
         onOpenPatient={() => navigateToPatient(appointment)}
         onStartVisit={() => startVisit(appointment)}
         onStatusChange={(status) => void handleStatusUpdate(appointment, status)}
+        onViewVisit={
+          appointment.linkedVisit ? () => viewCompletedVisit(appointment) : undefined
+        }
         statusUpdateStatus={isStatusUpdating ? statusUpdateState?.status : null}
       />
     )

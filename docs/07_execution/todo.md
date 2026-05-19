@@ -411,6 +411,87 @@ Completed direction:
 - keep desktop workflow stepper stable,
 - make progress and current step visible during mobile scrolling.
 
+### Completed Recommended Task
+
+Task 40E Follow-up - Authenticated Browser Persistence Smoke and UX Polish
+
+Completed direction:
+
+- expand the authenticated browser smoke so Visit Completion explicitly saves
+  a draft, refreshes, reloads the draft, completes the visit, and verifies the
+  completed visit in patient timeline/detail context,
+- polish existing persistence-state feedback only,
+- keep the route-based guided Visit Completion workflow,
+- keep patient context above the stepper and preserve the existing mobile
+  sticky progress/bottom action behavior,
+- keep autosave, billing, materials, attachments, payment handling, and
+  treatment-plan mutation out of scope.
+
+### Completed Recommended Task
+
+Task 41 - Appointments to Visit Completion Handoff Polish
+
+Completed direction:
+
+- clarify the Appointment Detail Start visit handoff,
+- keep appointment context visible above Visit Completion progress/stepper,
+- load appointment-scoped open drafts when Visit Completion starts from an
+  appointment,
+- keep Save Draft explicit and Complete Visit responsible for marking the
+  linked appointment completed,
+- add post-completion navigation to patient timeline, appointment detail, and
+  daily schedule,
+- preserve the route-based workflow and avoid schema expansion.
+
+### Completed Recommended Task
+
+Task 42 - Completed Visit Record and Timeline Clinical Polish
+
+Completed direction:
+
+- polish completed visit timeline cards as clinical records,
+- polish completed visit detail sections for overview, procedures, note,
+  recommendation, next step, appointment/source context, and metadata,
+- improve loading/empty/error/no-procedure/no-note states,
+- surface completed-by provider when readable,
+- expand smoke coverage for the completed visit card and detail display,
+- keep billing, payments, materials, attachments, and treatment-plan mutation
+  out of scope.
+
+### Completed Recommended Task
+
+Task 43 - Appointment Lifecycle and Daily Schedule Polish
+
+Completed direction:
+
+- use existing appointment status plus linked visit records to show lifecycle
+  state,
+- distinguish ready-to-start, visit-in-progress, completed, cancelled, and
+  no-show where supported by current data,
+- make daily schedule cards context-aware with Start visit, Continue visit, and
+  View visit actions,
+- add Appointment Detail lifecycle messaging,
+- document unsupported lifecycle gaps such as assigned provider, arrived,
+  in-room, and richer clinical queue states,
+- keep schema, billing, materials, attachments, payments, and treatment-plan
+  mutation out of scope.
+
+### Completed Recommended Task
+
+Task 44 - Follow-up / Next Visit Recommendation Flow
+
+Completed direction:
+
+- use existing Visit Completion recommendation and next-step fields as a
+  read-only follow-up signal,
+- surface follow-up on completed visit timeline cards,
+- add completed visit detail follow-up guidance,
+- surface linked visit follow-up on completed appointment detail and completed
+  daily schedule cards,
+- keep the existing patient overview follow-up summary,
+- avoid automatic appointment creation, treatment-plan mutation, reminders,
+  billing, materials, payments, and attachments.
+
 ### Next Recommended Task
 
 Checkpoint B - Product Roadmap Re-balance

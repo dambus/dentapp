@@ -107,9 +107,14 @@ function VisitTimelineItem({
   const hasRecommendation = Boolean(visit.recommendation.trim())
   const hasNextStep = Boolean(visit.nextStep)
   const hasFollowUp = hasFollowUpSignal(visit)
+  const providerLabel = visit.completedByName ?? 'Provider not recorded'
 
   return (
-    <li className="relative scroll-mt-6 pl-5 sm:pl-7" id={`visit-${visit.id}`}>
+    <li
+      className="relative scroll-mt-6 pl-5 sm:pl-7"
+      data-testid="completed-visit-card"
+      id={`visit-${visit.id}`}
+    >
       <span className="absolute left-0 top-2 h-3 w-3 rounded-full border-2 border-white bg-teal-700 shadow ring-2 ring-teal-100" />
       <Card
         className={classNames(
@@ -122,9 +127,12 @@ function VisitTimelineItem({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-xl">
-                  {formatPatientDate(getVisitDisplayDate(visit))}
+                  Completed visit - {formatPatientDate(getVisitDisplayDate(visit))}
                 </CardTitle>
                 <Badge variant="success">Completed</Badge>
+                {visit.appointmentId ? (
+                  <Badge variant="info">Appointment-linked</Badge>
+                ) : null}
                 {hasFollowUp ? (
                   <Badge variant="warning">
                     {hasNextStep ? getNextStepLabel(visit.nextStep) : 'Recommendation recorded'}
@@ -132,7 +140,8 @@ function VisitTimelineItem({
                 ) : null}
               </div>
               <CardDescription>
-                Completed {formatPatientDateTime(visit.completedAt)}.
+                Completed {formatPatientDateTime(visit.completedAt)} by{' '}
+                {providerLabel}.
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -153,16 +162,18 @@ function VisitTimelineItem({
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <MetricTile
-              label="Procedure summary"
+              data-testid="completed-visit-procedure-summary"
+              label="Performed work"
               value={procedureSummary}
               description={
                 visit.procedures.length > 0
-                  ? 'Performed work recorded during visit completion.'
-                  : 'This visit was completed from note or next-step context.'
+                  ? 'Procedures recorded during Visit Completion.'
+                  : 'No procedures were recorded; review the note and next step.'
               }
               tone={visit.procedures.length > 0 ? 'info' : 'default'}
             />
             <MetricTile
+              data-testid="completed-visit-next-step"
               label="Next step"
               value={getNextStepLabel(visit.nextStep)}
               description="Captured from the completed visit."
@@ -170,10 +181,32 @@ function VisitTimelineItem({
             />
           </div>
 
+          <div className="grid gap-3 sm:grid-cols-2">
+            <MetricTile
+              label="Visit source"
+              value={visit.appointmentId ? 'Appointment-linked' : 'Direct visit completion'}
+              description={
+                visit.appointmentId
+                  ? 'Started from a scheduled appointment.'
+                  : 'Started from the patient record without appointment context.'
+              }
+              tone={visit.appointmentId ? 'info' : 'default'}
+            />
+            <MetricTile
+              label="Provider"
+              value={providerLabel}
+              description="Completed-by profile when available to the current role."
+              tone={visit.completedByName ? 'success' : 'default'}
+            />
+          </div>
+
           {visit.procedures.length > 0 ? (
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div
+              className="rounded-md border border-slate-200 bg-slate-50 p-3"
+              data-testid="completed-visit-procedures"
+            >
               <div className="text-sm font-semibold text-slate-950">
-                Procedures
+                Performed procedures
               </div>
               <ul className="mt-2 space-y-2">
                 {visit.procedures.map((procedure) => (
@@ -201,18 +234,31 @@ function VisitTimelineItem({
                 ))}
               </ul>
             </div>
-          ) : null}
+          ) : (
+            <InlineNotice variant="neutral">
+              No procedures were recorded for this visit. Check the clinical
+              note, recommendation, and next step for the completed record.
+            </InlineNotice>
+          )}
 
           <div className="grid gap-3 lg:grid-cols-2">
-            <div className="rounded-md border border-slate-200 bg-white p-4">
+            <div
+              className="rounded-md border border-slate-200 bg-white p-4"
+              data-testid="completed-visit-clinical-note"
+            >
               <div className="text-sm font-semibold text-slate-950">
                 Clinical note
               </div>
               <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
-                {hasClinicalNote ? visit.clinicalNote : 'No clinical note recorded.'}
+                {hasClinicalNote
+                  ? visit.clinicalNote
+                  : 'No clinical note recorded for this completed visit.'}
               </p>
             </div>
-            <div className="rounded-md border border-slate-200 bg-white p-4">
+            <div
+              className="rounded-md border border-slate-200 bg-white p-4"
+              data-testid="completed-visit-recommendation"
+            >
               <div className="text-sm font-semibold text-slate-950">
                 Recommendation
               </div>
@@ -224,9 +270,35 @@ function VisitTimelineItem({
             </div>
           </div>
 
+          {hasFollowUp ? (
+            <div
+              className="rounded-md border border-amber-200 bg-amber-50/50 p-4"
+              data-testid="completed-visit-follow-up"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="text-sm font-semibold text-slate-950">
+                  Recommended follow-up
+                </div>
+                {hasNextStep ? (
+                  <Badge variant="warning">{getNextStepLabel(visit.nextStep)}</Badge>
+                ) : null}
+              </div>
+              {hasRecommendation ? (
+                <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
+                  {visit.recommendation}
+                </p>
+              ) : null}
+              <p className="mt-2 text-sm leading-5 text-slate-600">
+                Display-only guidance from Visit Completion. No appointment or
+                treatment plan item was created automatically.
+              </p>
+            </div>
+          ) : null}
+
           {visit.warnings.map((warning) => (
             <InlineNotice
               key={`${visit.id}-${warning.code}-${warning.message}`}
+              data-testid="completed-visit-warning"
               variant={
                 warning.code === 'clinical_note_unavailable'
                   ? 'warning'
@@ -335,7 +407,7 @@ export function PatientVisitTimeline({
         description={errorMessage}
         action={
           <Button onClick={() => void loadCompletedVisits()}>
-            Try again
+            Retry loading visit history
           </Button>
         }
       />
@@ -346,7 +418,7 @@ export function PatientVisitTimeline({
     return (
       <EmptyState
         title="No completed visits yet"
-        description="Completed Visit Completion records will appear here after the workflow is completed for this patient."
+        description="Completed clinical visits will appear here after Visit Completion is finished for this patient."
       />
     )
   }

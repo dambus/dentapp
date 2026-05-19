@@ -1,6 +1,6 @@
 # Task 40E - Authenticated Browser Persistence Smoke Test and UX Polish
 
-Date: 2026-05-15
+Date: 2026-05-19
 
 Status: Completed
 
@@ -13,9 +13,10 @@ No autosave, billing, payments, materials, attachments, treatment-plan mutation,
 ## Updated Files
 
 - `src/features/visits/VisitCompletionFlow.tsx`
-- `src/pages/VisitCompletionPage.tsx`
+- `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs`
 - `docs/07_execution/progress.md`
 - `docs/07_execution/todo.md`
+- `docs/design/task-40e-authenticated-browser-persistence-smoke-test-and-ux-polish.md`
 
 ## UX Polish
 
@@ -23,11 +24,21 @@ No autosave, billing, payments, materials, attachments, treatment-plan mutation,
   - open draft loaded,
   - no open draft found,
   - load error.
+- Draft reload feedback explicitly tells the user whether a draft was found
+  after route load or refresh.
 - Loaded drafts show the persisted `updated_at` value as the Last saved hint.
 - Save Draft uses the returned draft `updatedAt` timestamp instead of a client-only timestamp.
+- Save Draft pending feedback tells the user to keep the page open until
+  confirmation appears.
+- Save Draft success feedback now states that refresh will reload the saved
+  draft until completion.
+- Complete Visit pending feedback states that the latest draft data is being
+  saved before completion.
 - Save Draft and Complete Visit are guarded with busy-state checks and `try/finally` cleanup.
 - Save, complete, navigation, and editable fields are disabled while loading/saving/completing.
 - Network/session-style failures are translated into user-facing messages where possible.
+- Clinical-note permission warnings now include the practical recovery path:
+  add a procedure or next step, or ask a role that can write clinical notes.
 - Incomplete procedure rows are called out inline:
   - procedure rows without a procedure name are not counted as performed work,
   - users are prompted to add the name or remove the row before completion.
@@ -71,28 +82,47 @@ Verified:
 
 - Authenticated doctor session opens.
 - Visit Completion route is protected by the existing auth/profile/role guards.
-- Draft save shows success feedback.
+- Appointment-linked Visit Completion starts from a real appointment detail
+  route.
+- Procedure and clinical note fields are entered through stable test selectors.
+- Save Draft shows success feedback and a Last saved timestamp.
 - Browser refresh reloads the saved draft.
-- Editing and saving the draft again survives another refresh.
+- Reloaded procedure and clinical note values are verified before completion.
 - Complete Visit shows a success state.
-- Refresh after completion does not load the completed visit as an open editable draft.
+- The completed visit appears in the patient timeline and opens in completed
+  visit detail.
 - Browser session persists inside the Chrome profile during the flow.
 
-Smoke result:
+Smoke command:
+
+```bash
+node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs
+```
+
+The command assumes:
+
+- `.env.local` or the shell provides `VITE_SUPABASE_URL`.
+- The shell provides `SUPABASE_SERVICE_ROLE_KEY`.
+- Local Supabase is running and migrated/seeded.
+- Demo auth users have been provisioned with
+  `node .\supabase\snippets\provisionDemoAuthUsers.mjs`.
+- The local app is running at `http://127.0.0.1:5173`, or
+  `DENTAPP_APP_URL` points at the active dev server.
+- `CHROME_PATH` points at an installed Chromium browser if Chrome is not at
+  the default Windows path.
+
+Smoke result shape:
 
 ```json
 {
-  "ok": true,
-  "report": [
-    "authenticated doctor session opened",
-    "protected visit completion route opened",
-    "draft saved with success feedback",
-    "saved draft reloaded after route refresh",
-    "edited draft saved and reloaded",
-    "visit completed with success state",
-    "completed visit did not reload as open editable draft",
-    "browser session persisted within the Chrome profile"
-  ]
+  "authenticatedRedirectVerified": true,
+  "startVisitFromAppointmentVerified": true,
+  "appointmentContextVerified": true,
+  "linkedVisitDraftSaveVerified": true,
+  "linkedVisitDraftReloadVerified": true,
+  "linkedVisitCompletionVerified": true,
+  "completedVisitDetailVerified": true,
+  "backToTimelineVerified": true
 }
 ```
 
@@ -100,11 +130,20 @@ Additional RLS verification:
 
 - `node .\supabase\snippets\testVisitCompletionRls.mjs` passed.
 
+Build/lint validation:
+
+- `npm run build` passed.
+- `npm run lint` passed.
+
 ## Responsive Check
 
 No app shell, sidebar, rail, burger menu, stepper layout, or route structure was redesigned.
 
-The polish only added inline notices, disabled states, and terminal success behavior inside existing responsive containers. The existing mobile sticky footer/header, tablet rail, and desktop sidebar patterns remain in place.
+The patient context/card remains above the stepper. The existing mobile sticky
+progress header remains below that patient context in the document order, so it
+only becomes sticky after the patient context has scrolled past. The bottom
+action bar remains mobile-first, while tablet and desktop keep the existing
+static workflow actions and stepper.
 
 ## Known Limitations
 
@@ -113,4 +152,5 @@ The polish only added inline notices, disabled states, and terminal success beha
 - No completed visit amend/reopen workflow.
 - No billing, payments, materials, attachments, odontogram mutation, treatment-plan mutation, appointment mutation, or follow-up appointment creation.
 - Assistant clinical-note limitations remain governed by existing `clinical_notes` RLS.
-- Visit History / Patient Timeline is still needed so completed visits are visible in patient context after completion.
+- Completed visits appear in the existing Patient Timeline; amend/reopen flows
+  remain out of scope.

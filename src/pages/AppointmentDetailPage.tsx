@@ -40,6 +40,15 @@ import {
   routePaths,
 } from '../routes/routePaths'
 
+const nextStepLabels: Record<string, string> = {
+  no_follow_up: 'No follow-up needed',
+  follow_up_recommended: 'Follow-up recommended',
+  schedule_control_visit: 'Schedule control visit',
+  continue_treatment_plan: 'Continue treatment plan',
+  additional_diagnostics: 'Additional diagnostics',
+  referral: 'Referral / specialist consultation',
+}
+
 function getAppointmentDetailErrorMessage(message: string | null) {
   const normalizedMessage = message?.toLowerCase() ?? ''
 
@@ -212,7 +221,18 @@ export function AppointmentDetailPage() {
 
   const patientName = appointment.patient?.fullName ?? 'Unknown patient'
   const patientRouteId = appointment.patient?.routeId ?? appointment.patient_id
-  const canStartVisit = appointment.status === 'scheduled'
+  const hasOpenVisit = Boolean(appointment.openVisit)
+  const hasCompletedVisit = Boolean(appointment.linkedVisit)
+  const canStartVisit = appointment.status === 'scheduled' && !hasCompletedVisit
+  const primaryVisitActionLabel = hasOpenVisit ? 'Continue visit' : 'Start visit'
+  const linkedVisitRecommendation =
+    appointment.linkedVisit?.recommendation.trim() ?? ''
+  const linkedVisitNextStep = appointment.linkedVisit?.nextStep
+    ? nextStepLabels[appointment.linkedVisit.nextStep] ??
+      appointment.linkedVisit.nextStep
+    : ''
+  const hasLinkedVisitFollowUp =
+    Boolean(linkedVisitRecommendation) || Boolean(linkedVisitNextStep)
 
   return (
     <Page>
@@ -236,7 +256,7 @@ export function AppointmentDetailPage() {
                   disabled={Boolean(statusSubmitting)}
                   onClick={startVisit}
                 >
-                  Start visit
+                  {primaryVisitActionLabel}
                 </Button>
                 <ActionMenu
                   disabled={Boolean(statusSubmitting)}
@@ -340,6 +360,50 @@ export function AppointmentDetailPage() {
           </CardContent>
         </Card>
 
+        {canStartVisit ? (
+          <InlineNotice data-testid="appointment-visit-handoff" variant="info">
+            {hasOpenVisit
+              ? 'A Visit Completion draft is in progress for this appointment. Continue visit to review, save changes, or complete it.'
+              : 'Start visit opens Visit Completion with this appointment attached as clinical context. Saving a draft keeps the appointment scheduled; completing the visit marks the appointment completed.'}
+          </InlineNotice>
+        ) : null}
+
+        <Card className="border-slate-200 shadow-sm" data-testid="appointment-lifecycle-state">
+          <CardHeader>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Lifecycle</CardTitle>
+              <StatusBadge status={appointment.status} />
+              {hasOpenVisit ? <Badge variant="warning">Visit in progress</Badge> : null}
+              {hasCompletedVisit ? <Badge variant="success">Completed visit linked</Badge> : null}
+            </div>
+            <CardDescription>
+              Current appointment and Visit Completion state.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {hasCompletedVisit ? (
+              <InlineNotice variant="success">
+                This appointment has a completed Visit Completion record.
+              </InlineNotice>
+            ) : hasOpenVisit ? (
+              <InlineNotice variant="warning">
+                A Visit Completion draft exists for this appointment. The
+                appointment remains scheduled until the visit is completed.
+              </InlineNotice>
+            ) : appointment.status === 'scheduled' ? (
+              <InlineNotice variant="info">
+                This appointment is ready to start. No Visit Completion draft is
+                linked yet.
+              </InlineNotice>
+            ) : (
+              <InlineNotice variant="neutral">
+                No clinical visit action is available for this appointment
+                status.
+              </InlineNotice>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="grid gap-5 lg:grid-cols-2">
           <Card className="border-slate-200 shadow-sm">
             <CardHeader>
@@ -380,6 +444,30 @@ export function AppointmentDetailPage() {
               <InlineNotice variant="success">
                 This appointment produced a completed Visit Completion record.
               </InlineNotice>
+              {hasLinkedVisitFollowUp ? (
+                <div
+                  className="mt-4 rounded-md border border-amber-200 bg-white p-4"
+                  data-testid="appointment-completed-follow-up"
+                >
+                  <div className="text-sm font-semibold text-slate-950">
+                    Follow-up from completed visit
+                  </div>
+                  {linkedVisitNextStep ? (
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-950">
+                      {linkedVisitNextStep}
+                    </p>
+                  ) : null}
+                  {linkedVisitRecommendation ? (
+                    <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
+                      {linkedVisitRecommendation}
+                    </p>
+                  ) : null}
+                  <InlineNotice className="mt-3" variant="info">
+                    This is clinical follow-up guidance only. No appointment or
+                    treatment plan task was created automatically.
+                  </InlineNotice>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         ) : (

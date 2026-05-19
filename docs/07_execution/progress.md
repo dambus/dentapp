@@ -2372,6 +2372,195 @@ Initial stack:
 
 ---
 
+### Completed (Task 40E Follow-up - Authenticated Browser Persistence Smoke and UX Polish)
+
+- Tightened Visit Completion persistence feedback for:
+	- draft loaded vs no draft found,
+	- Save Draft pending and saved states,
+	- saved timestamp clarity,
+	- Complete Visit pending state,
+	- clinical-note permission warning recovery.
+- Added stable Visit Completion selectors for the persistence smoke path.
+- Expanded the authenticated browser smoke to verify:
+	- login as the demo doctor,
+	- appointment detail Start visit route,
+	- procedure and clinical note entry,
+	- explicit Save Draft,
+	- saved/draft timestamp feedback,
+	- route refresh,
+	- draft reload with persisted values,
+	- Complete Visit,
+	- completed visit visibility in the patient timeline and detail view.
+- Preserved the route-based guided workflow and existing mobile/tablet/desktop app shell behavior.
+- Kept patient context above the stepper; mobile sticky progress remains below that context in document order.
+- No autosave, billing, payments, material consumption, attachments, treatment-plan mutation, odontogram mutation, or schema changes were added.
+- Updated `docs/design/task-40e-authenticated-browser-persistence-smoke-test-and-ux-polish.md`.
+
+### Verification (Task 40E Follow-up)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase URL, anon key, and service key loaded in the shell.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
+### Completed (Task 41 - Appointments to Visit Completion Handoff Polish)
+
+- Reviewed the existing Appointment Detail `Start visit` path and kept the route-based handoff.
+- Added a concise appointment handoff notice on Appointment Detail:
+	- Start visit opens Visit Completion with appointment context,
+	- Save Draft keeps the appointment scheduled,
+	- Complete Visit marks the linked appointment completed.
+- Improved Visit Completion appointment context above the stepper/mobile sticky progress:
+	- scheduled date/time,
+	- patient,
+	- reason/type,
+	- appointment status,
+	- provider availability note.
+- Confirmed the current appointment model has lifecycle status support but no assigned-provider field.
+- Changed open-draft loading so appointment-started Visit Completion looks for an open draft tied to the appointment ID.
+- Added clearer appointment-specific draft loaded / ready-to-start feedback.
+- Added post-completion actions:
+	- View patient timeline,
+	- Return to appointment,
+	- Daily schedule.
+- Expanded the authenticated browser smoke for appointment context details and post-completion actions.
+- No autosave, billing, payments, materials, attachments, treatment-plan mutation, appointment schema changes, or admin CRUD conversion were added.
+- Documented the task in `docs/design/task-41-appointments-visit-completion-handoff-polish.md`.
+
+### Verification (Task 41)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase URL, anon key, and service key loaded in the shell.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
+### Completed (Task 42 - Completed Visit Record and Timeline Clinical Polish)
+
+- Polished completed visit timeline cards so they read as clinical records:
+	- completed visit title/date,
+	- completed status,
+	- appointment-linked source badge,
+	- provider/completed-by label when readable,
+	- performed work summary,
+	- procedure list,
+	- clinical note,
+	- recommendation,
+	- next step,
+	- warning notices.
+- Polished completed visit detail view:
+	- overview with patient, visit date, next step, provider, completed status,
+	- linked appointment context,
+	- readable procedure section,
+	- clinical note and recommendation sections,
+	- warning states.
+- Improved timeline empty/error/no-procedure/no-note copy so it reads as user-facing clinical state.
+- Added completed-by profile lookup in the Visit Completion service; falls back cleanly when not readable.
+- Expanded the authenticated browser smoke with stable completed-visit card/detail checks.
+- No autosave, billing, payments, materials, attachments, treatment-plan mutation, schema changes, or patient-record architecture rewrite were added.
+- Documented the task in `docs/design/task-42-completed-visit-record-timeline-clinical-polish.md`.
+
+### Verification (Task 42)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase URL, anon key, and service key loaded in the shell.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
+### Completed (Task 43 - Appointment Lifecycle and Daily Schedule Polish)
+
+- Reviewed existing lifecycle data:
+	- appointment statuses: scheduled, completed, cancelled, no_show,
+	- appointment date/time, patient, reason/notes,
+	- appointment-linked visits through `visits.appointment_id`,
+	- open Visit Completion states: draft, in_progress,
+	- completed Visit Completion state: completed.
+- Added appointment service read summaries for appointment-linked open and completed visits.
+- Polished daily/weekly schedule appointment cards:
+	- ready-to-start state for scheduled appointments without linked visits,
+	- visit-in-progress state for linked draft/in-progress visits,
+	- Continue visit primary action for linked open drafts,
+	- completed linked visit state with View visit action,
+	- no primary clinical action for cancelled/no-show appointments.
+- Polished Appointment Detail lifecycle messaging:
+	- lifecycle panel,
+	- ready-to-start message,
+	- in-progress draft message,
+	- completed linked visit state,
+	- Continue visit action when a linked draft exists.
+- Expanded the authenticated browser smoke for ready/in-progress/completed lifecycle states in Appointment Detail and daily schedule.
+- No autosave, billing, payments, materials, attachments, treatment-plan mutation, schema changes, or broad appointments redesign were added.
+- Documented the task in `docs/design/task-43-appointment-lifecycle-daily-schedule-polish.md`.
+
+### Verification (Task 43)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase URL, anon key, and service key loaded in the shell.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
+### Completed (Task 44 - Follow-up and Next Visit Recommendation Flow)
+
+- Polished follow-up display using existing Visit Completion `recommendation` and `next_step` fields.
+- Added completed visit timeline follow-up section:
+	- recommended follow-up,
+	- next-step badge,
+	- recommendation text,
+	- explicit display-only note.
+- Added completed visit detail `Follow-up Guidance` section:
+	- source visit/date,
+	- suggested next step,
+	- recommendation,
+	- non-mutating reminder.
+- Surfaced linked completed visit follow-up in Appointment Detail.
+- Surfaced compact follow-up signal on completed daily schedule appointment cards.
+- Kept the existing patient overview `Follow-up / Next Step` summary and added stable smoke coverage.
+- Expanded appointment linked visit summaries to include recommendation and next step.
+- Expanded browser smoke coverage for recommendation/next-step entry, draft reload, and follow-up surfaces.
+- No autosave, billing, payments, materials, attachments, treatment-plan mutation, automatic appointment creation, or new follow-up schema was added.
+- Documented the task in `docs/design/task-44-follow-up-next-visit-recommendation-flow.md`.
+
+### Verification (Task 44)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase URL, anon key, and service key loaded in the shell.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
 ## Notes
 
 This project should remain structured and incremental.

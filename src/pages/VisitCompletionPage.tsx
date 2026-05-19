@@ -13,7 +13,11 @@ import { getPatientFullName } from '../features/patients/patientDisplay'
 import { getPatientById } from '../features/patients/patientService'
 import type { DemoPatient } from '../features/patients/types'
 import { VisitCompletionFlow } from '../features/visits/VisitCompletionFlow'
-import { getPatientDetailPath, routePaths } from '../routes/routePaths'
+import {
+  getAppointmentDetailPath,
+  getPatientDetailPath,
+  routePaths,
+} from '../routes/routePaths'
 import type { AppRole } from '../types/navigation'
 
 const visitCompletionRoles: AppRole[] = [
@@ -55,6 +59,8 @@ export function VisitCompletionPage() {
     useState<Appointment | null>(null)
   const [appointmentContextError, setAppointmentContextError] =
     useState<string | null>(null)
+  const [hasLoadedAppointmentContext, setHasLoadedAppointmentContext] =
+    useState(false)
 
   const appointmentId = searchParams.get('appointmentId')?.trim() || null
 
@@ -83,8 +89,10 @@ export function VisitCompletionPage() {
     async function loadAppointmentContext() {
       setAppointmentContext(null)
       setAppointmentContextError(null)
+      setHasLoadedAppointmentContext(false)
 
       if (!patientId || !appointmentId) {
+        setHasLoadedAppointmentContext(true)
         return
       }
 
@@ -119,6 +127,10 @@ export function VisitCompletionPage() {
               error instanceof Error ? error.message : null,
             ),
           )
+        }
+      } finally {
+        if (isCurrent) {
+          setHasLoadedAppointmentContext(true)
         }
       }
     }
@@ -205,14 +217,24 @@ export function VisitCompletionPage() {
         <InlineNotice variant="warning">{appointmentContextError}</InlineNotice>
       ) : null}
 
-      {canUsePrototype && !isArchived ? (
+      {appointmentId && !hasLoadedAppointmentContext ? (
+        <InlineNotice variant="info">Loading appointment context...</InlineNotice>
+      ) : null}
+
+      {canUsePrototype && !isArchived && hasLoadedAppointmentContext ? (
         <VisitCompletionFlow
           appointmentContext={appointmentContext}
           appointmentId={appointmentContext?.id ?? null}
+          onBackToAppointment={
+            appointmentContext
+              ? () => navigate(getAppointmentDetailPath(appointmentContext.id))
+              : undefined
+          }
           patient={patient}
           onBackToPatient={() =>
             navigate(`${getPatientDetailPath(patient.id)}?section=timeline`)
           }
+          onBackToSchedule={() => navigate(routePaths.appointments)}
         />
       ) : null}
     </Page>

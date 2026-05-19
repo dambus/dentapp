@@ -33,6 +33,8 @@ export type AppointmentPatientSummary = {
 }
 
 export type AppointmentRangeItem = Appointment & {
+  linkedVisit: AppointmentLinkedVisitSummary | null
+  openVisit: AppointmentOpenVisitSummary | null
   patient: AppointmentPatientSummary | null
 }
 
@@ -42,11 +44,23 @@ export type AppointmentLinkedVisitSummary = {
   status: string
   visitDate: string
   completedAt: string | null
+  recommendation: string
+  nextStep: string | null
+  updatedAt: string
+}
+
+export type AppointmentOpenVisitSummary = {
+  id: string
+  patientId: string
+  status: 'draft' | 'in_progress'
+  visitDate: string
+  updatedAt: string
 }
 
 export type AppointmentDetail = Appointment & {
   patient: AppointmentPatientSummary | null
   linkedVisit: AppointmentLinkedVisitSummary | null
+  openVisit: AppointmentOpenVisitSummary | null
 }
 
 export type CreateAppointmentInput = {
@@ -91,10 +105,14 @@ type SupabaseAppointmentRow = Appointment
 
 type SupabaseLinkedVisitRow = {
   id: string
+  appointment_id: string | null
   patient_id: string
   status: string
   visit_date: string
   completed_at: string | null
+  recommendation: string | null
+  next_step: string | null
+  updated_at: string
 }
 
 const appointmentStatuses = new Set<AppointmentStatus>([
@@ -129,6 +147,33 @@ function mapRowToAppointment(row: SupabaseAppointmentRow): Appointment {
     updated_by: row.updated_by,
     created_at: row.created_at,
     updated_at: row.updated_at,
+  }
+}
+
+function mapLinkedVisit(row: SupabaseLinkedVisitRow): AppointmentLinkedVisitSummary {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    status: row.status,
+    visitDate: row.visit_date,
+    completedAt: row.completed_at,
+    recommendation: row.recommendation ?? '',
+    nextStep: row.next_step,
+    updatedAt: row.updated_at,
+  }
+}
+
+function mapOpenVisit(row: SupabaseLinkedVisitRow): AppointmentOpenVisitSummary | null {
+  if (row.status !== 'draft' && row.status !== 'in_progress') {
+    return null
+  }
+
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    status: row.status,
+    visitDate: row.visit_date,
+    updatedAt: row.updated_at,
   }
 }
 
@@ -443,6 +488,7 @@ export async function fetchAppointmentById(
   const [
     { data: patientData, error: patientError },
     { data: linkedVisitData, error: linkedVisitError },
+    { data: openVisitData, error: openVisitError },
   ] = await Promise.all([
     supabase
       .from('patients')
@@ -452,11 +498,20 @@ export async function fetchAppointmentById(
       .maybeSingle(),
     supabase
       .from('visits')
-      .select('id, patient_id, status, visit_date, completed_at')
+      .select('id, appointment_id, patient_id, status, visit_date, completed_at, recommendation, next_step, updated_at')
       .eq('appointment_id', appointment.id)
       .eq('status', 'completed')
       .is('deleted_at', null)
       .order('completed_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('visits')
+      .select('id, appointment_id, patient_id, status, visit_date, completed_at, recommendation, next_step, updated_at')
+      .eq('appointment_id', appointment.id)
+      .in('status', ['draft', 'in_progress'])
+      .is('deleted_at', null)
+      .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
   ])
@@ -471,8 +526,14 @@ export async function fetchAppointmentById(
     throw new Error(linkedVisitError.message ?? 'Linked visit could not be loaded.')
   }
 
+  if (openVisitError) {
+    console.warn('[appointmentService] Open visit summary failed to load.', openVisitError)
+    throw new Error(openVisitError.message ?? 'Open visit could not be loaded.')
+  }
+
   const patient = patientData as SupabasePatientRow | null
   const linkedVisit = linkedVisitData as SupabaseLinkedVisitRow | null
+  const openVisit = openVisitData as SupabaseLinkedVisitRow | null
 
   return {
     ...appointment,
@@ -485,15 +546,8 @@ export async function fetchAppointmentById(
           email: patient.email ?? null,
         }
       : null,
-    linkedVisit: linkedVisit
-      ? {
-          id: linkedVisit.id,
-          patientId: linkedVisit.patient_id,
-          status: linkedVisit.status,
-          visitDate: linkedVisit.visit_date,
-          completedAt: linkedVisit.completed_at,
-        }
-      : null,
+    linkedVisit: linkedVisit ? mapLinkedVisit(linkedVisit) : null,
+    openVisit: openVisit ? mapOpenVisit(openVisit) : null,
   }
 }
 
@@ -560,8 +614,44 @@ export async function fetchAppointmentsForRange(
     ]),
   )
 
+  const appointmentIds = appointmentRows.map((appointment) => appointment.id)
+  const { data: visitData, error: visitError } = await supabase
+    .from('visits')
+    .select('id, appointment_id, patient_id, status, visit_date, completed_at, recommendation, next_step, updated_at')
+    .in('appointment_id', appointmentIds)
+    .in('status', ['draft', 'in_progress', 'completed'])
+    .is('deleted_at', null)
+    .order('updated_at', { ascending: false })
+
+  if (visitError) {
+    console.warn('[appointmentService] Appointment visit summaries failed to load.', visitError)
+    throw new Error(visitError.message ?? 'Appointment visit summaries could not be loaded.')
+  }
+
+  const completedVisitByAppointmentId = new Map<string, AppointmentLinkedVisitSummary>()
+  const openVisitByAppointmentId = new Map<string, AppointmentOpenVisitSummary>()
+
+  ;((visitData as SupabaseLinkedVisitRow[] | null) ?? []).forEach((visit) => {
+    if (!visit.appointment_id) {
+      return
+    }
+
+    if (visit.status === 'completed' && !completedVisitByAppointmentId.has(visit.appointment_id)) {
+      completedVisitByAppointmentId.set(visit.appointment_id, mapLinkedVisit(visit))
+      return
+    }
+
+    const openVisit = mapOpenVisit(visit)
+
+    if (openVisit && !openVisitByAppointmentId.has(visit.appointment_id)) {
+      openVisitByAppointmentId.set(visit.appointment_id, openVisit)
+    }
+  })
+
   return appointmentRows.map((appointment) => ({
     ...mapRowToAppointment(appointment),
+    linkedVisit: completedVisitByAppointmentId.get(appointment.id) ?? null,
+    openVisit: openVisitByAppointmentId.get(appointment.id) ?? null,
     patient: patientById.get(appointment.patient_id) ?? null,
   }))
 }

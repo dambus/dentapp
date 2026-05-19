@@ -33,6 +33,9 @@ const MANUAL_CREATION_NOTES = 'Optional note demo'
 const CANCELLED_REASON = 'Task 51 cancelled appointment status check'
 const BRIDGE_PROCEDURE = 'Task 44 bridge procedure'
 const BRIDGE_NOTE = 'Task 44 bridge clinical note'
+const BRIDGE_RECOMMENDATION = 'Task 44 follow-up recommendation'
+const BRIDGE_NEXT_STEP = 'schedule_control_visit'
+const BRIDGE_NEXT_STEP_LABEL = 'Schedule control visit'
 const DEMO_ADHOC_PROCEDURE = 'Task 52 demo slug ad hoc procedure'
 const DEMO_ADHOC_NOTE = 'Task 52 demo slug ad hoc clinical note'
 const DEMO_LINKED_PROCEDURE = 'Task 52 demo slug linked procedure'
@@ -583,6 +586,25 @@ async function getInputValue(cdp, selector) {
   )
 }
 
+async function getFieldValue(cdp, selector) {
+  return evaluate(
+    cdp,
+    `(() => {
+      const field = document.querySelector(${JSON.stringify(selector)});
+
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLTextAreaElement ||
+        field instanceof HTMLSelectElement
+      ) {
+        return field.value;
+      }
+
+      return null;
+    })()`,
+  )
+}
+
 async function getSelectValue(cdp, selector) {
   return evaluate(
     cdp,
@@ -595,6 +617,16 @@ async function getSelectValue(cdp, selector) {
 
 async function assertInputValue(cdp, selector, expectedValue) {
   const actualValue = await getInputValue(cdp, selector)
+
+  if (actualValue !== expectedValue) {
+    throw new Error(
+      `Expected ${selector} value ${expectedValue}, received ${actualValue}`,
+    )
+  }
+}
+
+async function assertFieldValue(cdp, selector, expectedValue) {
+  const actualValue = await getFieldValue(cdp, selector)
 
   if (actualValue !== expectedValue) {
     throw new Error(
@@ -676,6 +708,20 @@ async function textIncludes(cdp, text) {
 }
 
 async function completeVisibleVisit(cdp, procedureName, clinicalNote) {
+  await waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `(() => {
+          const nextButton = Array.from(document.querySelectorAll('button'))
+            .find((element) => element.textContent?.trim() === 'Next');
+          return document.body?.innerText.includes('Review today') &&
+            nextButton instanceof HTMLButtonElement &&
+            !nextButton.disabled;
+        })()`,
+      ),
+    'visit completion ready for first step navigation',
+  )
   await clickByText(cdp, 'Next')
   await waitFor(() => textIncludes(cdp, 'What was done?'), 'procedures step')
   await typeInto(
@@ -829,7 +875,7 @@ async function main() {
     )
 
     await setDateInput(cdp, '[data-testid="patient-appointment-date"]', '')
-    await clickByText(cdp, 'Schedule appointment')
+    await clickSelector(cdp, '[data-testid="patient-appointment-submit"]')
     await waitFor(
       () => textIncludes(cdp, 'Choose an appointment date.'),
       'missing appointment date validation',
@@ -841,7 +887,7 @@ async function main() {
       originalAppointmentDate,
     )
     await typeInto(cdp, '[data-testid="patient-appointment-time"]', '')
-    await clickByText(cdp, 'Schedule appointment')
+    await clickSelector(cdp, '[data-testid="patient-appointment-submit"]')
     await waitFor(
       () => textIncludes(cdp, 'Choose an appointment time.'),
       'missing appointment time validation',
@@ -851,8 +897,14 @@ async function main() {
       '[data-testid="patient-appointment-time"]',
       originalAppointmentTime,
     )
+    await assertFieldValue(
+      cdp,
+      '[data-testid="patient-appointment-time"]',
+      originalAppointmentTime,
+    )
     await typeInto(cdp, '[data-testid="patient-appointment-reason"]', '   ')
-    await clickByText(cdp, 'Schedule appointment')
+    await assertFieldValue(cdp, '[data-testid="patient-appointment-reason"]', '   ')
+    await clickSelector(cdp, '[data-testid="patient-appointment-submit"]')
     await waitFor(
       () => textIncludes(cdp, 'Reason cannot be only spaces.'),
       'whitespace appointment reason validation',
@@ -862,8 +914,14 @@ async function main() {
       '[data-testid="patient-appointment-reason"]',
       EXPECTED_PREFILL,
     )
+    await assertFieldValue(
+      cdp,
+      '[data-testid="patient-appointment-reason"]',
+      EXPECTED_PREFILL,
+    )
     await typeInto(cdp, '[data-testid="patient-appointment-notes"]', '   ')
-    await clickByText(cdp, 'Schedule appointment')
+    await assertFieldValue(cdp, '[data-testid="patient-appointment-notes"]', '   ')
+    await clickSelector(cdp, '[data-testid="patient-appointment-submit"]')
     await waitFor(
       () => textIncludes(cdp, 'Notes cannot be only spaces.'),
       'whitespace appointment notes validation',
@@ -1022,7 +1080,7 @@ async function main() {
       throw new Error('Demo slug ad hoc Visit Completion showed demo-only persistence warning.')
     }
 
-    await clickByText(cdp, 'View visit history')
+    await clickByText(cdp, 'View patient timeline')
     await waitFor(
       () => textIncludes(cdp, DEMO_ADHOC_PROCEDURE),
       'demo slug ad hoc completed visit visible in timeline',
@@ -1149,7 +1207,7 @@ async function main() {
       manualAppointmentId,
       DEMO_SLUG_SUPABASE_PATIENT_ID,
     )
-    await clickByText(cdp, 'View visit history')
+    await clickByText(cdp, 'View patient timeline')
     await waitFor(
       () => textIncludes(cdp, DEMO_LINKED_PROCEDURE),
       'demo slug linked completed visit visible in timeline',
@@ -1319,6 +1377,21 @@ async function main() {
       () => textIncludes(cdp, 'Appointment Detail'),
       'scheduled appointment detail before visit start',
     )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const lifecycle = document.querySelector('[data-testid="appointment-lifecycle-state"]');
+            const handoff = document.querySelector('[data-testid="appointment-visit-handoff"]');
+            const text = (lifecycle?.textContent ?? '') + ' ' + (handoff?.textContent ?? '');
+            return text.includes('ready to start') &&
+              text.includes('No Visit Completion draft is linked yet') &&
+              text.includes('Start visit opens Visit Completion');
+          })()`,
+        ),
+      'appointment detail ready-to-start lifecycle messaging',
+    )
     await clickByText(cdp, 'Start visit')
     await waitFor(
       () =>
@@ -1333,29 +1406,136 @@ async function main() {
       'appointment context notice',
     )
     await waitFor(
-      () => textIncludes(cdp, 'New visit completion ready.'),
-      'new visit completion ready',
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const context = document.querySelector('[data-testid="visit-appointment-context"]');
+            const text = context?.textContent ?? '';
+            return text.includes('Scheduled') &&
+              text.includes('Patient') &&
+              text.includes('Reason / type') &&
+              text.includes('Provider') &&
+              text.includes(${JSON.stringify(EXPECTED_PREFILL)}) &&
+              text.includes('marks the linked appointment completed');
+          })()`,
+        ),
+      'appointment context details visible in Visit Completion',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'No open draft found for this appointment.'),
+      'new appointment visit completion ready',
     )
 
     await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'What was done?'), 'procedures step')
     await typeInto(
       cdp,
-      'input[placeholder="Composite filling"]',
+      '[data-testid="visit-procedure-name"]',
       BRIDGE_PROCEDURE,
     )
-    await typeInto(cdp, 'input[placeholder="16, upper right, full mouth"]', '16')
+    await typeInto(cdp, '[data-testid="visit-procedure-tooth"]', '16')
     await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'notes step')
     await typeInto(
       cdp,
-      'textarea[placeholder="What was observed and completed today?"]',
+      '[data-testid="visit-clinical-note"]',
       BRIDGE_NOTE,
+    )
+    await typeInto(
+      cdp,
+      '[data-testid="visit-recommendation"]',
+      BRIDGE_RECOMMENDATION,
     )
     await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'What happens next?'), 'next step')
+    await setSelectValue(cdp, '[data-testid="visit-next-step"]', BRIDGE_NEXT_STEP)
     await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'Review and complete'), 'review step')
+    await clickByText(cdp, 'Save Draft')
+    await waitFor(
+      () => textIncludes(cdp, 'Visit draft was saved successfully.'),
+      'draft save success feedback',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Last saved'),
+      'draft save timestamp feedback',
+    )
+
+    const visitCompletionUrl = await evaluate(cdp, 'location.href')
+    await navigate(cdp, APPOINTMENTS_URL)
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+            const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(EXPECTED_PREFILL)}));
+            const text = card?.textContent ?? '';
+            return text.includes('Visit in progress') &&
+              text.includes('Continue visit') &&
+              text.includes('Visit Completion draft is in progress');
+          })()`,
+        ),
+      'daily schedule in-progress appointment card',
+    )
+    await navigate(cdp, `${APPOINTMENTS_URL}/${appointmentId}`)
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const lifecycle = document.querySelector('[data-testid="appointment-lifecycle-state"]');
+            const handoff = document.querySelector('[data-testid="appointment-visit-handoff"]');
+            const text = (lifecycle?.textContent ?? '') + ' ' + (handoff?.textContent ?? '');
+            const hasContinue = Array.from(document.querySelectorAll('button, a'))
+              .some((element) => element.textContent?.trim() === 'Continue visit');
+            return hasContinue &&
+              text.includes('Visit Completion draft') &&
+              text.includes('appointment remains scheduled');
+          })()`,
+        ),
+      'appointment detail in-progress lifecycle messaging',
+    )
+    await clickByText(cdp, 'Continue visit')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `location.pathname.endsWith('/visit-completion') && location.search.includes(${JSON.stringify(appointmentId)})`,
+        ),
+      'continue visit navigation with appointment id',
+    )
+    await navigate(cdp, visitCompletionUrl)
+    await waitFor(
+      () => textIncludes(cdp, 'Existing draft for this appointment found and loaded.'),
+      'saved draft reload feedback',
+    )
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'What was done?'), 'reloaded procedures step')
+    await assertFieldValue(
+      cdp,
+      '[data-testid="visit-procedure-name"]',
+      BRIDGE_PROCEDURE,
+    )
+    await assertFieldValue(cdp, '[data-testid="visit-procedure-tooth"]', '16')
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'reloaded notes step')
+    await assertFieldValue(
+      cdp,
+      '[data-testid="visit-clinical-note"]',
+      BRIDGE_NOTE,
+    )
+    await assertFieldValue(
+      cdp,
+      '[data-testid="visit-recommendation"]',
+      BRIDGE_RECOMMENDATION,
+    )
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'What happens next?'), 'reloaded next step')
+    await assertFieldValue(cdp, '[data-testid="visit-next-step"]', BRIDGE_NEXT_STEP)
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'Review and complete'), 'reloaded review step')
     await clickByText(cdp, 'Complete Visit')
     await waitFor(
       () => textIncludes(cdp, 'Confirm Visit Completion'),
@@ -1367,18 +1547,83 @@ async function main() {
       () => textIncludes(cdp, 'Visit was completed successfully.'),
       'visit completion success message',
     )
+    await waitFor(
+      () => textIncludes(cdp, 'View patient timeline'),
+      'post-completion patient timeline action',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Return to appointment'),
+      'post-completion appointment detail action',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Daily schedule'),
+      'post-completion schedule action',
+    )
 
     const linkedVisitId = await verifyCompletedAppointmentLink(appointmentId)
 
-    await clickByText(cdp, 'View visit history')
+    await clickByText(cdp, 'View patient timeline')
     await waitFor(
       () => textIncludes(cdp, BRIDGE_PROCEDURE),
       'completed visit visible in timeline',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const cards = Array.from(document.querySelectorAll('[data-testid="completed-visit-card"]'));
+            const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(BRIDGE_PROCEDURE)}));
+            const text = card?.textContent ?? '';
+            return text.includes('Completed visit') &&
+              text.includes('Completed') &&
+              text.includes('Performed work') &&
+              text.includes(${JSON.stringify(BRIDGE_NOTE)}) &&
+              text.includes(${JSON.stringify(BRIDGE_RECOMMENDATION)}) &&
+              text.includes(${JSON.stringify(BRIDGE_NEXT_STEP_LABEL)}) &&
+              text.includes('Recommended follow-up') &&
+              text.includes('Appointment-linked') &&
+              text.includes('Provider');
+          })()`,
+        ),
+      'completed visit timeline card clinical details',
     )
     await clickByText(cdp, 'View details')
     await waitFor(
       () => textIncludes(cdp, 'Completed Visit Review'),
       'completed visit detail page',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const overview = document.querySelector('[data-testid="completed-visit-detail-overview"]');
+            const procedures = document.querySelector('[data-testid="completed-visit-detail-procedures"]');
+            const note = document.querySelector('[data-testid="completed-visit-detail-clinical-note"]');
+            const recommendation = document.querySelector('[data-testid="completed-visit-detail-recommendation"]');
+            const followUp = document.querySelector('[data-testid="completed-visit-detail-follow-up"]');
+            const appointment = document.querySelector('[data-testid="completed-visit-appointment-context"]');
+            const text = [
+              overview?.textContent,
+              procedures?.textContent,
+              note?.textContent,
+              recommendation?.textContent,
+              followUp?.textContent,
+              appointment?.textContent,
+            ].join(' ');
+
+            return text.includes('Completed visit') &&
+              text.includes('Provider') &&
+              text.includes(${JSON.stringify(BRIDGE_PROCEDURE)}) &&
+              text.includes(${JSON.stringify(BRIDGE_NOTE)}) &&
+              text.includes(${JSON.stringify(BRIDGE_RECOMMENDATION)}) &&
+              text.includes(${JSON.stringify(BRIDGE_NEXT_STEP_LABEL)}) &&
+              text.includes('Follow-up Guidance') &&
+              text.includes('Linked Appointment');
+          })()`,
+        ),
+      'completed visit detail clinical sections',
     )
     await waitFor(
       () => textIncludes(cdp, BRIDGE_PROCEDURE),
@@ -1389,7 +1634,7 @@ async function main() {
       'clinical note visible on detail page',
     )
     await waitFor(
-      () => textIncludes(cdp, EXPECTED_PREFILL),
+      () => textIncludes(cdp, BRIDGE_RECOMMENDATION),
       'recommendation visible on detail page',
     )
     await waitFor(
@@ -1444,6 +1689,21 @@ async function main() {
       'back returns to patient timeline',
     )
     await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const followUp = document.querySelector('[data-testid="patient-follow-up-summary"]');
+            const text = followUp?.textContent ?? '';
+            return text.includes('Follow-up / Next Step') &&
+              text.includes(${JSON.stringify(BRIDGE_RECOMMENDATION)}) &&
+              text.includes(${JSON.stringify(BRIDGE_NEXT_STEP_LABEL)}) &&
+              text.includes('Follow-up is display-only');
+          })()`,
+        ),
+      'patient overview follow-up summary',
+    )
+    await waitFor(
       () => textIncludes(cdp, 'No upcoming appointment is scheduled for this patient.'),
       'completed appointment removed from upcoming summary',
     )
@@ -1461,6 +1721,21 @@ async function main() {
       () => textIncludes(cdp, 'View completed visit'),
       'linked completed visit action on appointment detail',
     )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const followUp = document.querySelector('[data-testid="appointment-completed-follow-up"]');
+            const text = followUp?.textContent ?? '';
+            return text.includes('Follow-up from completed visit') &&
+              text.includes(${JSON.stringify(BRIDGE_RECOMMENDATION)}) &&
+              text.includes(${JSON.stringify(BRIDGE_NEXT_STEP_LABEL)}) &&
+              text.includes('No appointment or treatment plan task was created automatically');
+          })()`,
+        ),
+      'completed appointment follow-up summary',
+    )
     const startVisitStillVisible = await evaluate(
       cdp,
       `Array.from(document.querySelectorAll('button, a')).some((element) => element.textContent?.trim() === 'Start visit')`,
@@ -1469,6 +1744,25 @@ async function main() {
     if (startVisitStillVisible) {
       throw new Error('Completed appointment detail should not show Start visit.')
     }
+
+    await navigate(cdp, APPOINTMENTS_URL)
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+            const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(EXPECTED_PREFILL)}));
+            const text = card?.textContent ?? '';
+            return text.includes('Completed') &&
+              text.includes('Visit completed') &&
+              text.includes(${JSON.stringify(BRIDGE_RECOMMENDATION)}) &&
+              text.includes('View visit') &&
+              !text.includes('Start visit');
+          })()`,
+        ),
+      'daily schedule completed appointment card',
+    )
 
     await navigate(cdp, `${PATIENT_URL}/visit-completion`)
     await waitFor(() => textIncludes(cdp, 'Visit Completion'), 'normal visit route')
@@ -1521,9 +1815,23 @@ async function main() {
           appointmentsEmptyDateVerified: true,
           startVisitFromAppointmentVerified: true,
           appointmentContextVerified: true,
+          appointmentContextDetailsVerified: true,
+          dailyScheduleInProgressLifecycleVerified: true,
+          appointmentDetailReadyLifecycleVerified: true,
+          appointmentDetailInProgressLifecycleVerified: true,
+          linkedVisitDraftSaveVerified: true,
+          linkedVisitDraftReloadVerified: true,
           linkedVisitCompletionVerified: true,
+          visitCompletionPostActionsVerified: true,
+          completedVisitTimelineClinicalCardVerified: true,
+          completedVisitTimelineFollowUpVerified: true,
           completedAppointmentDetailVerified: true,
+          completedAppointmentFollowUpVerified: true,
           completedVisitDetailVerified: true,
+          completedVisitDetailClinicalSectionsVerified: true,
+          completedVisitDetailFollowUpVerified: true,
+          dailyScheduleCompletedLifecycleVerified: true,
+          patientOverviewFollowUpVerified: true,
           printActionVerified: true,
           detailRefreshVerified: true,
           backToTimelineVerified: true,

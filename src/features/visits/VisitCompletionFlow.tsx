@@ -44,8 +44,10 @@ import {
 type VisitCompletionFlowProps = {
   appointmentContext?: Appointment | null
   appointmentId?: string | null
+  onBackToAppointment?: () => void
   patient: DemoPatient
   onBackToPatient?: () => void
+  onBackToSchedule?: () => void
 }
 
 type ProcedureRow = {
@@ -165,8 +167,10 @@ function getUserFriendlyServiceError(
 export function VisitCompletionFlow({
   appointmentContext,
   appointmentId,
+  onBackToAppointment,
   patient,
   onBackToPatient,
+  onBackToSchedule,
 }: VisitCompletionFlowProps) {
   const [activeStepIndex, setActiveStepIndex] = useState(0)
   const [visitId, setVisitId] = useState<string | undefined>()
@@ -186,6 +190,9 @@ export function VisitCompletionFlow({
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [draftReloadMessage, setDraftReloadMessage] = useState<string | null>(
+    null,
+  )
   const [serviceWarnings, setServiceWarnings] = useState<
     VisitCompletionServiceWarning[]
   >([])
@@ -256,7 +263,10 @@ export function VisitCompletionFlow({
       setServiceError(null)
 
       try {
-        const draft = await fetchLatestOpenVisitCompletion(patient.id)
+        const draft = await fetchLatestOpenVisitCompletion(
+          patient.id,
+          appointmentId,
+        )
 
         if (!isCurrent) {
           return
@@ -266,14 +276,29 @@ export function VisitCompletionFlow({
           applyDraft(draft)
           setServiceWarnings(draft.warnings)
           setLastSavedAt(draft.updatedAt)
-          setServiceMessage('Open visit draft loaded.')
+          setDraftReloadMessage(
+            `${
+              appointmentContext
+                ? 'Existing draft for this appointment found and loaded.'
+                : 'Draft found and loaded.'
+            } Last saved ${formatPatientDateTime(
+              draft.updatedAt,
+            )}.`,
+          )
+          setServiceMessage(null)
         } else {
           setServiceWarnings([])
           setLastSavedAt(null)
-          setServiceMessage('No open draft found. New visit completion ready.')
+          setDraftReloadMessage(
+            appointmentContext
+              ? 'No open draft found for this appointment. Visit completion is ready to start. Use Save Draft before leaving or refreshing.'
+              : 'No open draft found. New visit completion ready. Use Save Draft before leaving or refreshing.',
+          )
+          setServiceMessage(null)
         }
       } catch (error) {
         if (isCurrent) {
+          setDraftReloadMessage(null)
           setServiceError(
             error instanceof Error
               ? error.message
@@ -292,7 +317,7 @@ export function VisitCompletionFlow({
     return () => {
       isCurrent = false
     }
-  }, [applyDraft, patient.id])
+  }, [appointmentContext, appointmentId, applyDraft, patient.id])
 
   function updateProcedure(
     procedureId: string,
@@ -354,6 +379,7 @@ export function VisitCompletionFlow({
     setIsSavingDraft(true)
     setServiceError(null)
     setServiceMessage(null)
+    setDraftReloadMessage(null)
 
     try {
       const result = await saveVisitCompletionDraft(buildDraftInput())
@@ -363,7 +389,10 @@ export function VisitCompletionFlow({
       if (result.ok && result.draft) {
         setVisitId(result.draft.id)
         setLastSavedAt(result.draft.updatedAt)
-        setServiceMessage(result.message ?? 'Visit draft saved.')
+        setServiceMessage(
+          result.message ??
+            'Draft saved. These changes will reload after refresh.',
+        )
         applyDraft(result.draft)
       } else {
         setServiceError(
@@ -409,6 +438,7 @@ export function VisitCompletionFlow({
     setIsCompleting(true)
     setServiceError(null)
     setServiceMessage(null)
+    setDraftReloadMessage(null)
 
     try {
       const result = await completeVisit(buildDraftInput())
@@ -460,6 +490,9 @@ export function VisitCompletionFlow({
         </CardHeader>
         <CardContent className="space-y-4">
           <ServiceFeedback
+            draftReloadMessage={draftReloadMessage}
+            isCompleting={isCompleting}
+            isSavingDraft={isSavingDraft}
             lastSavedAt={lastSavedAt}
             serviceError={serviceError}
             serviceMessage={serviceMessage}
@@ -473,13 +506,25 @@ export function VisitCompletionFlow({
             isReady={isReady}
             warnings={warnings}
           />
-          <Button
-            onClick={onBackToPatient}
-            variant="secondary"
-            disabled={!onBackToPatient}
-          >
-            View visit history
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={onBackToPatient}
+              variant="secondary"
+              disabled={!onBackToPatient}
+            >
+              View patient timeline
+            </Button>
+            {onBackToAppointment ? (
+              <Button onClick={onBackToAppointment} variant="secondary">
+                Return to appointment
+              </Button>
+            ) : null}
+            {onBackToSchedule ? (
+              <Button onClick={onBackToSchedule} variant="secondary">
+                Daily schedule
+              </Button>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
     )
@@ -492,6 +537,9 @@ export function VisitCompletionFlow({
       ) : null}
 
       <ServiceFeedback
+        draftReloadMessage={draftReloadMessage}
+        isCompleting={isCompleting}
+        isSavingDraft={isSavingDraft}
         lastSavedAt={lastSavedAt}
         serviceError={serviceError}
         serviceMessage={serviceMessage}
@@ -507,7 +555,10 @@ export function VisitCompletionFlow({
       />
 
       {appointmentContext ? (
-        <AppointmentContextNotice appointment={appointmentContext} />
+        <AppointmentContextNotice
+          appointment={appointmentContext}
+          patientName={patientName}
+        />
       ) : null}
 
       <MobileWorkflowHeader
@@ -653,24 +704,48 @@ function applyDraftToProcedures(draft: VisitCompletionDraft): ProcedureRow[] {
 }
 
 function ServiceFeedback({
+  draftReloadMessage,
+  isCompleting,
+  isSavingDraft,
   lastSavedAt,
   serviceError,
   serviceMessage,
   serviceWarnings,
 }: {
+  draftReloadMessage: string | null
+  isCompleting: boolean
+  isSavingDraft: boolean
   lastSavedAt: string | null
   serviceError: string | null
   serviceMessage: string | null
   serviceWarnings: VisitCompletionServiceWarning[]
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-testid="visit-persistence-feedback">
+      {draftReloadMessage ? (
+        <InlineNotice data-testid="visit-draft-reload-state" variant="info">
+          {draftReloadMessage}
+        </InlineNotice>
+      ) : null}
+      {isSavingDraft ? (
+        <InlineNotice data-testid="visit-save-pending-state" variant="info">
+          Saving draft. Keep this page open until the saved confirmation appears.
+        </InlineNotice>
+      ) : null}
+      {isCompleting ? (
+        <InlineNotice data-testid="visit-complete-pending-state" variant="info">
+          Completing visit. The latest draft data is being saved first.
+        </InlineNotice>
+      ) : null}
       {serviceError ? (
-        <InlineNotice variant="danger">{serviceError}</InlineNotice>
+        <InlineNotice data-testid="visit-error-state" variant="danger">
+          {serviceError}
+        </InlineNotice>
       ) : null}
       {serviceWarnings.map((warning) => (
         <InlineNotice
           key={`${warning.code}-${warning.message}`}
+          data-testid="visit-warning-state"
           variant={
             warning.code === 'clinical_note_permission_denied' ||
             warning.code === 'appointment_status_update_failed'
@@ -678,13 +753,19 @@ function ServiceFeedback({
               : 'info'
           }
         >
-          {warning.message}
+          {warning.code === 'clinical_note_permission_denied'
+            ? `${warning.message} Add a procedure or next step before completion, or ask a role that can write clinical notes to save the note.`
+            : warning.message}
         </InlineNotice>
       ))}
       {serviceMessage ? (
-        <InlineNotice variant="success">
+        <InlineNotice data-testid="visit-success-state" variant="success">
           {serviceMessage}
-          {lastSavedAt ? ` Last saved ${formatPatientDateTime(lastSavedAt)}.` : ''}
+          {lastSavedAt
+            ? ` Last saved ${formatPatientDateTime(
+                lastSavedAt,
+              )}. Refresh will reload this saved draft until completion.`
+            : ''}
         </InlineNotice>
       ) : null}
     </div>
@@ -693,12 +774,17 @@ function ServiceFeedback({
 
 function AppointmentContextNotice({
   appointment,
+  patientName,
 }: {
   appointment: Appointment
+  patientName: string
 }) {
   return (
-    <Card className="border-cyan-200 bg-cyan-50/50 shadow-sm">
-      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+    <Card
+      className="border-cyan-200 bg-cyan-50/50 shadow-sm"
+      data-testid="visit-appointment-context"
+    >
+      <CardContent className="p-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">Appointment context</Badge>
@@ -706,25 +792,48 @@ function AppointmentContextNotice({
               {appointmentStatusLabels[appointment.status] ?? appointment.status}
             </Badge>
           </div>
-          <p className="mt-2 text-sm leading-6 text-slate-700">
-            Started from appointment scheduled for{' '}
-            <span className="font-semibold text-slate-950">
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
+              Scheduled
+            </div>
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-950">
               {formatAppointmentTimeRange(
                 appointment.scheduled_start,
                 appointment.scheduled_end,
               )}
-            </span>
-            .
-          </p>
-          {appointment.reason?.trim() ? (
-            <p className="mt-1 text-sm leading-6 text-slate-600 wrap-break-word">
-              {appointment.reason}
             </p>
-          ) : null}
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
+              Patient
+            </div>
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-950">
+              {patientName}
+            </p>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
+              Reason / type
+            </div>
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-950 wrap-break-word">
+              {appointment.reason?.trim() || 'No reason recorded'}
+            </p>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
+              Provider
+            </div>
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-950">
+              Not assigned in appointment record
+            </p>
+          </div>
         </div>
-        <div className="hidden text-sm text-slate-500 sm:block">
-          Completing this visit will mark the appointment completed.
-        </div>
+        <InlineNotice className="mt-3" variant="info">
+          Completing this visit saves the latest draft first and marks the linked
+          appointment completed.
+        </InlineNotice>
       </CardContent>
     </Card>
   )
@@ -1088,6 +1197,7 @@ function ProceduresStep({
             <label>
               <FieldLabel>Procedure name</FieldLabel>
               <TextInput
+                data-testid="visit-procedure-name"
                 disabled={disabled}
                 value={procedure.name}
                 onChange={(event) =>
@@ -1099,6 +1209,7 @@ function ProceduresStep({
             <label>
               <FieldLabel>Tooth / region</FieldLabel>
               <TextInput
+                data-testid="visit-procedure-tooth"
                 disabled={disabled}
                 value={procedure.toothOrRegion}
                 onChange={(event) =>
@@ -1114,6 +1225,7 @@ function ProceduresStep({
             <label>
               <FieldLabel>Quantity / duration</FieldLabel>
               <TextInput
+                data-testid="visit-procedure-quantity"
                 disabled={disabled}
                 value={procedure.quantityOrDuration}
                 onChange={(event) =>
@@ -1129,6 +1241,7 @@ function ProceduresStep({
             <label>
               <FieldLabel>Procedure note</FieldLabel>
               <TextInput
+                data-testid="visit-procedure-note"
                 disabled={disabled}
                 value={procedure.note}
                 onChange={(event) =>
@@ -1171,6 +1284,7 @@ function NotesStep({
       <label>
         <FieldLabel>Clinical note</FieldLabel>
         <Textarea
+          data-testid="visit-clinical-note"
           disabled={disabled}
           value={clinicalNote}
           onChange={(event) => onClinicalNoteChange(event.target.value)}
@@ -1180,6 +1294,7 @@ function NotesStep({
       <label>
         <FieldLabel>Recommendation / next instruction</FieldLabel>
         <Textarea
+          data-testid="visit-recommendation"
           disabled={disabled}
           value={recommendation}
           onChange={(event) => onRecommendationChange(event.target.value)}
@@ -1204,6 +1319,7 @@ function NextStep({
       <label>
         <FieldLabel>Next step</FieldLabel>
         <Select
+          data-testid="visit-next-step"
           disabled={disabled}
           value={nextStep}
           onChange={(event) => onNextStepChange(event.target.value)}

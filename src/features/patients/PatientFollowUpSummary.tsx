@@ -179,7 +179,10 @@ export function PatientFollowUpSummary({
   }
 
   return (
-    <Card className="border-amber-200 bg-amber-50/40 shadow-sm">
+    <Card
+      className="border-amber-200 bg-amber-50/40 shadow-sm"
+      data-testid="patient-follow-up-summary"
+    >
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
           <CardTitle>Follow-up / Next Step</CardTitle>
