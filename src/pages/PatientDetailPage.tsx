@@ -9,6 +9,7 @@ import { PatientAppointmentSummary } from '../features/patients/PatientAppointme
 import { PatientFullRecord } from '../features/patients/PatientFullRecord'
 import type { PatientFullRecordSection } from '../features/patients/PatientFullRecord'
 import { PatientFollowUpSummary } from '../features/patients/PatientFollowUpSummary'
+import { PatientLatestClinicalActivity } from '../features/patients/PatientLatestClinicalActivity'
 import { getPatientFullName } from '../features/patients/patientDisplay'
 import { PatientQuickActions } from '../features/patients/PatientQuickActions'
 import { PatientSnapshot } from '../features/patients/PatientSnapshot'
@@ -22,7 +23,9 @@ import type { DemoPatient } from '../features/patients/types'
 import {
   getPatientEditPath,
   getPatientMedicalRecordEditPath,
+  getAppointmentDetailPath,
   getPatientVisitCompletionPath,
+  getPatientVisitDetailPath,
   routePaths,
 } from '../routes/routePaths'
 import type { AppRole } from '../types/navigation'
@@ -320,6 +323,18 @@ export function PatientDetailPage() {
     }, 0)
   }
 
+  function openVisitCompletion(appointmentId?: string | null) {
+    const basePath = getPatientVisitCompletionPath(loadedPatient.id)
+
+    if (appointmentId) {
+      const visitSearchParams = new URLSearchParams({ appointmentId })
+      navigate(`${basePath}?${visitSearchParams}`)
+      return
+    }
+
+    navigate(basePath)
+  }
+
   function openAppointmentForm(reason: string) {
     setAppointmentPrefillReason(reason)
     setAppointmentPrefillRequestId((currentRequestId) => currentRequestId + 1)
@@ -373,7 +388,19 @@ export function PatientDetailPage() {
         patient={patient}
         isArchived={isArchived}
         canCompleteVisit={canCompleteVisit}
-        onCompleteVisit={() => navigate(getPatientVisitCompletionPath(patient.id))}
+        onOpenAppointment={(appointmentId) =>
+          navigate(getAppointmentDetailPath(appointmentId))
+        }
+        onOpenTimeline={() => openFullRecordSection('timeline')}
+        onStartVisit={openVisitCompletion}
+        onViewCompletedVisit={(visitId) =>
+          navigate(getPatientVisitDetailPath(patient.id, visitId))
+        }
+      />
+
+      <PatientLatestClinicalActivity
+        patientId={patient.id}
+        onOpenTimeline={() => openFullRecordSection('timeline')}
       />
 
       <PatientFollowUpSummary
@@ -391,13 +418,19 @@ export function PatientDetailPage() {
       <PatientQuickActions
         role={currentProfile.profile?.role ?? null}
         isArchived={isArchived}
-        onCompleteVisit={() => navigate(getPatientVisitCompletionPath(patient.id))}
+        onCompleteVisit={() => openVisitCompletion()}
         onEditMedicalRecord={() =>
           navigate(getPatientMedicalRecordEditPath(patient.id))
         }
+        onOpenAppointments={() => {
+          document
+            .getElementById('patient-appointments')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }}
         onOpenClinicalNotes={() => openFullRecordSection('clinical-notes')}
         onOpenOdontogram={() => openFullRecordSection('odontogram')}
         onOpenTreatmentPlans={() => openFullRecordSection('treatment-plans')}
+        onOpenTimeline={() => openFullRecordSection('timeline')}
       />
 
       <PatientFullRecord

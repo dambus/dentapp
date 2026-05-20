@@ -16,9 +16,11 @@ type PatientQuickActionsProps = {
   isArchived: boolean
   onCompleteVisit: () => void
   onEditMedicalRecord: () => void
+  onOpenAppointments: () => void
   onOpenClinicalNotes: () => void
   onOpenOdontogram: () => void
   onOpenTreatmentPlans: () => void
+  onOpenTimeline: () => void
 }
 
 type QuickActionStatus = 'available' | 'planned' | 'readonly'
@@ -58,9 +60,7 @@ const medicalRecordEditRoles: AppRole[] = [
   'specialist',
 ]
 
-const paymentPlannedRoles: AppRole[] = ['owner_admin', 'reception_admin']
-
-const schedulingPlannedRoles: AppRole[] = [
+const schedulingRoles: AppRole[] = [
   'owner_admin',
   'doctor',
   'assistant',
@@ -96,8 +96,8 @@ const actionMarkers: Record<string, string> = {
   'view-odontogram': 'O',
   'add-treatment-plan-item': 'TP',
   'edit-medical-record': 'MR',
-  'add-payment': '$',
   'schedule-next-appointment': 'S',
+  'open-timeline': 'T',
 }
 
 function roleCan(role: AppRole | null, roles: AppRole[]) {
@@ -176,23 +176,47 @@ export function PatientQuickActions({
   isArchived,
   onCompleteVisit,
   onEditMedicalRecord,
+  onOpenAppointments,
   onOpenClinicalNotes,
   onOpenOdontogram,
   onOpenTreatmentPlans,
+  onOpenTimeline,
 }: PatientQuickActionsProps) {
   const actions: QuickAction[] = []
 
   if (roleCan(role, visitCompletionPlannedRoles)) {
     actions.push({
       id: 'complete-visit',
-      title: 'Complete Visit',
+      title: 'Start Visit',
       description:
-        "Close today's work with a guided prototype for procedures, notes, next step, and confirmation.",
+        'Open Visit Completion for today, or continue from an appointment when one is selected in the workflow.',
       status: 'available',
-      cta: 'Complete visit',
+      cta: 'Open visit workflow',
       onSelect: onCompleteVisit,
     })
   }
+
+  if (roleCan(role, schedulingRoles)) {
+    actions.push({
+      id: 'schedule-next-appointment',
+      title: 'Appointments',
+      description:
+        'Jump to the patient appointment panel to review the next appointment or schedule a follow-up.',
+      status: 'available',
+      cta: 'Open appointments',
+      onSelect: onOpenAppointments,
+    })
+  }
+
+  actions.push({
+    id: 'open-timeline',
+    title: 'Timeline',
+    description:
+      'Open completed visits and deeper clinical history for this patient.',
+    status: 'available',
+    cta: 'Open timeline',
+    onSelect: onOpenTimeline,
+  })
 
   if (roleCan(role, clinicalWriteRoles)) {
     actions.push({
@@ -252,28 +276,6 @@ export function PatientQuickActions({
     })
   }
 
-  if (roleCan(role, paymentPlannedRoles)) {
-    actions.push({
-      id: 'add-payment',
-      title: 'Add Payment',
-      description:
-        'Payment and patient ledger workflow is planned for a later phase.',
-      status: 'planned',
-      cta: 'Coming soon',
-    })
-  }
-
-  if (roleCan(role, schedulingPlannedRoles)) {
-    actions.push({
-      id: 'schedule-next-appointment',
-      title: 'Schedule Next Appointment',
-      description:
-        'Scheduling module is planned and will connect to Today context later.',
-      status: 'planned',
-      cta: 'Coming soon',
-    })
-  }
-
   return (
     <Card className="border-slate-200 shadow-sm">
       <CardHeader>
@@ -319,9 +321,9 @@ export function PatientQuickActions({
         )}
 
         <p className="text-xs leading-5 text-slate-500">
-          Available actions reuse existing patient sections. Coming soon actions
-          are visible only where the future workflow is relevant, but they do not
-          create visits, appointments, payments, materials, or ledger entries.
+          Available actions reuse existing patient sections and appointment or
+          visit routes. They do not create payments, materials, reminders, or
+          ledger entries.
         </p>
       </CardContent>
     </Card>

@@ -158,24 +158,7 @@ export function PatientFollowUpSummary({
   }
 
   if (!latestFollowUp) {
-    return (
-      <Card className="border-slate-200 bg-white shadow-sm">
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <CardTitle>Follow-up / Next Step</CardTitle>
-            <Badge variant="neutral">No pending action</Badge>
-          </div>
-          <CardDescription>
-            Completed visits with recommendations or next steps will appear here.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <InlineNotice variant="neutral">
-            No follow-up recommendation is pending for this patient.
-          </InlineNotice>
-        </CardContent>
-      </Card>
-    )
+    return null
   }
 
   return (
@@ -218,7 +201,7 @@ export function PatientFollowUpSummary({
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <MetricTile
-            label="Source visit"
+            label="Source visit date"
             value={formatPatientDate(
               latestFollowUp.completedAt ??
                 latestFollowUp.visitDate ??
@@ -245,14 +228,20 @@ export function PatientFollowUpSummary({
           <div className="text-sm font-semibold text-slate-950">
             Recommendation
           </div>
-          <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
-            {latestFollowUp.recommendation.trim() ||
-              'No written recommendation recorded.'}
-          </p>
+          {latestFollowUp.recommendation.trim() ? (
+            <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
+              {latestFollowUp.recommendation.trim()}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Next step was selected without a separate written recommendation.
+            </p>
+          )}
         </div>
 
         <InlineNotice variant="info">
-          Follow-up is display-only. Appointments and reminders are not created automatically.
+          Follow-up is display-only. Appointments, reminders, and treatment plan
+          tasks are not created automatically.
         </InlineNotice>
       </CardContent>
     </Card>

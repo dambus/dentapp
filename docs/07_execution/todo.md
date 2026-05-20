@@ -185,6 +185,7 @@ Status legend:
   - [x] Task 50: Lightweight Weekly Schedule View
   - [x] Task 51: Appointment Creation / Status Polish
   - [x] Task 52: Appointment Module QA & UX Notes
+  - [x] Task 45: Patient Overview Clinical Summary Polish
   - [x] Task D1: Design System Icon & Action Pattern
   - [x] Task D2: Appointment Card Redesign
   - [x] Task D3: Appointment Type & 15-Min Duration Standardization
@@ -234,6 +235,7 @@ Status legend:
 - [x] Task 50 - Lightweight Weekly Schedule View
 - [x] Task 51 - Appointment Creation / Status Polish
 - [x] Task 52 - Appointment Module QA & UX Notes
+- [x] Task 45 - Patient Overview Clinical Summary Polish
 - [x] Task D1 - Design System Icon & Action Pattern
 - [x] Task D2 - Appointment Card Redesign
 - [x] Task D3 - Appointment Type & 15-Min Duration Standardization
@@ -356,6 +358,20 @@ Completed direction:
 - documented appointment QA checklist,
 - documented UX notes by severity,
 - documented known limitations and next improvement areas.
+
+### Completed Recommended Task
+
+Task 45 - Patient Overview Clinical Summary Polish
+
+Completed direction:
+
+- reorder the patient overview around identity, active workflow, latest
+  completed visit, follow-up, quick actions, and timeline access,
+- use current appointment and Visit Completion data only,
+- make Today actions context-aware for Start visit, Continue visit, View
+  completed visit, and View appointment,
+- add latest clinical activity summary and stable smoke coverage,
+- keep follow-up display-only and avoid unavailable future modules.
 
 ### Completed Recommended Task
 

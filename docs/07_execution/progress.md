@@ -2526,6 +2526,61 @@ Initial stack:
 
 ---
 
+### Completed (Task 45 - Patient Overview Clinical Summary Polish)
+
+- Polished the patient detail overview hierarchy:
+	- patient snapshot remains first,
+	- Today / Active Workflow is directly below identity,
+	- latest clinical activity now follows active workflow,
+	- follow-up / next step remains close to current clinical context,
+	- appointment, quick action, and full timeline/deeper record access stay lower
+	  on the page.
+- Updated `PatientTodayPanel`:
+	- loads today's patient appointment when safely available,
+	- loads latest open Visit Completion draft/in-progress visit,
+	- detects completed-today visit state from completed Visit Completion records,
+	- switches primary action between Start visit, Continue visit, and View
+	  completed visit,
+	- includes View appointment when today's appointment exists.
+- Added `PatientLatestClinicalActivity`:
+	- latest completed visit date/status,
+	- procedure count and procedure summary,
+	- clinical note excerpt,
+	- links to completed visit detail and patient timeline.
+- Polished `PatientFollowUpSummary`:
+	- hides empty no-follow-up placeholder,
+	- clarifies source visit date,
+	- avoids noisy recommendation fallback copy,
+	- keeps follow-up display-only and non-mutating.
+- Updated `PatientQuickActions`:
+	- removed unavailable payment placeholder,
+	- replaced scheduling placeholder with the existing appointment panel action,
+	- added timeline access,
+	- kept current role-aware clinical shortcuts.
+- Expanded `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` with stable
+  patient overview checks for latest clinical activity, follow-up/next step,
+  source visit date, visit detail access, and timeline access.
+- No autosave, billing, payments, materials, attachments, treatment-plan
+  mutation, automatic appointment creation, reminders/tasks, new follow-up
+  schema, or broad patient module redesign was added.
+- Documented the task in
+  `docs/design/task-45-patient-overview-clinical-summary-polish.md`.
+
+### Verification (Task 45 - Patient Overview Clinical Summary Polish)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  after rerunning a transient manual appointment create wait timeout.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase URL, anon key, and service key loaded in the shell.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
 ### Completed (Task 44 - Follow-up and Next Visit Recommendation Flow)
 
 - Polished follow-up display using existing Visit Completion `recommendation` and `next_step` fields.

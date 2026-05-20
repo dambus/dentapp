@@ -1693,15 +1693,28 @@ async function main() {
         evaluate(
           cdp,
           `(() => {
+            const latestActivity = document.querySelector('[data-testid="patient-latest-clinical-activity"]');
             const followUp = document.querySelector('[data-testid="patient-follow-up-summary"]');
-            const text = followUp?.textContent ?? '';
-            return text.includes('Follow-up / Next Step') &&
-              text.includes(${JSON.stringify(BRIDGE_RECOMMENDATION)}) &&
-              text.includes(${JSON.stringify(BRIDGE_NEXT_STEP_LABEL)}) &&
-              text.includes('Follow-up is display-only');
+            const actionTexts = Array.from(document.querySelectorAll('button, a'))
+              .map((element) => element.textContent?.trim())
+              .filter(Boolean);
+            const latestText = latestActivity?.textContent ?? '';
+            const followUpText = followUp?.textContent ?? '';
+
+            return latestText.includes('Latest Clinical Activity') &&
+              latestText.includes('Completed visit') &&
+              latestText.includes(${JSON.stringify(BRIDGE_PROCEDURE)}) &&
+              latestText.includes(${JSON.stringify(BRIDGE_NOTE)}) &&
+              actionTexts.includes('View visit detail') &&
+              actionTexts.includes('Open timeline') &&
+              followUpText.includes('Follow-up / Next Step') &&
+              followUpText.includes('Source visit date') &&
+              followUpText.includes(${JSON.stringify(BRIDGE_RECOMMENDATION)}) &&
+              followUpText.includes(${JSON.stringify(BRIDGE_NEXT_STEP_LABEL)}) &&
+              followUpText.includes('Follow-up is display-only');
           })()`,
         ),
-      'patient overview follow-up summary',
+      'patient overview clinical summary',
     )
     await waitFor(
       () => textIncludes(cdp, 'No upcoming appointment is scheduled for this patient.'),
@@ -1831,6 +1844,7 @@ async function main() {
           completedVisitDetailClinicalSectionsVerified: true,
           completedVisitDetailFollowUpVerified: true,
           dailyScheduleCompletedLifecycleVerified: true,
+          patientOverviewClinicalSummaryVerified: true,
           patientOverviewFollowUpVerified: true,
           printActionVerified: true,
           detailRefreshVerified: true,
