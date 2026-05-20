@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { CalendarX, CheckCircle2, UserX } from 'lucide-react'
+import { CalendarX, UserX } from 'lucide-react'
 
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -24,6 +24,7 @@ import {
   formatAppointmentTimeRange,
 } from '../features/appointments/appointmentDisplay'
 import {
+  canUpdateAppointmentLifecycle,
   fetchAppointmentById,
   updateAppointmentStatus,
   type AppointmentDetail,
@@ -142,8 +143,13 @@ export function AppointmentDetailPage() {
       !appointment ||
       statusSubmitting ||
       statusSubmittingRef.current ||
-      appointment.status !== 'scheduled'
+      !canUpdateAppointmentLifecycle(appointment)
     ) {
+      if (appointment && !canUpdateAppointmentLifecycle(appointment)) {
+        setActionFeedback(
+          'Only scheduled appointments without linked visits can be cancelled or marked no-show.',
+        )
+      }
       return
     }
 
@@ -166,7 +172,11 @@ export function AppointmentDetailPage() {
         ...appointment,
         ...result.appointment,
       })
-      setActionFeedback(result.message ?? 'Appointment status updated.')
+      setActionFeedback(
+        status === 'cancelled'
+          ? 'Appointment was cancelled.'
+          : 'Appointment was marked no-show.',
+      )
     } catch {
       setActionFeedback('Could not update appointment status. Try again.')
     } finally {
@@ -225,8 +235,7 @@ export function AppointmentDetailPage() {
   const hasOpenVisit = Boolean(appointment.openVisit)
   const hasCompletedVisit = Boolean(appointment.linkedVisit)
   const canStartVisit = appointment.status === 'scheduled' && !hasCompletedVisit
-  const canUpdateLifecycle =
-    appointment.status === 'scheduled' && !hasOpenVisit && !hasCompletedVisit
+  const canUpdateLifecycle = canUpdateAppointmentLifecycle(appointment)
   const primaryVisitActionLabel = hasOpenVisit ? 'Continue visit' : 'Start visit'
   const linkedVisitRecommendation =
     appointment.linkedVisit?.recommendation.trim() ?? ''
@@ -268,15 +277,6 @@ export function AppointmentDetailPage() {
                 <ActionMenu
                   disabled={Boolean(statusSubmitting)}
                   items={[
-                    {
-                      disabled: Boolean(statusSubmitting),
-                      icon: CheckCircle2,
-                      label:
-                        statusSubmitting === 'completed'
-                          ? 'Updating...'
-                          : 'Complete',
-                      onSelect: () => void handleStatusUpdate('completed'),
-                    },
                     {
                       disabled: Boolean(statusSubmitting),
                       icon: CalendarX,

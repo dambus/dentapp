@@ -32,6 +32,7 @@ const MANUAL_CREATION_REASON = 'Consultation'
 const MANUAL_CREATION_NOTES = 'Optional note demo'
 const MANUAL_CREATION_DATE = getDateInputValueForOffset(1)
 const CANCELLED_REASON = 'Task 51 cancelled appointment status check'
+const NO_SHOW_REASON = 'Task 54 no-show appointment status check'
 const BRIDGE_PROCEDURE = 'Task 44 bridge procedure'
 const BRIDGE_NOTE = 'Task 44 bridge clinical note'
 const BRIDGE_RECOMMENDATION = 'Task 44 follow-up recommendation'
@@ -219,7 +220,7 @@ async function getManualCreatedAppointmentId() {
   return data.id
 }
 
-async function createServiceAppointment(reason) {
+async function createServiceAppointment(reason, daysFromToday = 0) {
   const serviceClient = getServiceClient()
   const profileResult = await serviceClient
     .from('profiles')
@@ -234,7 +235,7 @@ async function createServiceAppointment(reason) {
     throw new Error(profileResult.error?.message ?? 'Missing active doctor profile.')
   }
 
-  const scheduledStart = new Date(Date.now() + 4 * 60 * 60 * 1000)
+  const scheduledStart = new Date(`${getDateInputValueForOffset(daysFromToday)}T10:00:00`)
   const scheduledEnd = new Date(scheduledStart.getTime() + 30 * 60 * 1000)
   const { data, error } = await serviceClient
     .from('appointments')
@@ -536,6 +537,27 @@ async function getAppointmentCardMenuTexts(cdp, cardText) {
       .map((element) => element.textContent?.trim() ?? '')
       .filter(Boolean)`,
   )
+}
+
+async function assertNoAppointmentLifecycleActions(cdp, contextLabel) {
+  const visible = await evaluate(
+    cdp,
+    `Array.from(document.querySelectorAll('button, a'))
+      .some((element) => ['Start visit', 'Continue visit', 'Cancel appointment', 'Mark no-show'].includes(element.textContent?.trim() ?? ''))`,
+  )
+
+  if (visible) {
+    throw new Error(`${contextLabel} should not show clinical or lifecycle transition actions.`)
+  }
+
+  const statusActionMenuVisible = await evaluate(
+    cdp,
+    `document.querySelector('[aria-label="Appointment status actions"]') instanceof HTMLButtonElement`,
+  )
+
+  if (statusActionMenuVisible) {
+    throw new Error(`${contextLabel} should not show appointment status action menu.`)
+  }
 }
 
 async function typeInto(cdp, selector, value) {
@@ -1158,6 +1180,7 @@ async function main() {
     )
 
     const cancelledAppointmentId = await createServiceAppointment(CANCELLED_REASON)
+    const noShowAppointmentId = await createServiceAppointment(NO_SHOW_REASON)
 
     await navigate(cdp, APPOINTMENTS_URL)
     await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'appointments page for manual route checks')
@@ -1347,24 +1370,82 @@ async function main() {
     await clickSelector(cdp, '[aria-label="Appointment status actions"]')
     await clickByText(cdp, 'Cancel appointment')
     await waitFor(
-      () => textIncludes(cdp, 'Appointment status was updated successfully.'),
+      () => textIncludes(cdp, 'Appointment was cancelled.'),
       'cancelled appointment status feedback',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Cancelled'),
+      'cancelled appointment status visible',
     )
     await waitFor(
       () => textIncludes(cdp, 'Start visit is only available for scheduled appointments.'),
       'cancelled appointment start visit hidden notice',
     )
-    const cancelledStartVisitVisible = await evaluate(
+    await assertNoAppointmentLifecycleActions(
       cdp,
-      `Array.from(document.querySelectorAll('button, a')).some((element) => element.textContent?.trim() === 'Start visit')`,
+      'Cancelled appointment detail',
     )
-
-    if (cancelledStartVisitVisible) {
-      throw new Error('Cancelled appointment detail should not show Start visit.')
-    }
 
     await navigate(cdp, APPOINTMENTS_URL)
     await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'schedule after cancelled detail')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+            const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(CANCELLED_REASON)}));
+            const text = card?.textContent ?? '';
+            const actions = Array.from(card?.querySelectorAll('button, a') ?? [])
+              .map((element) => element.textContent?.trim() ?? '')
+              .filter(Boolean);
+            return text.includes('Cancelled') &&
+              !actions.includes('Start visit') &&
+              !actions.includes('Cancel appointment') &&
+              !actions.includes('Mark no-show');
+          })()`,
+        ),
+      'cancelled appointment card status and actions',
+    )
+    await clickAppointmentCardMenuAction(cdp, NO_SHOW_REASON, 'Mark no-show')
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment was marked no-show.'),
+      'no-show appointment status feedback',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+            const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(NO_SHOW_REASON)}));
+            const text = card?.textContent ?? '';
+            const actions = Array.from(card?.querySelectorAll('button, a') ?? [])
+              .map((element) => element.textContent?.trim() ?? '')
+              .filter(Boolean);
+            return text.includes('No-show') &&
+              !actions.includes('Start visit') &&
+              !actions.includes('Cancel appointment') &&
+              !actions.includes('Mark no-show');
+          })()`,
+        ),
+      'no-show appointment card status and actions',
+    )
+    await navigate(cdp, `${APPOINTMENTS_URL}/${noShowAppointmentId}`)
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment Detail'),
+      'no-show appointment detail page',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'No-show'),
+      'no-show appointment detail status visible',
+    )
+    await assertNoAppointmentLifecycleActions(
+      cdp,
+      'No-show appointment detail',
+    )
+    await navigate(cdp, APPOINTMENTS_URL)
+    await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'schedule after no-show detail')
     await waitFor(
       () => textIncludes(cdp, EXPECTED_PREFILL),
       'scheduled appointment card visible after cancelled detail',
@@ -1465,10 +1546,11 @@ async function main() {
 
     if (
       !scheduledCardMenuTexts.includes('Cancel appointment') ||
-      !scheduledCardMenuTexts.includes('Mark no-show')
+      !scheduledCardMenuTexts.includes('Mark no-show') ||
+      scheduledCardMenuTexts.includes('Complete')
     ) {
       throw new Error(
-        'Scheduled appointment card should expose cancel and no-show lifecycle actions.',
+        'Scheduled appointment card should expose only supported secondary lifecycle actions.',
       )
     }
 
@@ -1512,9 +1594,10 @@ async function main() {
 
     if (
       !scheduledDetailMenuTexts.includes('Cancel appointment') ||
-      !scheduledDetailMenuTexts.includes('Mark no-show')
+      !scheduledDetailMenuTexts.includes('Mark no-show') ||
+      scheduledDetailMenuTexts.includes('Complete')
     ) {
-      throw new Error('Scheduled appointment detail should expose cancel and no-show lifecycle actions.')
+      throw new Error('Scheduled appointment detail should expose only supported secondary lifecycle actions.')
     }
 
     await clickByText(cdp, 'Start visit')

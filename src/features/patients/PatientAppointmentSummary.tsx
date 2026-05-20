@@ -23,6 +23,7 @@ import { AppointmentCard } from '../appointments/AppointmentCard'
 import {
   APPOINTMENT_NOTES_MAX_LENGTH,
   APPOINTMENT_REASON_MAX_LENGTH,
+  canUpdateAppointmentLifecycle,
   createAppointment,
   fetchUpcomingAppointmentsForPatient,
   updateAppointmentStatus,
@@ -475,6 +476,13 @@ export function PatientAppointmentSummary({
       return
     }
 
+    if (!canUpdateAppointmentLifecycle(nextAppointment)) {
+      setFormError(
+        'Only scheduled appointments without linked visits can be cancelled or marked no-show.',
+      )
+      return
+    }
+
     setFormError(null)
     setSuccessMessage(null)
     statusSubmittingRef.current = true
@@ -493,7 +501,11 @@ export function PatientAppointmentSummary({
         return
       }
 
-      setSuccessMessage(result.message ?? 'Appointment status updated.')
+      setSuccessMessage(
+        status === 'cancelled'
+          ? 'Appointment was cancelled.'
+          : 'Appointment was marked no-show.',
+      )
       await loadUpcomingAppointments(false)
     } catch {
       setFormError('Could not update appointment status. Try again.')

@@ -195,6 +195,7 @@ Status legend:
   - [x] Task D5: Patient Detail Mobile Navigation Redesign
   - [x] Task D6: Visit Completion Mobile Sticky Progress
   - [x] Task 53: Restore Appointment Lifecycle Secondary Actions
+  - [x] Task 54: Appointment Lifecycle State Transition Hardening
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -249,6 +250,7 @@ Status legend:
 - [x] Task D5 - Patient Detail Mobile Navigation Redesign
 - [x] Task D6 - Visit Completion Mobile Sticky Progress
 - [x] Task 53 - Restore Appointment Lifecycle Secondary Actions
+- [x] Task 54 - Appointment Lifecycle State Transition Hardening
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -582,6 +584,26 @@ Completed direction:
   lifecycle action visibility,
 - kept schema, provider assignment, check-in/room states, autosave, billing,
   attachments, treatment-plan mutation, reminders, and tasks out of scope.
+
+### Completed Recommended Task
+
+Task 54 - Appointment Lifecycle State Transition Hardening
+
+Completed direction:
+
+- centralized secondary lifecycle eligibility around scheduled appointments with
+  no linked open or completed Visit Completion record,
+- guarded `updateAppointmentStatus` so direct appointment lifecycle writes only
+  support `cancelled` and `no_show`,
+- kept `completed` appointment status tied to linked Visit Completion
+  completion,
+- removed manual `Complete` from appointment status menus,
+- kept cancel/no-show as secondary actions and verified they disappear after
+  transition,
+- expanded browser smoke coverage for cancel, no-show, linked draft, completed,
+  and existing Visit Completion happy-path behavior,
+- avoided schema changes, new lifecycle states, provider assignment, check-in
+  states, autosave, billing, attachments, reminders, tasks, and broad redesign.
 
 ### Later Appointment Direction
 

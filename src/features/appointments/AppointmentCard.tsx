@@ -11,10 +11,10 @@ import {
   getAppointmentDurationLabel,
 } from './appointmentDisplay'
 import { detectAppointmentTypeFromReason } from './appointmentTypes'
+import { canUpdateAppointmentLifecycle } from './appointmentService'
 import {
   CalendarClock,
   CalendarX,
-  CheckCircle2,
   Clock3,
   FileText,
   Stethoscope,
@@ -101,10 +101,7 @@ export function AppointmentCard({
     appointment.status === 'scheduled' && onStartVisit && !appointment.linkedVisit
   const canViewVisit = appointment.linkedVisit && onViewVisit
   const canUpdateLifecycle =
-    appointment.status === 'scheduled' &&
-    !appointment.openVisit &&
-    !appointment.linkedVisit &&
-    onStatusChange
+    canUpdateAppointmentLifecycle(appointment) && onStatusChange
   const followUpLabel = getFollowUpLabel(appointment.linkedVisit)
   const durationLabel = getAppointmentDurationLabel(
     appointment.scheduled_start,
@@ -127,15 +124,6 @@ export function AppointmentCard({
           icon: User,
           label: 'Open patient',
           onSelect: onOpenPatient,
-        }
-      : null,
-    canUpdateLifecycle
-      ? {
-          disabled: isBusy,
-          icon: CheckCircle2,
-          label:
-            statusUpdateStatus === 'completed' ? 'Updating...' : 'Complete',
-          onSelect: () => onStatusChange('completed'),
         }
       : null,
     canUpdateLifecycle

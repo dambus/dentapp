@@ -2711,6 +2711,63 @@ Initial stack:
 
 ---
 
+### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
+
+- Confirmed the supported lifecycle behavior:
+	- `scheduled` -> `cancelled`,
+	- `scheduled` -> `no_show`,
+	- scheduled appointment -> `Start visit`,
+	- linked draft/in-progress visit -> `Continue visit`,
+	- linked completed visit -> `View visit`,
+	- cancelled/no-show appointments have no primary Visit Completion action.
+- Centralized secondary lifecycle eligibility with
+  `canUpdateAppointmentLifecycle`:
+	- status must be `scheduled`,
+	- no linked open Visit Completion may exist,
+	- no linked completed Visit Completion may exist.
+- Hardened `appointmentService.updateAppointmentStatus`:
+	- accepts only `cancelled` and `no_show` for direct appointment status
+	  updates,
+	- rejects direct manual `completed` updates,
+	- checks current appointment status and linked visits before writing,
+	- scopes the write by clinic and current `scheduled` status.
+- Removed manual `Complete` from appointment status menus. Appointment
+  completion remains handled by completing linked Visit Completion.
+- Aligned Appointment Detail, daily/weekly cards, and patient appointment
+  summary card behavior around the same guard.
+- Improved success copy:
+	- `Appointment was cancelled.`,
+	- `Appointment was marked no-show.`
+- Expanded `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` to verify:
+	- scheduled secondary cancel/no-show actions,
+	- no manual `Complete` lifecycle menu action,
+	- cancel transition status/action cleanup,
+	- no-show transition status/action cleanup,
+	- linked draft and completed appointment lifecycle hiding,
+	- existing Visit Completion happy path.
+- No schema changes, new lifecycle states, provider assignment, check-in/in-room
+  states, autosave, billing/payments/materials/attachments, treatment-plan
+  mutation, reminders, tasks, or broad redesign were added.
+- Documented the task in
+  `docs/design/task-54-appointment-lifecycle-state-transition-hardening.md`.
+
+### Verification (Task 54)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
 ### Completed (Task 53 - Restore Appointment Lifecycle Secondary Actions)
 
 - Root cause found: the status transitions still existed, but recent action

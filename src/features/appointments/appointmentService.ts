@@ -76,12 +76,23 @@ export type UpdateAppointmentStatusInput = {
   status: AppointmentStatus
 }
 
+export type AppointmentLifecycleEligibility = Pick<Appointment, 'status'> & {
+  linkedVisit?: unknown
+  openVisit?: unknown
+}
+
 export type AppointmentWriteResult = {
   ok: boolean
   appointment?: Appointment | null
   message: string | null
   error?: string
-  reason?: 'demo_mode' | 'validation' | 'permission' | 'not_found' | 'unknown'
+  reason?:
+    | 'demo_mode'
+    | 'validation'
+    | 'permission'
+    | 'not_found'
+    | 'conflict'
+    | 'unknown'
 }
 
 type SupabaseProfileContextRow = {
@@ -122,6 +133,11 @@ const appointmentStatuses = new Set<AppointmentStatus>([
   'no_show',
 ])
 
+const secondaryLifecycleStatuses = new Set<AppointmentStatus>([
+  'cancelled',
+  'no_show',
+])
+
 export const APPOINTMENT_REASON_MAX_LENGTH = 160
 export const APPOINTMENT_NOTES_MAX_LENGTH = 500
 
@@ -131,6 +147,20 @@ function normalizeText(value: string | null | undefined) {
 
 function isValidAppointmentStatus(value: string): value is AppointmentStatus {
   return appointmentStatuses.has(value as AppointmentStatus)
+}
+
+function isSecondaryLifecycleStatus(value: AppointmentStatus) {
+  return secondaryLifecycleStatuses.has(value)
+}
+
+export function canUpdateAppointmentLifecycle(
+  appointment: AppointmentLifecycleEligibility,
+) {
+  return (
+    appointment.status === 'scheduled' &&
+    !appointment.openVisit &&
+    !appointment.linkedVisit
+  )
 }
 
 function mapRowToAppointment(row: SupabaseAppointmentRow): Appointment {
@@ -775,6 +805,17 @@ export async function updateAppointmentStatus(
     }
   }
 
+  if (!isSecondaryLifecycleStatus(input.status)) {
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error:
+        'Only cancel and no-show lifecycle updates are supported here. Complete the linked Visit Completion to mark an appointment completed.',
+      reason: 'validation',
+    }
+  }
+
   const supabase = await getSupabaseClientSafe()
 
   if (!supabase) {
@@ -799,6 +840,90 @@ export async function updateAppointmentStatus(
     }
   }
 
+  const [
+    { data: appointmentData, error: appointmentError },
+    { data: linkedVisitData, error: linkedVisitError },
+  ] = await Promise.all([
+    supabase
+      .from('appointments')
+      .select(
+        'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
+      )
+      .eq('id', input.appointmentId)
+      .eq('clinic_id', profileContext.clinic_id)
+      .maybeSingle(),
+    supabase
+      .from('visits')
+      .select('id, status')
+      .eq('appointment_id', input.appointmentId)
+      .in('status', ['draft', 'in_progress', 'completed'])
+      .is('deleted_at', null)
+      .limit(1),
+  ])
+
+  if (appointmentError) {
+    const errorMessage =
+      appointmentError.message ?? 'Appointment status could not be updated.'
+
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: errorMessage,
+      reason: classifyAppointmentError(errorMessage),
+    }
+  }
+
+  if (!appointmentData) {
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: 'Appointment not found or you do not have permission to update it.',
+      reason: 'not_found',
+    }
+  }
+
+  if (linkedVisitError) {
+    const errorMessage =
+      linkedVisitError.message ?? 'Appointment visit links could not be checked.'
+
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: errorMessage,
+      reason: classifyAppointmentError(errorMessage),
+    }
+  }
+
+  const currentAppointment = mapRowToAppointment(
+    appointmentData as SupabaseAppointmentRow,
+  )
+  const linkedVisits = (linkedVisitData as Array<{ id: string; status: string }> | null) ?? []
+
+  if (currentAppointment.status !== 'scheduled') {
+    return {
+      ok: false,
+      appointment: currentAppointment,
+      message: null,
+      error:
+        'Only scheduled appointments can be cancelled or marked no-show.',
+      reason: 'conflict',
+    }
+  }
+
+  if (linkedVisits.length > 0) {
+    return {
+      ok: false,
+      appointment: currentAppointment,
+      message: null,
+      error:
+        'Appointments with linked Visit Completion records cannot be cancelled or marked no-show.',
+      reason: 'conflict',
+    }
+  }
+
   const { data, error } = await supabase
     .from('appointments')
     .update({
@@ -806,6 +931,8 @@ export async function updateAppointmentStatus(
       updated_by: profileContext.id,
     })
     .eq('id', input.appointmentId)
+    .eq('clinic_id', profileContext.clinic_id)
+    .eq('status', 'scheduled')
     .select(
       'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
     )
