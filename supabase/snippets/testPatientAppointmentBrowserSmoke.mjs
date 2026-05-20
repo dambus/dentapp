@@ -43,6 +43,15 @@ const DEMO_ADHOC_NOTE = 'Task 52 demo slug ad hoc clinical note'
 const DEMO_LINKED_PROCEDURE = 'Task 52 demo slug linked procedure'
 const DEMO_LINKED_NOTE = 'Task 52 demo slug linked clinical note'
 const DEMO_CLINIC_ID = '11111111-1111-1111-1111-111111111111'
+const APPOINTMENT_CARD_SELECTOR = '[data-testid="appointment-card"]'
+const APPOINTMENT_CARD_MENU_LABEL = 'Appointment actions'
+const APPOINTMENT_STATUS_MENU_LABEL = 'Appointment status actions'
+const LIFECYCLE_TRANSITION_ACTIONS = [
+  'Start visit',
+  'Continue visit',
+  'Cancel appointment',
+  'Mark no-show',
+]
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -462,7 +471,7 @@ async function clickAppointmentCardAction(cdp, cardText, actionText) {
   const clicked = await evaluate(
     cdp,
     `(() => {
-      const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+      const cards = Array.from(document.querySelectorAll(${JSON.stringify(APPOINTMENT_CARD_SELECTOR)}));
       const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(cardText)}));
       if (!card) return false;
       const action = Array.from(card.querySelectorAll('button, a'))
@@ -478,14 +487,14 @@ async function clickAppointmentCardAction(cdp, cardText, actionText) {
   }
 }
 
-async function clickAppointmentCardMenuAction(cdp, cardText, actionText) {
+async function openAppointmentCardMenu(cdp, cardText) {
   const opened = await evaluate(
     cdp,
     `(() => {
-      const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+      const cards = Array.from(document.querySelectorAll(${JSON.stringify(APPOINTMENT_CARD_SELECTOR)}));
       const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(cardText)}));
       if (!card) return false;
-      const menuTrigger = card.querySelector('[aria-label="Appointment actions"]');
+      const menuTrigger = card.querySelector(${JSON.stringify(`[aria-label="${APPOINTMENT_CARD_MENU_LABEL}"]`)});
       if (!(menuTrigger instanceof HTMLButtonElement)) return false;
       menuTrigger.click();
       return true;
@@ -495,41 +504,62 @@ async function clickAppointmentCardMenuAction(cdp, cardText, actionText) {
   if (!opened) {
     throw new Error(`Could not open appointment action menu in card containing ${cardText}`)
   }
+}
 
+async function clickAppointmentCardMenuAction(cdp, cardText, actionText) {
+  await openAppointmentCardMenu(cdp, cardText)
   await clickByText(cdp, actionText)
 }
 
-async function getAppointmentCardButtonTexts(cdp, cardText) {
+async function getAppointmentCardSnapshot(cdp, cardText) {
   return evaluate(
     cdp,
     `(() => {
-      const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+      const cards = Array.from(document.querySelectorAll(${JSON.stringify(APPOINTMENT_CARD_SELECTOR)}));
       const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(cardText)}));
       if (!card) return null;
-      return Array.from(card.querySelectorAll('button, a'))
-        .map((element) => element.textContent?.trim() ?? '')
-        .filter(Boolean);
+      return {
+        text: card.textContent ?? '',
+        actions: Array.from(card.querySelectorAll('button, a'))
+          .map((element) => element.textContent?.trim() ?? '')
+          .filter(Boolean),
+      };
     })()`,
+  )
+}
+
+async function getAppointmentCardButtonTexts(cdp, cardText) {
+  const snapshot = await getAppointmentCardSnapshot(cdp, cardText)
+
+  return snapshot?.actions ?? null
+}
+
+async function waitForAppointmentCardState(
+  cdp,
+  cardText,
+  { actionExcludes = [], actionIncludes = [], textIncludes: expectedText = [] },
+  label,
+) {
+  await waitFor(
+    async () => {
+      const snapshot = await getAppointmentCardSnapshot(cdp, cardText)
+
+      if (!snapshot) {
+        return false
+      }
+
+      return (
+        expectedText.every((text) => snapshot.text.includes(text)) &&
+        actionIncludes.every((action) => snapshot.actions.includes(action)) &&
+        actionExcludes.every((action) => !snapshot.actions.includes(action))
+      )
+    },
+    label,
   )
 }
 
 async function getAppointmentCardMenuTexts(cdp, cardText) {
-  const opened = await evaluate(
-    cdp,
-    `(() => {
-      const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
-      const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(cardText)}));
-      if (!card) return null;
-      const menuTrigger = card.querySelector('[aria-label="Appointment actions"]');
-      if (!(menuTrigger instanceof HTMLButtonElement)) return null;
-      menuTrigger.click();
-      return true;
-    })()`,
-  )
-
-  if (!opened) {
-    throw new Error(`Could not open appointment action menu in card containing ${cardText}`)
-  }
+  await openAppointmentCardMenu(cdp, cardText)
 
   return evaluate(
     cdp,
@@ -543,7 +573,7 @@ async function assertNoAppointmentLifecycleActions(cdp, contextLabel) {
   const visible = await evaluate(
     cdp,
     `Array.from(document.querySelectorAll('button, a'))
-      .some((element) => ['Start visit', 'Continue visit', 'Cancel appointment', 'Mark no-show'].includes(element.textContent?.trim() ?? ''))`,
+      .some((element) => ${JSON.stringify(LIFECYCLE_TRANSITION_ACTIONS)}.includes(element.textContent?.trim() ?? ''))`,
   )
 
   if (visible) {
@@ -552,7 +582,7 @@ async function assertNoAppointmentLifecycleActions(cdp, contextLabel) {
 
   const statusActionMenuVisible = await evaluate(
     cdp,
-    `document.querySelector('[aria-label="Appointment status actions"]') instanceof HTMLButtonElement`,
+    `document.querySelector(${JSON.stringify(`[aria-label="${APPOINTMENT_STATUS_MENU_LABEL}"]`)}) instanceof HTMLButtonElement`,
   )
 
   if (statusActionMenuVisible) {
@@ -1367,7 +1397,7 @@ async function main() {
       () => textIncludes(cdp, CANCELLED_REASON),
       'status polish appointment reason visible',
     )
-    await clickSelector(cdp, '[aria-label="Appointment status actions"]')
+    await clickSelector(cdp, `[aria-label="${APPOINTMENT_STATUS_MENU_LABEL}"]`)
     await clickByText(cdp, 'Cancel appointment')
     await waitFor(
       () => textIncludes(cdp, 'Appointment was cancelled.'),
@@ -1388,23 +1418,13 @@ async function main() {
 
     await navigate(cdp, APPOINTMENTS_URL)
     await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'schedule after cancelled detail')
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `(() => {
-            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
-            const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(CANCELLED_REASON)}));
-            const text = card?.textContent ?? '';
-            const actions = Array.from(card?.querySelectorAll('button, a') ?? [])
-              .map((element) => element.textContent?.trim() ?? '')
-              .filter(Boolean);
-            return text.includes('Cancelled') &&
-              !actions.includes('Start visit') &&
-              !actions.includes('Cancel appointment') &&
-              !actions.includes('Mark no-show');
-          })()`,
-        ),
+    await waitForAppointmentCardState(
+      cdp,
+      CANCELLED_REASON,
+      {
+        actionExcludes: ['Start visit', 'Cancel appointment', 'Mark no-show'],
+        textIncludes: ['Cancelled'],
+      },
       'cancelled appointment card status and actions',
     )
     await clickAppointmentCardMenuAction(cdp, NO_SHOW_REASON, 'Mark no-show')
@@ -1412,23 +1432,13 @@ async function main() {
       () => textIncludes(cdp, 'Appointment was marked no-show.'),
       'no-show appointment status feedback',
     )
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `(() => {
-            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
-            const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(NO_SHOW_REASON)}));
-            const text = card?.textContent ?? '';
-            const actions = Array.from(card?.querySelectorAll('button, a') ?? [])
-              .map((element) => element.textContent?.trim() ?? '')
-              .filter(Boolean);
-            return text.includes('No-show') &&
-              !actions.includes('Start visit') &&
-              !actions.includes('Cancel appointment') &&
-              !actions.includes('Mark no-show');
-          })()`,
-        ),
+    await waitForAppointmentCardState(
+      cdp,
+      NO_SHOW_REASON,
+      {
+        actionExcludes: ['Start visit', 'Cancel appointment', 'Mark no-show'],
+        textIncludes: ['No-show'],
+      },
       'no-show appointment card status and actions',
     )
     await navigate(cdp, `${APPOINTMENTS_URL}/${noShowAppointmentId}`)
@@ -1584,7 +1594,7 @@ async function main() {
       throw new Error('Scheduled appointment detail should keep lifecycle actions in the secondary menu.')
     }
 
-    await clickSelector(cdp, '[aria-label="Appointment status actions"]')
+    await clickSelector(cdp, `[aria-label="${APPOINTMENT_STATUS_MENU_LABEL}"]`)
     const scheduledDetailMenuTexts = await evaluate(
       cdp,
       `Array.from(document.querySelectorAll('[role="menuitem"]'))
@@ -1672,19 +1682,16 @@ async function main() {
 
     const visitCompletionUrl = await evaluate(cdp, 'location.href')
     await navigate(cdp, APPOINTMENTS_URL)
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `(() => {
-            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
-            const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(EXPECTED_PREFILL)}));
-            const text = card?.textContent ?? '';
-            return text.includes('Visit in progress') &&
-              text.includes('Continue visit') &&
-              text.includes('Visit Completion draft is in progress');
-          })()`,
-        ),
+    await waitForAppointmentCardState(
+      cdp,
+      EXPECTED_PREFILL,
+      {
+        actionIncludes: ['Continue visit'],
+        textIncludes: [
+          'Visit in progress',
+          'Visit Completion draft is in progress',
+        ],
+      },
       'daily schedule in-progress appointment card',
     )
     await navigate(cdp, `${APPOINTMENTS_URL}/${appointmentId}`)
@@ -2036,21 +2043,14 @@ async function main() {
     }
 
     await navigate(cdp, APPOINTMENTS_URL)
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `(() => {
-            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
-            const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(EXPECTED_PREFILL)}));
-            const text = card?.textContent ?? '';
-            return text.includes('Completed') &&
-              text.includes('Visit completed') &&
-              text.includes(${JSON.stringify(BRIDGE_RECOMMENDATION)}) &&
-              text.includes('View visit') &&
-              !text.includes('Start visit');
-          })()`,
-        ),
+    await waitForAppointmentCardState(
+      cdp,
+      EXPECTED_PREFILL,
+      {
+        actionExcludes: ['Start visit'],
+        actionIncludes: ['View visit'],
+        textIncludes: ['Completed', 'Visit completed', BRIDGE_RECOMMENDATION],
+      },
       'daily schedule completed appointment card',
     )
     const completedCardMenuTexts = await getAppointmentCardMenuTexts(

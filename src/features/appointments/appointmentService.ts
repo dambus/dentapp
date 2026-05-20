@@ -138,6 +138,9 @@ const secondaryLifecycleStatuses = new Set<AppointmentStatus>([
   'no_show',
 ])
 
+export const APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE =
+  'Only scheduled appointments without linked visits can be cancelled or marked no-show.'
+
 export const APPOINTMENT_REASON_MAX_LENGTH = 160
 export const APPOINTMENT_NOTES_MAX_LENGTH = 500
 
@@ -161,6 +164,12 @@ export function canUpdateAppointmentLifecycle(
     !appointment.openVisit &&
     !appointment.linkedVisit
   )
+}
+
+export function getAppointmentLifecycleSuccessMessage(status: AppointmentStatus) {
+  return status === 'cancelled'
+    ? 'Appointment was cancelled.'
+    : 'Appointment was marked no-show.'
 }
 
 function mapRowToAppointment(row: SupabaseAppointmentRow): Appointment {

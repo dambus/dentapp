@@ -20,8 +20,10 @@ import {
 } from '../components/ui'
 import { AppointmentCard } from '../features/appointments/AppointmentCard'
 import {
+  APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE,
   canUpdateAppointmentLifecycle,
   fetchAppointmentsForRange,
+  getAppointmentLifecycleSuccessMessage,
   updateAppointmentStatus,
   type AppointmentRangeItem,
   type AppointmentStatus,
@@ -134,12 +136,6 @@ function groupAppointmentsByDay(appointments: AppointmentRangeItem[]) {
   )
 }
 
-function getLifecycleSuccessMessage(status: AppointmentStatus) {
-  return status === 'cancelled'
-    ? 'Appointment was cancelled.'
-    : 'Appointment was marked no-show.'
-}
-
 export function AppointmentsPage() {
   const navigate = useNavigate()
   const [viewMode, setViewMode] = useState<ScheduleViewMode>('day')
@@ -249,8 +245,7 @@ export function AppointmentsPage() {
 
     if (!canUpdateAppointmentLifecycle(appointment)) {
       setActionFeedback({
-        message:
-          'Only scheduled appointments without linked visits can be cancelled or marked no-show.',
+        message: APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE,
         variant: 'warning',
       })
       return
@@ -275,7 +270,7 @@ export function AppointmentsPage() {
       }
 
       setActionFeedback({
-        message: getLifecycleSuccessMessage(status),
+        message: getAppointmentLifecycleSuccessMessage(status),
         variant: 'success',
       })
       await loadAppointments(false)

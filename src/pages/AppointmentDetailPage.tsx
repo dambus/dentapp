@@ -24,8 +24,10 @@ import {
   formatAppointmentTimeRange,
 } from '../features/appointments/appointmentDisplay'
 import {
+  APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE,
   canUpdateAppointmentLifecycle,
   fetchAppointmentById,
+  getAppointmentLifecycleSuccessMessage,
   updateAppointmentStatus,
   type AppointmentDetail,
   type AppointmentStatus,
@@ -146,9 +148,7 @@ export function AppointmentDetailPage() {
       !canUpdateAppointmentLifecycle(appointment)
     ) {
       if (appointment && !canUpdateAppointmentLifecycle(appointment)) {
-        setActionFeedback(
-          'Only scheduled appointments without linked visits can be cancelled or marked no-show.',
-        )
+        setActionFeedback(APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE)
       }
       return
     }
@@ -172,11 +172,7 @@ export function AppointmentDetailPage() {
         ...appointment,
         ...result.appointment,
       })
-      setActionFeedback(
-        status === 'cancelled'
-          ? 'Appointment was cancelled.'
-          : 'Appointment was marked no-show.',
-      )
+      setActionFeedback(getAppointmentLifecycleSuccessMessage(status))
     } catch {
       setActionFeedback('Could not update appointment status. Try again.')
     } finally {

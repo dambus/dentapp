@@ -21,11 +21,13 @@ import {
 } from '../../components/ui'
 import { AppointmentCard } from '../appointments/AppointmentCard'
 import {
+  APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE,
   APPOINTMENT_NOTES_MAX_LENGTH,
   APPOINTMENT_REASON_MAX_LENGTH,
   canUpdateAppointmentLifecycle,
   createAppointment,
   fetchUpcomingAppointmentsForPatient,
+  getAppointmentLifecycleSuccessMessage,
   updateAppointmentStatus,
   type Appointment,
   type AppointmentStatus,
@@ -477,9 +479,7 @@ export function PatientAppointmentSummary({
     }
 
     if (!canUpdateAppointmentLifecycle(nextAppointment)) {
-      setFormError(
-        'Only scheduled appointments without linked visits can be cancelled or marked no-show.',
-      )
+      setFormError(APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE)
       return
     }
 
@@ -501,11 +501,7 @@ export function PatientAppointmentSummary({
         return
       }
 
-      setSuccessMessage(
-        status === 'cancelled'
-          ? 'Appointment was cancelled.'
-          : 'Appointment was marked no-show.',
-      )
+      setSuccessMessage(getAppointmentLifecycleSuccessMessage(status))
       await loadUpcomingAppointments(false)
     } catch {
       setFormError('Could not update appointment status. Try again.')

@@ -2711,6 +2711,54 @@ Initial stack:
 
 ---
 
+### Completed (Task 55 - Appointment Lifecycle Service/Test Cleanup)
+
+- Kept appointment lifecycle behavior unchanged.
+- Cleaned lifecycle service helpers:
+	- kept `canUpdateAppointmentLifecycle` as the shared eligibility helper,
+	- added `APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE`,
+	- added `getAppointmentLifecycleSuccessMessage`.
+- Reused shared lifecycle copy in:
+	- Appointment Detail,
+	- daily/weekly Appointments page,
+	- Patient Appointment Summary.
+- Preserved the Task 54 `updateAppointmentStatus` guard behavior:
+	- direct status updates only support `cancelled` and `no_show`,
+	- manual `completed` status remains blocked,
+	- clinic scoping remains intact,
+	- linked open/completed Visit Completion checks remain intact.
+- Cleaned browser smoke structure:
+	- centralized appointment card/action selectors,
+	- extracted appointment card snapshots,
+	- extracted appointment card menu opening,
+	- extracted reusable appointment card-state waits.
+- Preserved smoke coverage for scheduled secondary actions, cancel/no-show
+  transitions, linked draft hiding, completed appointment behavior, and the
+  existing Visit Completion happy path.
+- No schema changes, new lifecycle states, provider assignment, check-in/in-room
+  states, autosave, billing/payments/materials/attachments, treatment-plan
+  mutation, reminders, tasks, broad UI redesign, or smoke coverage removal were
+  added.
+- Documented the task in
+  `docs/design/task-55-appointment-lifecycle-service-test-cleanup.md`.
+
+### Verification (Task 55)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

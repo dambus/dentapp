@@ -196,6 +196,7 @@ Status legend:
   - [x] Task D6: Visit Completion Mobile Sticky Progress
   - [x] Task 53: Restore Appointment Lifecycle Secondary Actions
   - [x] Task 54: Appointment Lifecycle State Transition Hardening
+  - [x] Task 55: Appointment Lifecycle Service/Test Cleanup
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -251,6 +252,7 @@ Status legend:
 - [x] Task D6 - Visit Completion Mobile Sticky Progress
 - [x] Task 53 - Restore Appointment Lifecycle Secondary Actions
 - [x] Task 54 - Appointment Lifecycle State Transition Hardening
+- [x] Task 55 - Appointment Lifecycle Service/Test Cleanup
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -602,6 +604,24 @@ Completed direction:
   transition,
 - expanded browser smoke coverage for cancel, no-show, linked draft, completed,
   and existing Visit Completion happy-path behavior,
+- avoided schema changes, new lifecycle states, provider assignment, check-in
+  states, autosave, billing, attachments, reminders, tasks, and broad redesign.
+
+### Completed Recommended Task
+
+Task 55 - Appointment Lifecycle Service/Test Cleanup
+
+Completed direction:
+
+- kept appointment lifecycle behavior unchanged,
+- centralized lifecycle unavailable/success copy in the appointment service,
+- kept `canUpdateAppointmentLifecycle` as the shared eligibility helper,
+- reused shared lifecycle copy in Appointment Detail, Appointments page, and
+  Patient Appointment Summary,
+- cleaned browser smoke appointment card/menu helpers to reduce duplicated DOM
+  selectors and repeated card-state assertions,
+- preserved smoke coverage for scheduled, cancel, no-show, linked draft,
+  completed, and Visit Completion happy-path behavior,
 - avoided schema changes, new lifecycle states, provider assignment, check-in
   states, autosave, billing, attachments, reminders, tasks, and broad redesign.
 
