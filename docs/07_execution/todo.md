@@ -186,6 +186,7 @@ Status legend:
   - [x] Task 51: Appointment Creation / Status Polish
   - [x] Task 52: Appointment Module QA & UX Notes
   - [x] Task 45: Patient Overview Clinical Summary Polish
+  - [x] Task 46: Follow-up Scheduling Entry Point
   - [x] Task D1: Design System Icon & Action Pattern
   - [x] Task D2: Appointment Card Redesign
   - [x] Task D3: Appointment Type & 15-Min Duration Standardization
@@ -236,6 +237,7 @@ Status legend:
 - [x] Task 51 - Appointment Creation / Status Polish
 - [x] Task 52 - Appointment Module QA & UX Notes
 - [x] Task 45 - Patient Overview Clinical Summary Polish
+- [x] Task 46 - Follow-up Scheduling Entry Point
 - [x] Task D1 - Design System Icon & Action Pattern
 - [x] Task D2 - Appointment Card Redesign
 - [x] Task D3 - Appointment Type & 15-Min Duration Standardization
@@ -372,6 +374,20 @@ Completed direction:
   completed visit, and View appointment,
 - add latest clinical activity summary and stable smoke coverage,
 - keep follow-up display-only and avoid unavailable future modules.
+
+### Completed Recommended Task
+
+Task 46 - Follow-up Scheduling Entry Point
+
+Completed direction:
+
+- confirmed appointment creation already exists in the patient appointment panel,
+- route follow-up scheduling intent to the existing patient appointment form,
+- prefill the appointment reason from follow-up recommendation/next step when
+  available,
+- require explicit user submit before appointment creation,
+- avoid automatic appointment creation, reminders, tasks, new follow-up schema,
+  and fake scheduled appointments.
 
 ### Completed Recommended Task
 

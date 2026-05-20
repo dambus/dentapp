@@ -192,7 +192,7 @@ export function PatientFollowUpSummary({
               onClick={() => onScheduleAppointment(appointmentReason)}
               size="sm"
             >
-              Schedule appointment
+              Schedule follow-up
             </Button>
           ) : null}
         </div>

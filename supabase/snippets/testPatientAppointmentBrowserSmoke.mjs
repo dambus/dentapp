@@ -850,7 +850,7 @@ async function main() {
       'follow-up recommendation after viewport reset',
     )
 
-    await clickByText(cdp, 'Schedule appointment')
+    await clickByText(cdp, 'Schedule follow-up')
     await waitFor(
       () => textIncludes(cdp, 'Follow-up context copied into appointment reason.'),
       'follow-up prefill feedback',
@@ -1645,6 +1645,34 @@ async function main() {
       () => textIncludes(cdp, 'Print review'),
       'print review action visible on detail page',
     )
+    await waitFor(
+      () => textIncludes(cdp, 'Schedule follow-up'),
+      'completed visit detail follow-up scheduling action',
+    )
+
+    const detailUrlBeforeFollowUpScheduling = await evaluate(cdp, 'location.href')
+    await clickSelector(cdp, '[data-testid="completed-visit-detail-schedule-follow-up"]')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `location.pathname.startsWith('/patients/') && location.search.includes('scheduleFollowUp=true')`,
+        ),
+      'follow-up scheduling routes to patient appointment flow',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="patient-appointment-reason"]')?.value === ${JSON.stringify(BRIDGE_RECOMMENDATION)}`,
+        ),
+      'follow-up scheduling prefilled appointment reason',
+    )
+    await navigate(cdp, detailUrlBeforeFollowUpScheduling)
+    await waitFor(
+      () => textIncludes(cdp, 'Completed Visit Review'),
+      'returned to completed visit detail after follow-up scheduling check',
+    )
 
     const printActionMarkedHidden = await evaluate(
       cdp,
@@ -1707,6 +1735,7 @@ async function main() {
               latestText.includes(${JSON.stringify(BRIDGE_NOTE)}) &&
               actionTexts.includes('View visit detail') &&
               actionTexts.includes('Open timeline') &&
+              actionTexts.includes('Schedule follow-up') &&
               followUpText.includes('Follow-up / Next Step') &&
               followUpText.includes('Source visit date') &&
               followUpText.includes(${JSON.stringify(BRIDGE_RECOMMENDATION)}) &&
@@ -1744,6 +1773,7 @@ async function main() {
             return text.includes('Follow-up from completed visit') &&
               text.includes(${JSON.stringify(BRIDGE_RECOMMENDATION)}) &&
               text.includes(${JSON.stringify(BRIDGE_NEXT_STEP_LABEL)}) &&
+              text.includes('Schedule follow-up') &&
               text.includes('No appointment or treatment plan task was created automatically');
           })()`,
         ),
@@ -1846,6 +1876,8 @@ async function main() {
           dailyScheduleCompletedLifecycleVerified: true,
           patientOverviewClinicalSummaryVerified: true,
           patientOverviewFollowUpVerified: true,
+          followUpSchedulingActionVerified: true,
+          followUpSchedulingPrefillVerified: true,
           printActionVerified: true,
           detailRefreshVerified: true,
           backToTimelineVerified: true,

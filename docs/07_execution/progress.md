@@ -2526,6 +2526,49 @@ Initial stack:
 
 ---
 
+### Completed (Task 46 - Follow-up Scheduling Entry Point)
+
+- Confirmed appointment creation already exists in the patient detail appointment
+  panel through `PatientAppointmentSummary` and `appointmentService.createAppointment`.
+- Added `getPatientFollowUpSchedulingPath(patientId, reason)` to route follow-up
+  scheduling intent back to the existing patient appointment form.
+- Updated `PatientDetailPage` to read `scheduleFollowUp=true` and optional
+  `reason` query params, scroll to the appointment panel, and prefill the
+  existing appointment reason field.
+- Added consistent `Schedule follow-up` actions to:
+	- patient overview `PatientFollowUpSummary`,
+	- completed visit detail Follow-up Guidance,
+	- completed visit timeline follow-up cards,
+	- completed appointment detail follow-up section.
+- Kept the action non-automatic:
+	- it only navigates/prefills,
+	- the user must still choose appointment details and submit the existing
+	  appointment form,
+	- no appointment is created by clicking `Schedule follow-up`.
+- Expanded `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` to verify
+  follow-up scheduling action visibility and prefill routing into the existing
+  patient appointment creation flow.
+- No autosave, billing, payments, materials, attachments, treatment-plan
+  mutation, automatic appointment creation, reminders/tasks, new follow-up
+  schema, fake scheduled appointments, broad appointment redesign, or broad
+  patient redesign was added.
+- Documented the task in
+  `docs/design/task-46-follow-up-scheduling-entry-point.md`.
+
+### Verification (Task 46 - Follow-up Scheduling Entry Point)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase URL, anon key, and service key loaded in the shell.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
 ### Completed (Task 45 - Patient Overview Clinical Summary Polish)
 
 - Polished the patient detail overview hierarchy:

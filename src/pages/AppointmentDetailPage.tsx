@@ -35,6 +35,7 @@ import {
 } from '../features/patients/patientDisplay'
 import {
   getPatientDetailPath,
+  getPatientFollowUpSchedulingPath,
   getPatientVisitCompletionPath,
   getPatientVisitDetailPath,
   routePaths,
@@ -233,6 +234,8 @@ export function AppointmentDetailPage() {
     : ''
   const hasLinkedVisitFollowUp =
     Boolean(linkedVisitRecommendation) || Boolean(linkedVisitNextStep)
+  const linkedVisitFollowUpSchedulingReason =
+    linkedVisitRecommendation || linkedVisitNextStep
 
   return (
     <Page>
@@ -449,8 +452,26 @@ export function AppointmentDetailPage() {
                   className="mt-4 rounded-md border border-amber-200 bg-white p-4"
                   data-testid="appointment-completed-follow-up"
                 >
-                  <div className="text-sm font-semibold text-slate-950">
-                    Follow-up from completed visit
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="text-sm font-semibold text-slate-950">
+                      Follow-up from completed visit
+                    </div>
+                    <Button
+                      className="min-h-10"
+                      data-testid="appointment-detail-schedule-follow-up"
+                      onClick={() =>
+                        navigate(
+                          getPatientFollowUpSchedulingPath(
+                            patientRouteId,
+                            linkedVisitFollowUpSchedulingReason,
+                          ),
+                        )
+                      }
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Schedule follow-up
+                    </Button>
                   </div>
                   {linkedVisitNextStep ? (
                     <p className="mt-2 text-sm font-semibold leading-6 text-slate-950">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { Page } from '../components/layout/Page'
@@ -24,6 +24,7 @@ import {
   getPatientEditPath,
   getPatientMedicalRecordEditPath,
   getAppointmentDetailPath,
+  getPatientFollowUpSchedulingPath,
   getPatientVisitCompletionPath,
   getPatientVisitDetailPath,
   routePaths,
@@ -115,6 +116,7 @@ export function PatientDetailPage() {
   const [appointmentPrefillReason, setAppointmentPrefillReason] = useState('')
   const [appointmentPrefillRequestId, setAppointmentPrefillRequestId] =
     useState(0)
+  const handledFollowUpSchedulingRequestRef = useRef<string | null>(null)
   const [fullRecordSection, setFullRecordSection] =
     useState<PatientFullRecordSection>(() =>
       getInitialFullRecordSection(searchParams.get('section')),
@@ -138,6 +140,32 @@ export function PatientDetailPage() {
       isCurrent = false
     }
   }, [patientId])
+
+  useEffect(() => {
+    if (!patient || searchParams.get('scheduleFollowUp') !== 'true') {
+      return
+    }
+
+    const schedulingRequestKey = searchParams.toString()
+
+    if (handledFollowUpSchedulingRequestRef.current === schedulingRequestKey) {
+      return
+    }
+
+    handledFollowUpSchedulingRequestRef.current = schedulingRequestKey
+
+    const prefillReason =
+      searchParams.get('reason')?.trim() || patient.nextRecommendedStep || ''
+
+    setAppointmentPrefillReason(prefillReason)
+    setAppointmentPrefillRequestId((currentRequestId) => currentRequestId + 1)
+
+    window.setTimeout(() => {
+      document
+        .getElementById('patient-appointments')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }, [patient, searchParams])
 
   if (!hasLoadedPatient) {
     return null
@@ -336,13 +364,7 @@ export function PatientDetailPage() {
   }
 
   function openAppointmentForm(reason: string) {
-    setAppointmentPrefillReason(reason)
-    setAppointmentPrefillRequestId((currentRequestId) => currentRequestId + 1)
-    window.setTimeout(() => {
-      document
-        .getElementById('patient-appointments')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 0)
+    navigate(getPatientFollowUpSchedulingPath(loadedPatient.id, reason))
   }
 
   return (

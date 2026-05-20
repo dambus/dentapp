@@ -16,7 +16,10 @@ import {
   MetricTile,
 } from '../../components/ui'
 import { classNames } from '../../lib/classNames'
-import { getPatientVisitDetailPath } from '../../routes/routePaths'
+import {
+  getPatientFollowUpSchedulingPath,
+  getPatientVisitDetailPath,
+} from '../../routes/routePaths'
 import {
   fetchCompletedVisitsForPatient,
   type VisitCompletionDraft,
@@ -108,6 +111,9 @@ function VisitTimelineItem({
   const hasNextStep = Boolean(visit.nextStep)
   const hasFollowUp = hasFollowUpSignal(visit)
   const providerLabel = visit.completedByName ?? 'Provider not recorded'
+  const followUpSchedulingReason = hasRecommendation
+    ? visit.recommendation
+    : getNextStepLabel(visit.nextStep)
 
   return (
     <li
@@ -275,13 +281,25 @@ function VisitTimelineItem({
               className="rounded-md border border-amber-200 bg-amber-50/50 p-4"
               data-testid="completed-visit-follow-up"
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="text-sm font-semibold text-slate-950">
-                  Recommended follow-up
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-sm font-semibold text-slate-950">
+                    Recommended follow-up
+                  </div>
+                  {hasNextStep ? (
+                    <Badge variant="warning">{getNextStepLabel(visit.nextStep)}</Badge>
+                  ) : null}
                 </div>
-                {hasNextStep ? (
-                  <Badge variant="warning">{getNextStepLabel(visit.nextStep)}</Badge>
-                ) : null}
+                <ButtonLink
+                  size="sm"
+                  to={getPatientFollowUpSchedulingPath(
+                    patientId,
+                    followUpSchedulingReason,
+                  )}
+                  variant="secondary"
+                >
+                  Schedule follow-up
+                </ButtonLink>
               </div>
               {hasRecommendation ? (
                 <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">

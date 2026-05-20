@@ -34,7 +34,11 @@ import {
   type CompletedVisitDetail,
   type VisitNextStep,
 } from '../features/visits/visitCompletionService'
-import { getPatientDetailPath, routePaths } from '../routes/routePaths'
+import {
+  getPatientDetailPath,
+  getPatientFollowUpSchedulingPath,
+  routePaths,
+} from '../routes/routePaths'
 
 const nextStepLabels: Record<VisitNextStep, string> = {
   no_follow_up: 'No follow-up needed',
@@ -216,6 +220,9 @@ export function PatientVisitDetailPage() {
   const hasFollowUp = hasRecommendation || (hasNextStep && visit.nextStep !== 'no_follow_up')
   const generatedAt = formatPatientDateTime(new Date().toISOString())
   const providerLabel = visit.completedByName ?? 'Provider not recorded'
+  const followUpSchedulingReason = hasRecommendation
+    ? visit.recommendation
+    : getNextStepLabel(visit.nextStep)
 
   function handlePrintReview() {
     window.print()
@@ -445,17 +452,39 @@ export function PatientVisitDetailPage() {
           data-testid="completed-visit-detail-follow-up"
         >
           <CardHeader>
-            <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Follow-up Guidance</CardTitle>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle>Follow-up Guidance</CardTitle>
+                  {hasFollowUp ? (
+                    <Badge variant="warning">Review next action</Badge>
+                  ) : (
+                    <Badge variant="neutral">No follow-up signal</Badge>
+                  )}
+                </div>
+                <CardDescription>
+                  Clinical guidance recorded during Visit Completion.
+                </CardDescription>
+              </div>
               {hasFollowUp ? (
-                <Badge variant="warning">Review next action</Badge>
-              ) : (
-                <Badge variant="neutral">No follow-up signal</Badge>
-              )}
+                <Button
+                  className="min-h-10 print-hidden"
+                  data-testid="completed-visit-detail-schedule-follow-up"
+                  onClick={() =>
+                    navigate(
+                      getPatientFollowUpSchedulingPath(
+                        patient.id,
+                        followUpSchedulingReason,
+                      ),
+                    )
+                  }
+                  size="sm"
+                  variant="secondary"
+                >
+                  Schedule follow-up
+                </Button>
+              ) : null}
             </div>
-            <CardDescription>
-              Clinical guidance recorded during Visit Completion.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">

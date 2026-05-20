@@ -23,6 +23,20 @@ export function getPatientDetailPath(patientId: string) {
   return `/patients/${patientId}`
 }
 
+export function getPatientFollowUpSchedulingPath(
+  patientId: string,
+  reason?: string | null,
+) {
+  const searchParams = new URLSearchParams({ scheduleFollowUp: 'true' })
+  const normalizedReason = reason?.trim()
+
+  if (normalizedReason) {
+    searchParams.set('reason', normalizedReason)
+  }
+
+  return `${getPatientDetailPath(patientId)}?${searchParams}`
+}
+
 export function getAppointmentDetailPath(appointmentId: string) {
   return `/appointments/${appointmentId}`
 }
