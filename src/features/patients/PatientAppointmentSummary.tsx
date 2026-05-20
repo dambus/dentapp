@@ -602,7 +602,7 @@ export function PatientAppointmentSummary({
               }
               tone="info"
             />
-            <div className="rounded-md border border-cyan-200 bg-white p-4 shadow-sm">
+            <div className="rounded-md border border-cyan-200 bg-white p-4 shadow-sm sm:p-5">
               <AppointmentCard
                 appointment={nextAppointment}
                 className="border-0 p-0 shadow-none hover:border-transparent"
@@ -624,9 +624,14 @@ export function PatientAppointmentSummary({
             </div>
           </div>
         ) : (
-          <InlineNotice variant="neutral">
-            No upcoming appointment is scheduled for this patient. Use the form below to add one.
-          </InlineNotice>
+          <div className="rounded-md border border-slate-200 bg-slate-50/70 p-5">
+            <div className="text-sm font-semibold text-slate-950">
+              No upcoming appointment scheduled
+            </div>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Use the form below to schedule the next appointment.
+            </p>
+          </div>
         )}
 
         {successMessage ? (

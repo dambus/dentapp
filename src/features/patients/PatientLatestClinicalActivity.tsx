@@ -178,7 +178,7 @@ export function PatientLatestClinicalActivity({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4">
+          <div className="rounded-md border border-slate-200 bg-slate-50/70 p-5">
             <div className="text-sm font-semibold text-slate-950">
               No completed visit recorded
             </div>
@@ -186,7 +186,7 @@ export function PatientLatestClinicalActivity({
               Completed clinical visits are stored in the patient timeline.
             </p>
             <Button
-              className="mt-4"
+              className="mt-4 min-h-10"
               onClick={onOpenTimeline}
               size="sm"
               variant="secondary"
@@ -215,11 +215,17 @@ export function PatientLatestClinicalActivity({
               Most recent completed visit from patient history.
             </CardDescription>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={onOpenTimeline} size="sm" variant="secondary">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            <Button
+              className="min-h-10 w-full sm:w-auto"
+              onClick={onOpenTimeline}
+              size="sm"
+              variant="secondary"
+            >
               Open timeline
             </Button>
             <ButtonLink
+              className="min-h-10 w-full sm:w-auto"
               size="sm"
               to={getPatientVisitDetailPath(patientId, latestVisit.id)}
               variant="secondary"
@@ -230,7 +236,7 @@ export function PatientLatestClinicalActivity({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 sm:space-y-5">
         <div className="grid gap-3 sm:grid-cols-3">
           <MetricTile
             label="Completed"

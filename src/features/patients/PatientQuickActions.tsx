@@ -126,7 +126,7 @@ function QuickActionCard({
   return (
     <div
       className={classNames(
-        'flex min-h-64 flex-col justify-between rounded-md border bg-white p-5 shadow-sm transition',
+        'flex min-h-56 flex-col justify-between rounded-md border bg-white p-4 shadow-sm transition sm:p-5',
         isInteractive
           ? 'border-teal-200 hover:-translate-y-0.5 hover:shadow-md'
           : 'border-slate-200 opacity-80',
@@ -165,7 +165,7 @@ function QuickActionCard({
       </div>
 
       <Button
-        className="mt-5 min-h-11 w-full"
+        className="mt-5 min-h-10 w-full"
         disabled={isDisabled}
         onClick={action.onSelect}
         size="md"
@@ -287,13 +287,13 @@ export function PatientQuickActions({
   }
 
   return (
-    <Card className="border-slate-200 shadow-sm">
+    <Card className="border-slate-200 bg-white shadow-sm">
       <CardHeader>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle>Quick Actions</CardTitle>
-              <Badge variant="info">Phase C</Badge>
+              <Badge variant="info">Role shortcuts</Badge>
             </div>
             <CardDescription>
               Role-aware shortcuts into common patient workflows.
@@ -307,7 +307,7 @@ export function PatientQuickActions({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 sm:space-y-5">
         {isArchived ? (
           <InlineNotice variant="warning">
             Patient is archived. Restore the patient before making changes.
@@ -315,7 +315,7 @@ export function PatientQuickActions({
         ) : null}
 
         {actions.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
             {actions.map((action) => (
               <QuickActionCard
                 action={action}
@@ -325,7 +325,7 @@ export function PatientQuickActions({
             ))}
           </div>
         ) : (
-          <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+          <div className="rounded-md border border-slate-200 bg-slate-50/70 p-5 text-sm leading-6 text-slate-600">
             No quick actions are available for the current role on this patient.
           </div>
         )}

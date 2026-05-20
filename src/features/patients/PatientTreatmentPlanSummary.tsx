@@ -208,13 +208,18 @@ export function PatientTreatmentPlanSummary({
                 Treatment plan records and planned items for this patient.
               </CardDescription>
             </div>
-            <Button onClick={onOpenTreatmentPlans} size="sm" variant="secondary">
+            <Button
+              className="min-h-10"
+              onClick={onOpenTreatmentPlans}
+              size="sm"
+              variant="secondary"
+            >
               Open treatment plans
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4">
+          <div className="rounded-md border border-slate-200 bg-slate-50/70 p-5">
             <div className="text-sm font-semibold text-slate-950">
               No treatment plan configured
             </div>
@@ -247,13 +252,18 @@ export function PatientTreatmentPlanSummary({
               Primary treatment plan context for this patient.
             </CardDescription>
           </div>
-          <Button onClick={onOpenTreatmentPlans} size="sm" variant="secondary">
+          <Button
+            className="min-h-10"
+            onClick={onOpenTreatmentPlans}
+            size="sm"
+            variant="secondary"
+          >
             Open treatment plans
           </Button>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 sm:space-y-5">
         <div className="grid gap-3 sm:grid-cols-3">
           <MetricTile
             label="Plan"
@@ -317,7 +327,7 @@ export function PatientTreatmentPlanSummary({
             ) : null}
           </div>
         ) : (
-          <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+          <div className="rounded-md border border-slate-200 bg-slate-50/70 p-5 text-sm leading-6 text-slate-600">
             No planned items are recorded for this treatment plan yet.
           </div>
         )}

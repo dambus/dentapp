@@ -124,7 +124,7 @@ function VisitTimelineItem({
       <span className="absolute left-0 top-2 h-3 w-3 rounded-full border-2 border-white bg-teal-700 shadow ring-2 ring-teal-100" />
       <Card
         className={classNames(
-          'border-slate-200 shadow-sm',
+          'border-slate-200 bg-white shadow-sm',
           isHighlighted ? 'border-amber-300 bg-amber-50/40 ring-2 ring-amber-100' : '',
         )}
       >
@@ -150,12 +150,13 @@ function VisitTimelineItem({
                 {providerLabel}.
               </CardDescription>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
               <Badge variant={visit.procedures.length > 0 ? 'info' : 'neutral'}>
                 {visit.procedures.length}{' '}
                 {visit.procedures.length === 1 ? 'procedure' : 'procedures'}
               </Badge>
               <ButtonLink
+                className="min-h-10 w-full sm:w-auto"
                 size="sm"
                 to={getPatientVisitDetailPath(patientId, visit.id)}
                 variant="secondary"
@@ -165,7 +166,7 @@ function VisitTimelineItem({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 sm:space-y-5">
           <div className="grid gap-3 sm:grid-cols-2">
             <MetricTile
               data-testid="completed-visit-procedure-summary"
@@ -208,7 +209,7 @@ function VisitTimelineItem({
 
           {visit.procedures.length > 0 ? (
             <div
-              className="rounded-md border border-slate-200 bg-slate-50 p-3"
+              className="rounded-md border border-slate-200 bg-slate-50/70 p-4"
               data-testid="completed-visit-procedures"
             >
               <div className="text-sm font-semibold text-slate-950">
@@ -278,7 +279,7 @@ function VisitTimelineItem({
 
           {hasFollowUp ? (
             <div
-              className="rounded-md border border-amber-200 bg-amber-50/50 p-4"
+              className="rounded-md border border-amber-200 bg-amber-50/40 p-4 sm:p-5"
               data-testid="completed-visit-follow-up"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -415,7 +416,7 @@ export function PatientVisitTimeline({
   )
 
   if (isLoading) {
-    return <LoadingState label="Loading completed visits..." />
+    return <LoadingState label="Loading visit history..." />
   }
 
   if (errorMessage) {
@@ -425,7 +426,7 @@ export function PatientVisitTimeline({
         description={errorMessage}
         action={
           <Button onClick={() => void loadCompletedVisits()}>
-            Retry loading visit history
+            Try again
           </Button>
         }
       />

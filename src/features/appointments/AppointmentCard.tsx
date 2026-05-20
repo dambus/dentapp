@@ -159,13 +159,13 @@ export function AppointmentCard({
       className={classNames(
         'group rounded-md border border-l-4 border-slate-200 bg-white shadow-sm transition-colors hover:border-slate-300',
         statusToneClass,
-        variant === 'compact' ? 'p-4' : 'p-4 sm:p-5',
+        variant === 'compact' ? 'p-4 sm:p-4' : 'p-4 sm:p-5',
         className,
       )}
       data-testid="appointment-card"
     >
-      <div className="flex min-w-0 flex-col gap-4">
-        <div className="flex items-start justify-between gap-3">
+      <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-2 text-lg font-semibold leading-6 text-slate-950 sm:text-xl">
@@ -200,9 +200,11 @@ export function AppointmentCard({
             )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <StatusBadge status={appointment.status} />
-            {hasOpenVisit ? <Badge variant="warning">Visit in progress</Badge> : null}
+            {hasOpenVisit ? (
+              <Badge variant="warning">Visit in progress</Badge>
+            ) : null}
             {appointment.linkedVisit ? (
               <Badge variant="success">Visit completed</Badge>
             ) : null}
@@ -267,16 +269,16 @@ export function AppointmentCard({
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
             <CalendarClock aria-hidden className="h-4 w-4" />
             Clinical schedule item
           </div>
 
-          <div className="flex flex-wrap gap-2 sm:justify-end">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
             {canStartOrContinueVisit ? (
               <Button
-                className="w-full sm:w-auto"
+                className="w-full min-h-10 sm:w-auto"
                 disabled={isBusy}
                 onClick={onStartVisit}
                 size="sm"
@@ -286,7 +288,7 @@ export function AppointmentCard({
             ) : null}
             {canViewVisit ? (
               <Button
-                className="w-full sm:w-auto"
+                className="w-full min-h-10 sm:w-auto"
                 disabled={isBusy}
                 onClick={onViewVisit}
                 size="sm"
@@ -296,7 +298,7 @@ export function AppointmentCard({
               </Button>
             ) : null}
             <Button
-              className="w-full sm:w-auto"
+              className="w-full min-h-10 sm:w-auto"
               disabled={isBusy}
               onClick={onOpenDetails}
               size="sm"

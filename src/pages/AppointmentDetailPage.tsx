@@ -178,7 +178,7 @@ export function AppointmentDetailPage() {
   if (isLoading) {
     return (
       <Page>
-        <LoadingState label="Loading appointment..." />
+        <LoadingState label="Loading appointment detail..." />
       </Page>
     )
   }
@@ -214,7 +214,7 @@ export function AppointmentDetailPage() {
         />
         <EmptyState
           title="Appointment not found"
-          description="The requested appointment could not be found for the current clinic context."
+          description="The requested appointment could not be found in the current clinic context."
         />
       </Page>
     )
@@ -317,7 +317,7 @@ export function AppointmentDetailPage() {
         }
       />
 
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 sm:gap-6">
         <Card className="border-cyan-100 bg-cyan-50/30 shadow-sm">
           <CardHeader>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -336,7 +336,7 @@ export function AppointmentDetailPage() {
               <Badge variant="neutral">Read-only</Badge>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4 sm:space-y-5">
             <div className="grid gap-3 md:grid-cols-3">
               <MetricTile
                 label="Scheduled"
@@ -376,14 +376,18 @@ export function AppointmentDetailPage() {
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle>Lifecycle</CardTitle>
               <StatusBadge status={appointment.status} />
-              {hasOpenVisit ? <Badge variant="warning">Visit in progress</Badge> : null}
-              {hasCompletedVisit ? <Badge variant="success">Completed visit linked</Badge> : null}
+              {hasOpenVisit ? (
+                <Badge variant="warning">Visit in progress</Badge>
+              ) : null}
+              {hasCompletedVisit ? (
+                <Badge variant="success">Completed visit linked</Badge>
+              ) : null}
             </div>
             <CardDescription>
               Current appointment and Visit Completion state.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 sm:space-y-4">
             {hasCompletedVisit ? (
               <InlineNotice variant="success">
                 This appointment has a completed Visit Completion record.
@@ -410,10 +414,15 @@ export function AppointmentDetailPage() {
         <div className="grid gap-5 lg:grid-cols-2">
           <Card className="border-slate-200 shadow-sm">
             <CardHeader>
-              <CardTitle>Reason</CardTitle>
+              <div className="flex flex-col gap-2">
+                <CardTitle>Reason</CardTitle>
+                <CardDescription>
+                  Appointment reason captured on the schedule item.
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
+              <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7 text-slate-700">
                 {appointment.reason?.trim() ||
                   'No appointment reason recorded.'}
               </p>
@@ -422,10 +431,15 @@ export function AppointmentDetailPage() {
 
           <Card className="border-slate-200 shadow-sm">
             <CardHeader>
-              <CardTitle>Notes</CardTitle>
+              <div className="flex flex-col gap-2">
+                <CardTitle>Notes</CardTitle>
+                <CardDescription>
+                  Internal scheduling notes, when present.
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
+              <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7 text-slate-700">
                 {appointment.notes?.trim() || 'No appointment notes recorded.'}
               </p>
             </CardContent>
@@ -443,13 +457,13 @@ export function AppointmentDetailPage() {
                 Completed {formatPatientDateTime(appointment.linkedVisit.completedAt)}.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4 sm:space-y-5">
               <InlineNotice variant="success">
                 This appointment produced a completed Visit Completion record.
               </InlineNotice>
               {hasLinkedVisitFollowUp ? (
                 <div
-                  className="mt-4 rounded-md border border-amber-200 bg-white p-4"
+                  className="mt-4 rounded-md border border-amber-200 bg-white p-4 sm:p-5"
                   data-testid="appointment-completed-follow-up"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -457,7 +471,7 @@ export function AppointmentDetailPage() {
                       Follow-up from completed visit
                     </div>
                     <Button
-                      className="min-h-10"
+                      className="min-h-10 w-full sm:w-auto"
                       data-testid="appointment-detail-schedule-follow-up"
                       onClick={() =>
                         navigate(

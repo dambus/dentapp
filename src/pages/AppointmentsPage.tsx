@@ -453,10 +453,10 @@ export function AppointmentsPage() {
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 sm:space-y-5">
           {isLoading ? (
             <div data-testid="appointments-loading-state">
-              <LoadingState label="Loading appointments..." />
+              <LoadingState label="Loading schedule..." />
             </div>
           ) : null}
 
@@ -464,7 +464,7 @@ export function AppointmentsPage() {
             <ErrorState
               action={<Button onClick={() => void loadAppointments()}>Try again</Button>}
               description={loadError}
-              title="Appointments unavailable"
+              title="Schedule unavailable"
             />
           ) : null}
 
@@ -473,6 +473,7 @@ export function AppointmentsPage() {
               <EmptyState
                 action={
                   <Button
+                    className="min-h-10"
                     onClick={() => setSelectedDate(todayDateValue)}
                     size="sm"
                     variant="secondary"
@@ -483,8 +484,8 @@ export function AppointmentsPage() {
                 description={
                   viewMode === 'day'
                     ? isTodaySelected
-                      ? 'Try Tomorrow, or schedule a new appointment from a patient record.'
-                      : 'Try Today, or schedule a new appointment from a patient record.'
+                      ? 'Try tomorrow, or schedule a new appointment from a patient record.'
+                      : 'Try today, or schedule a new appointment from a patient record.'
                     : 'Try another week, or schedule a new appointment from a patient record.'
                 }
                 title={
@@ -499,19 +500,19 @@ export function AppointmentsPage() {
           ) : null}
 
           {!isLoading && !loadError && appointments.length > 0 && viewMode === 'day' ? (
-            <div className="space-y-4" data-testid="appointments-list">
+            <div className="space-y-4 sm:space-y-5" data-testid="appointments-list">
               {appointments.map((appointment) => renderAppointmentCard(appointment))}
             </div>
           ) : null}
 
           {!isLoading && !loadError && viewMode === 'week' ? (
-            <div className="space-y-3" data-testid="appointments-week-list">
+            <div className="space-y-3 sm:space-y-4" data-testid="appointments-week-list">
               {weekDays.map((dayValue) => {
                 const dayAppointments = appointmentsByDay[dayValue] ?? []
 
                 return (
                   <section
-                    className="rounded-md border border-slate-200 bg-slate-50 p-3"
+                    className="rounded-md border border-slate-200 bg-slate-50 p-3 sm:p-4"
                     data-testid="appointments-week-day"
                     key={dayValue}
                   >
@@ -533,14 +534,14 @@ export function AppointmentsPage() {
                     </div>
 
                     {dayAppointments.length > 0 ? (
-                      <div className="mt-3 space-y-3">
+                      <div className="mt-3 space-y-3 sm:space-y-4">
                         {dayAppointments.map((appointment) =>
                           renderAppointmentCard(appointment),
                         )}
                       </div>
                     ) : (
-                      <p className="mt-3 text-sm text-slate-500">
-                        No appointments scheduled.
+                      <p className="mt-3 text-sm leading-6 text-slate-500">
+                        No appointments scheduled for this day.
                       </p>
                     )}
                   </section>

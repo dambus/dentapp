@@ -177,7 +177,7 @@ export function PatientDetailPage() {
       <Page>
         <PageHeader
           title="Patient not found"
-          description="The requested demo patient profile does not exist in the local fake dataset."
+          description="The requested patient profile could not be found in this environment."
           actions={
             <Button
               variant="secondary"
@@ -188,8 +188,8 @@ export function PatientDetailPage() {
           }
         />
         <EmptyState
-          title="No matching demo patient"
-          description="Check the patient link or return to the patient list. No Supabase lookup is connected in this phase."
+          title="Patient is not available"
+          description="Check the patient link or return to the patient list."
           action={
             <Button onClick={() => navigate(routePaths.patients)}>
               Open patient list
@@ -407,59 +407,61 @@ export function PatientDetailPage() {
         }
       />
 
-      <PatientTodayPanel
-        patient={patient}
-        isArchived={isArchived}
-        canCompleteVisit={canCompleteVisit}
-        onOpenAppointment={(appointmentId) =>
-          navigate(getAppointmentDetailPath(appointmentId))
-        }
-        onOpenTimeline={() => openFullRecordSection('timeline')}
-        onStartVisit={openVisitCompletion}
-        onViewCompletedVisit={(visitId) =>
-          navigate(getPatientVisitDetailPath(patient.id, visitId))
-        }
-      />
+      <div className="space-y-4 sm:space-y-5 lg:space-y-6">
+        <PatientTodayPanel
+          patient={patient}
+          isArchived={isArchived}
+          canCompleteVisit={canCompleteVisit}
+          onOpenAppointment={(appointmentId) =>
+            navigate(getAppointmentDetailPath(appointmentId))
+          }
+          onOpenTimeline={() => openFullRecordSection('timeline')}
+          onStartVisit={openVisitCompletion}
+          onViewCompletedVisit={(visitId) =>
+            navigate(getPatientVisitDetailPath(patient.id, visitId))
+          }
+        />
 
-      <PatientLatestClinicalActivity
-        patientId={patient.id}
-        onOpenTimeline={() => openFullRecordSection('timeline')}
-      />
+        <PatientLatestClinicalActivity
+          patientId={patient.id}
+          onOpenTimeline={() => openFullRecordSection('timeline')}
+        />
 
-      <PatientTreatmentPlanSummary
-        patientId={patient.id}
-        onOpenTreatmentPlans={() => openFullRecordSection('treatment-plans')}
-      />
+        <PatientFollowUpSummary
+          patientId={patient.id}
+          onOpenTimelineVisit={openTimelineVisit}
+          onScheduleAppointment={openAppointmentForm}
+        />
 
-      <PatientFollowUpSummary
-        patientId={patient.id}
-        onOpenTimelineVisit={openTimelineVisit}
-        onScheduleAppointment={openAppointmentForm}
-      />
+        <PatientTreatmentPlanSummary
+          patientId={patient.id}
+          onOpenTreatmentPlans={() => openFullRecordSection('treatment-plans')}
+        />
 
-      <PatientAppointmentSummary
-        patientId={patient.id}
-        prefillReason={appointmentPrefillReason}
-        prefillRequestId={appointmentPrefillRequestId}
-      />
+        <PatientAppointmentSummary
+          patientId={patient.id}
+          prefillReason={appointmentPrefillReason}
+          prefillRequestId={appointmentPrefillRequestId}
+        />
 
-      <PatientQuickActions
-        role={currentProfile.profile?.role ?? null}
-        isArchived={isArchived}
-        onCompleteVisit={() => openVisitCompletion()}
-        onEditMedicalRecord={() =>
-          navigate(getPatientMedicalRecordEditPath(patient.id))
-        }
-        onOpenAppointments={() => {
-          document
-            .getElementById('patient-appointments')
-            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }}
-        onOpenClinicalNotes={() => openFullRecordSection('clinical-notes')}
-        onOpenOdontogram={() => openFullRecordSection('odontogram')}
-        onOpenTreatmentPlans={() => openFullRecordSection('treatment-plans')}
-        onOpenTimeline={() => openFullRecordSection('timeline')}
-      />
+        <PatientQuickActions
+          role={currentProfile.profile?.role ?? null}
+          isArchived={isArchived}
+          onCompleteVisit={() => openVisitCompletion()}
+          onEditMedicalRecord={() =>
+            navigate(getPatientMedicalRecordEditPath(patient.id))
+          }
+          onOpenAppointments={() => {
+            document
+              .getElementById('patient-appointments')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}
+          onOpenClinicalNotes={() => openFullRecordSection('clinical-notes')}
+          onOpenOdontogram={() => openFullRecordSection('odontogram')}
+          onOpenTreatmentPlans={() => openFullRecordSection('treatment-plans')}
+          onOpenTimeline={() => openFullRecordSection('timeline')}
+        />
+      </div>
 
       <PatientFullRecord
         patient={patient}

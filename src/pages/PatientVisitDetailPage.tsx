@@ -252,7 +252,9 @@ export function PatientVisitDetailPage() {
 
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 print-visit-detail">
         <section className="print-only border-b border-slate-300 pb-3">
-          <h2 className="text-2xl font-semibold text-slate-950">DentApp Visit Review</h2>
+          <h2 className="text-2xl font-semibold text-slate-950">
+            DentApp Visit Review
+          </h2>
           <p className="mt-1 text-sm text-slate-700">Generated {generatedAt}</p>
         </section>
 
@@ -284,7 +286,7 @@ export function PatientVisitDetailPage() {
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4 sm:space-y-5">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <MetricTile
                 label="Patient"
@@ -320,30 +322,34 @@ export function PatientVisitDetailPage() {
             data-testid="completed-visit-appointment-context"
           >
             <CardHeader>
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle>Linked Appointment</CardTitle>
-                <Badge
-                  variant={
-                    appointmentStatusBadgeVariants[
-                      visit.linkedAppointment.status as keyof typeof appointmentStatusBadgeVariants
-                    ] ?? 'info'
-                  }
-                >
-                  {appointmentStatusLabels[
-                    visit.linkedAppointment.status as keyof typeof appointmentStatusLabels
-                  ] ?? visit.linkedAppointment.status}
-                </Badge>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle>Linked Appointment</CardTitle>
+                    <Badge
+                      variant={
+                        appointmentStatusBadgeVariants[
+                          visit.linkedAppointment.status as keyof typeof appointmentStatusBadgeVariants
+                        ] ?? 'info'
+                      }
+                    >
+                      {appointmentStatusLabels[
+                        visit.linkedAppointment.status as keyof typeof appointmentStatusLabels
+                      ] ?? visit.linkedAppointment.status}
+                    </Badge>
+                  </div>
+                  <CardDescription>
+                    Scheduled{' '}
+                    {formatAppointmentTimeRange(
+                      visit.linkedAppointment.scheduledStart,
+                      visit.linkedAppointment.scheduledEnd,
+                    )}
+                    .
+                  </CardDescription>
+                </div>
               </div>
-              <CardDescription>
-                Scheduled{' '}
-                {formatAppointmentTimeRange(
-                  visit.linkedAppointment.scheduledStart,
-                  visit.linkedAppointment.scheduledEnd,
-                )}
-                .
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4 sm:space-y-5">
               <p className="whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
                 {visit.linkedAppointment.reason?.trim() ||
                   'No appointment reason recorded.'}
@@ -362,14 +368,16 @@ export function PatientVisitDetailPage() {
           data-testid="completed-visit-detail-procedures"
         >
           <CardHeader>
-            <CardTitle>Procedures</CardTitle>
-            <CardDescription>
-              Performed work recorded during Visit Completion.
-            </CardDescription>
+            <div className="flex flex-col gap-2">
+              <CardTitle>Procedures</CardTitle>
+              <CardDescription>
+                Performed work recorded during Visit Completion.
+              </CardDescription>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4 sm:space-y-5">
             {visit.procedures.length > 0 ? (
-              <ol className="space-y-3">
+              <ol className="space-y-3 sm:space-y-4">
                 {visit.procedures.map((procedure, index) => (
                   <li
                     className="print-procedure-item rounded-md border border-slate-200 bg-slate-50 p-4"
@@ -419,7 +427,10 @@ export function PatientVisitDetailPage() {
             data-testid="completed-visit-detail-clinical-note"
           >
             <CardHeader>
-              <CardTitle>Clinical Note</CardTitle>
+              <div className="flex flex-col gap-2">
+                <CardTitle>Clinical Note</CardTitle>
+                <CardDescription>Read-only clinical note captured at completion.</CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
               <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7 text-slate-700">
@@ -435,7 +446,10 @@ export function PatientVisitDetailPage() {
             data-testid="completed-visit-detail-recommendation"
           >
             <CardHeader>
-              <CardTitle>Recommendation</CardTitle>
+              <div className="flex flex-col gap-2">
+                <CardTitle>Recommendation</CardTitle>
+                <CardDescription>Clinical guidance recorded during Visit Completion.</CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
               <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7 text-slate-700">
@@ -455,7 +469,7 @@ export function PatientVisitDetailPage() {
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle>Follow-up Guidance</CardTitle>
+                  <CardTitle>Follow-up / Next Step</CardTitle>
                   {hasFollowUp ? (
                     <Badge variant="warning">Review next action</Badge>
                   ) : (
@@ -486,39 +500,50 @@ export function PatientVisitDetailPage() {
               ) : null}
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <MetricTile
-                label="Source visit"
-                value={formatPatientDate(visit.visitDate)}
-                description={
-                  visit.linkedAppointment
-                    ? 'Recorded from an appointment-linked completed visit.'
-                    : 'Recorded from a completed visit.'
-                }
-                tone="warning"
-              />
-              <MetricTile
-                label="Suggested next step"
-                value={getNextStepLabel(visit.nextStep)}
-                description="Captured as clinical guidance, not scheduling."
-                tone={hasNextStep ? 'success' : 'default'}
-              />
-            </div>
-            {hasRecommendation ? (
-              <div className="rounded-md border border-amber-200 bg-white p-4">
-                <div className="text-sm font-semibold text-slate-950">
-                  Recommendation
+          <CardContent className="space-y-4 sm:space-y-5">
+            {hasFollowUp ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <MetricTile
+                    label="Source visit"
+                    value={formatPatientDate(visit.visitDate)}
+                    description={
+                      visit.linkedAppointment
+                        ? 'Recorded from an appointment-linked completed visit.'
+                        : 'Recorded from a completed visit.'
+                    }
+                    tone="warning"
+                  />
+                  <MetricTile
+                    label="Suggested next step"
+                    value={getNextStepLabel(visit.nextStep)}
+                    description="Captured as clinical guidance, not scheduling."
+                    tone={hasNextStep ? 'success' : 'default'}
+                  />
                 </div>
-                <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-7 text-slate-700">
-                  {visit.recommendation}
+                {hasRecommendation ? (
+                  <div className="rounded-md border border-amber-200 bg-white p-4">
+                    <div className="text-sm font-semibold text-slate-950">
+                      Recommendation
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-7 text-slate-700">
+                      {visit.recommendation}
+                    </p>
+                  </div>
+                ) : null}
+                <InlineNotice variant="info">
+                  This follow-up guidance does not create an appointment,
+                  treatment-plan task, reminder, billing item, or material
+                  record.
+                </InlineNotice>
+              </>
+            ) : (
+              <div className="rounded-md border border-slate-200 bg-white p-5">
+                <p className="text-sm leading-6 text-slate-600">
+                  No follow-up guidance was recorded for this completed visit.
                 </p>
               </div>
-            ) : null}
-            <InlineNotice variant="info">
-              This follow-up guidance does not create an appointment,
-              treatment-plan task, reminder, billing item, or material record.
-            </InlineNotice>
+            )}
           </CardContent>
         </Card>
 

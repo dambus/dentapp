@@ -199,7 +199,7 @@ export function PatientTodayPanel({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex h-11 w-11 items-center justify-center rounded-md bg-cyan-700 text-base font-semibold text-white">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-cyan-700 text-sm font-semibold text-white">
                 TD
               </div>
               <CardTitle>Today / Active Workflow</CardTitle>
@@ -222,10 +222,10 @@ export function PatientTodayPanel({
             </CardDescription>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             {todayAppointment ? (
               <Button
-                className="min-h-10"
+                className="min-h-10 w-full sm:w-auto"
                 onClick={() => onOpenAppointment(todayAppointment.id)}
                 size="sm"
                 variant="secondary"
@@ -234,7 +234,7 @@ export function PatientTodayPanel({
               </Button>
             ) : null}
             <Button
-              className="min-h-10"
+              className="min-h-10 w-full sm:w-auto"
               disabled={isArchived || !canCompleteVisit}
               onClick={primaryAction.onClick}
               size="sm"
@@ -245,13 +245,13 @@ export function PatientTodayPanel({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4 sm:space-y-5">
         {workflowError ? (
           <InlineNotice variant="warning">{workflowError}</InlineNotice>
         ) : null}
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
-          <div className="rounded-md border border-cyan-200 bg-white p-5 shadow-sm">
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
+          <div className="rounded-md border border-cyan-200 bg-white p-4 shadow-sm sm:p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="info">Active clinical state</Badge>
               {patient.medicalWarnings.length > 0 ? (
@@ -283,7 +283,7 @@ export function PatientTodayPanel({
             ) : null}
           </div>
 
-          <div className="rounded-md border border-cyan-200 bg-white p-5 shadow-sm">
+          <div className="rounded-md border border-cyan-200 bg-white p-4 shadow-sm sm:p-5">
             <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
               Today appointment
             </div>
@@ -318,7 +318,7 @@ export function PatientTodayPanel({
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
           <MetricTile
             label="Planned work"
             tone="info"

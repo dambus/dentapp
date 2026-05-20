@@ -158,7 +158,42 @@ export function PatientFollowUpSummary({
   }
 
   if (!latestFollowUp) {
-    return null
+    return (
+      <Card
+        className="border-amber-200 bg-amber-50/30 shadow-sm"
+        data-testid="patient-follow-up-summary"
+      >
+        <CardHeader>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>Follow-up / Next Step</CardTitle>
+                <Badge variant="neutral">No follow-up signal</Badge>
+              </div>
+              <CardDescription>
+                Follow-up context appears after completed visits include a next
+                step or recommendation.
+              </CardDescription>
+            </div>
+            <Button
+              className="min-h-10"
+              onClick={() => void loadFollowUps()}
+              size="sm"
+              variant="secondary"
+            >
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border border-amber-200/70 bg-white p-5">
+            <p className="text-sm leading-6 text-slate-600">
+              No pending follow-up recommendation is currently recorded.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -167,38 +202,42 @@ export function PatientFollowUpSummary({
       data-testid="patient-follow-up-summary"
     >
       <CardHeader>
-        <div className="flex flex-wrap items-center gap-2">
-          <CardTitle>Follow-up / Next Step</CardTitle>
-          <Badge variant="warning">Pending next action</Badge>
-          {followUpVisits.length > 1 ? (
-            <Badge variant="info">{followUpVisits.length} recorded</Badge>
-          ) : null}
-        </div>
-        <CardDescription>
-          Latest recommendation from completed visit history.
-        </CardDescription>
-        <div className="flex flex-wrap gap-2 pt-1">
-          <Button
-            className="min-h-10"
-            onClick={() => onOpenTimelineVisit(latestFollowUp.id)}
-            size="sm"
-            variant="secondary"
-          >
-            View source visit
-          </Button>
-          {onScheduleAppointment ? (
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Follow-up / Next Step</CardTitle>
+              <Badge variant="warning">Pending next action</Badge>
+              {followUpVisits.length > 1 ? (
+                <Badge variant="info">{followUpVisits.length} recorded</Badge>
+              ) : null}
+            </div>
+            <CardDescription>
+              Latest recommendation from completed visit history.
+            </CardDescription>
+          </div>
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             <Button
-              className="min-h-10"
-              onClick={() => onScheduleAppointment(appointmentReason)}
+              className="min-h-10 w-full sm:w-auto"
+              onClick={() => onOpenTimelineVisit(latestFollowUp.id)}
               size="sm"
+              variant="secondary"
             >
-              Schedule follow-up
+              View source visit
             </Button>
-          ) : null}
+            {onScheduleAppointment ? (
+              <Button
+                className="min-h-10 w-full sm:w-auto"
+                onClick={() => onScheduleAppointment(appointmentReason)}
+                size="sm"
+              >
+                Schedule follow-up
+              </Button>
+            ) : null}
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 sm:space-y-5">
         <div className="grid gap-3 sm:grid-cols-3">
           <MetricTile
             label="Source visit date"
