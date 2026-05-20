@@ -498,6 +498,46 @@ async function clickAppointmentCardMenuAction(cdp, cardText, actionText) {
   await clickByText(cdp, actionText)
 }
 
+async function getAppointmentCardButtonTexts(cdp, cardText) {
+  return evaluate(
+    cdp,
+    `(() => {
+      const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+      const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(cardText)}));
+      if (!card) return null;
+      return Array.from(card.querySelectorAll('button, a'))
+        .map((element) => element.textContent?.trim() ?? '')
+        .filter(Boolean);
+    })()`,
+  )
+}
+
+async function getAppointmentCardMenuTexts(cdp, cardText) {
+  const opened = await evaluate(
+    cdp,
+    `(() => {
+      const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+      const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(cardText)}));
+      if (!card) return null;
+      const menuTrigger = card.querySelector('[aria-label="Appointment actions"]');
+      if (!(menuTrigger instanceof HTMLButtonElement)) return null;
+      menuTrigger.click();
+      return true;
+    })()`,
+  )
+
+  if (!opened) {
+    throw new Error(`Could not open appointment action menu in card containing ${cardText}`)
+  }
+
+  return evaluate(
+    cdp,
+    `Array.from(document.querySelectorAll('[role="menuitem"]'))
+      .map((element) => element.textContent?.trim() ?? '')
+      .filter(Boolean)`,
+  )
+}
+
 async function typeInto(cdp, selector, value) {
   const ok = await evaluate(
     cdp,
@@ -775,6 +815,9 @@ async function main() {
     [
       '--headless=new',
       '--disable-gpu',
+      '--disable-dev-shm-usage',
+      '--disable-extensions',
+      '--no-sandbox',
       '--no-first-run',
       '--no-default-browser-check',
       `--remote-debugging-port=${port}`,
@@ -809,7 +852,7 @@ async function main() {
     await navigate(cdp, PATIENT_URL)
 
     await waitFor(
-      () => textIncludes(cdp, 'No upcoming appointment is scheduled for this patient.'),
+      () => textIncludes(cdp, 'No upcoming appointment scheduled'),
       'empty appointment state',
     )
     await waitFor(
@@ -1302,7 +1345,7 @@ async function main() {
       'status polish appointment reason visible',
     )
     await clickSelector(cdp, '[aria-label="Appointment status actions"]')
-    await clickByText(cdp, 'Cancel')
+    await clickByText(cdp, 'Cancel appointment')
     await waitFor(
       () => textIncludes(cdp, 'Appointment status was updated successfully.'),
       'cancelled appointment status feedback',
@@ -1400,6 +1443,35 @@ async function main() {
       'appointments today shortcut returns to scheduled appointment',
     )
 
+    const scheduledCardButtonTexts = await getAppointmentCardButtonTexts(
+      cdp,
+      EXPECTED_PREFILL,
+    )
+
+    if (
+      !scheduledCardButtonTexts?.includes('Start visit') ||
+      scheduledCardButtonTexts.includes('Cancel appointment') ||
+      scheduledCardButtonTexts.includes('Mark no-show')
+    ) {
+      throw new Error(
+        'Scheduled appointment card should keep lifecycle actions out of primary buttons.',
+      )
+    }
+
+    const scheduledCardMenuTexts = await getAppointmentCardMenuTexts(
+      cdp,
+      EXPECTED_PREFILL,
+    )
+
+    if (
+      !scheduledCardMenuTexts.includes('Cancel appointment') ||
+      !scheduledCardMenuTexts.includes('Mark no-show')
+    ) {
+      throw new Error(
+        'Scheduled appointment card should expose cancel and no-show lifecycle actions.',
+      )
+    }
+
     await clickAppointmentCardAction(cdp, EXPECTED_PREFILL, 'Details')
     await waitFor(
       () => textIncludes(cdp, 'Appointment Detail'),
@@ -1420,6 +1492,31 @@ async function main() {
         ),
       'appointment detail ready-to-start lifecycle messaging',
     )
+    const scheduledDetailPrimaryLifecycleVisible = await evaluate(
+      cdp,
+      `Array.from(document.querySelectorAll('button, a'))
+        .some((element) => ['Cancel appointment', 'Mark no-show'].includes(element.textContent?.trim() ?? ''))`,
+    )
+
+    if (scheduledDetailPrimaryLifecycleVisible) {
+      throw new Error('Scheduled appointment detail should keep lifecycle actions in the secondary menu.')
+    }
+
+    await clickSelector(cdp, '[aria-label="Appointment status actions"]')
+    const scheduledDetailMenuTexts = await evaluate(
+      cdp,
+      `Array.from(document.querySelectorAll('[role="menuitem"]'))
+        .map((element) => element.textContent?.trim() ?? '')
+        .filter(Boolean)`,
+    )
+
+    if (
+      !scheduledDetailMenuTexts.includes('Cancel appointment') ||
+      !scheduledDetailMenuTexts.includes('Mark no-show')
+    ) {
+      throw new Error('Scheduled appointment detail should expose cancel and no-show lifecycle actions.')
+    }
+
     await clickByText(cdp, 'Start visit')
     await waitFor(
       () =>
@@ -1525,6 +1622,16 @@ async function main() {
         ),
       'appointment detail in-progress lifecycle messaging',
     )
+    const inProgressLifecycleActionsVisible = await evaluate(
+      cdp,
+      `Array.from(document.querySelectorAll('button, a'))
+        .some((element) => ['Cancel appointment', 'Mark no-show'].includes(element.textContent?.trim() ?? ''))`,
+    )
+
+    if (inProgressLifecycleActionsVisible) {
+      throw new Error('In-progress appointment detail should not show destructive lifecycle actions.')
+    }
+
     await clickByText(cdp, 'Continue visit')
     await waitFor(
       () =>
@@ -1647,7 +1754,7 @@ async function main() {
               text.includes(${JSON.stringify(BRIDGE_NOTE)}) &&
               text.includes(${JSON.stringify(BRIDGE_RECOMMENDATION)}) &&
               text.includes(${JSON.stringify(BRIDGE_NEXT_STEP_LABEL)}) &&
-              text.includes('Follow-up Guidance') &&
+              text.includes('Follow-up / Next Step') &&
               text.includes('Linked Appointment');
           })()`,
         ),
@@ -1793,7 +1900,7 @@ async function main() {
       'patient treatment plan read-only entry point',
     )
     await waitFor(
-      () => textIncludes(cdp, 'No upcoming appointment is scheduled for this patient.'),
+      () => textIncludes(cdp, 'No upcoming appointment scheduled'),
       'completed appointment removed from upcoming summary',
     )
 
@@ -1835,6 +1942,16 @@ async function main() {
       throw new Error('Completed appointment detail should not show Start visit.')
     }
 
+    const completedDetailLifecycleVisible = await evaluate(
+      cdp,
+      `Array.from(document.querySelectorAll('button, a'))
+        .some((element) => ['Cancel appointment', 'Mark no-show'].includes(element.textContent?.trim() ?? ''))`,
+    )
+
+    if (completedDetailLifecycleVisible) {
+      throw new Error('Completed appointment detail should not show cancel or no-show lifecycle actions.')
+    }
+
     await navigate(cdp, APPOINTMENTS_URL)
     await waitFor(
       () =>
@@ -1853,6 +1970,18 @@ async function main() {
         ),
       'daily schedule completed appointment card',
     )
+    const completedCardMenuTexts = await getAppointmentCardMenuTexts(
+      cdp,
+      EXPECTED_PREFILL,
+    )
+
+    if (
+      completedCardMenuTexts.includes('Cancel appointment') ||
+      completedCardMenuTexts.includes('Mark no-show') ||
+      completedCardMenuTexts.includes('Complete')
+    ) {
+      throw new Error('Completed appointment card should not expose lifecycle status actions.')
+    }
 
     await navigate(cdp, `${PATIENT_URL}/visit-completion`)
     await waitFor(() => textIncludes(cdp, 'Visit Completion'), 'normal visit route')

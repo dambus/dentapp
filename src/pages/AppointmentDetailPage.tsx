@@ -225,6 +225,8 @@ export function AppointmentDetailPage() {
   const hasOpenVisit = Boolean(appointment.openVisit)
   const hasCompletedVisit = Boolean(appointment.linkedVisit)
   const canStartVisit = appointment.status === 'scheduled' && !hasCompletedVisit
+  const canUpdateLifecycle =
+    appointment.status === 'scheduled' && !hasOpenVisit && !hasCompletedVisit
   const primaryVisitActionLabel = hasOpenVisit ? 'Continue visit' : 'Start visit'
   const linkedVisitRecommendation =
     appointment.linkedVisit?.recommendation.trim() ?? ''
@@ -254,13 +256,15 @@ export function AppointmentDetailPage() {
               Open patient
             </Button>
             {canStartVisit ? (
+              <Button
+                disabled={Boolean(statusSubmitting)}
+                onClick={startVisit}
+              >
+                {primaryVisitActionLabel}
+              </Button>
+            ) : null}
+            {canUpdateLifecycle ? (
               <>
-                <Button
-                  disabled={Boolean(statusSubmitting)}
-                  onClick={startVisit}
-                >
-                  {primaryVisitActionLabel}
-                </Button>
                 <ActionMenu
                   disabled={Boolean(statusSubmitting)}
                   items={[
@@ -279,7 +283,7 @@ export function AppointmentDetailPage() {
                       label:
                         statusSubmitting === 'cancelled'
                           ? 'Updating...'
-                          : 'Cancel',
+                          : 'Cancel appointment',
                       onSelect: () => void handleStatusUpdate('cancelled'),
                       tone: 'danger',
                     },
@@ -289,7 +293,7 @@ export function AppointmentDetailPage() {
                       label:
                         statusSubmitting === 'no_show'
                           ? 'Updating...'
-                          : 'No-show',
+                          : 'Mark no-show',
                       onSelect: () => void handleStatusUpdate('no_show'),
                       tone: 'danger',
                     },

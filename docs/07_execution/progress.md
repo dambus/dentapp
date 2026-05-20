@@ -2711,6 +2711,51 @@ Initial stack:
 
 ---
 
+### Completed (Task 53 - Restore Appointment Lifecycle Secondary Actions)
+
+- Root cause found: the status transitions still existed, but recent action
+  hierarchy/card polish moved them into compact overflow menus with shortened
+  labels (`Cancel`, `No-show`), making the supported appointment lifecycle
+  actions hard to discover.
+- Restored explicit secondary lifecycle labels:
+	- `Cancel appointment` for the existing `cancelled` status update,
+	- `Mark no-show` for the existing `no_show` status update.
+- Kept primary clinical actions context-aware:
+	- scheduled: `Start visit`,
+	- open draft / in progress: `Continue visit`,
+	- completed: `View completed visit` / `View visit`,
+	- cancelled/no-show: no primary Visit Completion action.
+- Kept lifecycle actions in secondary `ActionMenu` controls on Appointment
+  Detail and daily/weekly appointment cards.
+- Hid destructive lifecycle actions when a linked open or completed Visit
+  Completion record exists.
+- Expanded `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` to verify
+  scheduled lifecycle menu visibility, primary action separation, in-progress
+  lifecycle hiding, completed appointment card/detail behavior, and the existing
+  Visit Completion flow.
+- No schema changes, new lifecycle states, provider assignment, check-in/in-room
+  flow, autosave, billing/payments/materials/attachments, treatment-plan
+  mutation, reminders, or tasks were added.
+- Documented the task in
+  `docs/design/task-53-restore-appointment-lifecycle-secondary-actions.md`.
+
+### Verification (Task 53)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
 ### Completed (Task 44 - Follow-up and Next Visit Recommendation Flow)
 
 - Polished follow-up display using existing Visit Completion `recommendation` and `next_step` fields.

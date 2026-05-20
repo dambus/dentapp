@@ -194,6 +194,7 @@ Status legend:
   - [x] Task D3: Appointment Type & 15-Min Duration Standardization
   - [x] Task D5: Patient Detail Mobile Navigation Redesign
   - [x] Task D6: Visit Completion Mobile Sticky Progress
+  - [x] Task 53: Restore Appointment Lifecycle Secondary Actions
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -247,6 +248,7 @@ Status legend:
 - [x] Task D3 - Appointment Type & 15-Min Duration Standardization
 - [x] Task D5 - Patient Detail Mobile Navigation Redesign
 - [x] Task D6 - Visit Completion Mobile Sticky Progress
+- [x] Task 53 - Restore Appointment Lifecycle Secondary Actions
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -563,6 +565,23 @@ Suggested direction:
 - review the current product/design implementation phase,
 - rebalance upcoming work after D1-D6,
 - decide whether scheduling, patient detail IA, or visit workflow polish should come next.
+
+### Completed Recommended Task
+
+Task 53 - Restore Appointment Lifecycle Secondary Actions
+
+Completed direction:
+
+- restored explicit `Cancel appointment` and `Mark no-show` labels for existing
+  supported appointment status transitions,
+- kept lifecycle changes in secondary action menus so they do not compete with
+  `Start visit`, `Continue visit`, or `View visit`,
+- hid destructive lifecycle actions once an appointment has an open or completed
+  linked Visit Completion record,
+- expanded browser smoke coverage for scheduled, in-progress, and completed
+  lifecycle action visibility,
+- kept schema, provider assignment, check-in/room states, autosave, billing,
+  attachments, treatment-plan mutation, reminders, and tasks out of scope.
 
 ### Later Appointment Direction
 

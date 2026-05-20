@@ -1,15 +1,4 @@
 import {
-  CalendarClock,
-  CalendarX,
-  CheckCircle2,
-  Clock3,
-  FileText,
-  Stethoscope,
-  User,
-  UserX,
-} from 'lucide-react'
-
-import {
   ActionMenu,
   Badge,
   Button,
@@ -22,6 +11,16 @@ import {
   getAppointmentDurationLabel,
 } from './appointmentDisplay'
 import { detectAppointmentTypeFromReason } from './appointmentTypes'
+import {
+  CalendarClock,
+  CalendarX,
+  CheckCircle2,
+  Clock3,
+  FileText,
+  Stethoscope,
+  User,
+  UserX,
+} from 'lucide-react'
 import type {
   Appointment,
   AppointmentLinkedVisitSummary,
@@ -101,6 +100,11 @@ export function AppointmentCard({
   const canStartOrContinueVisit =
     appointment.status === 'scheduled' && onStartVisit && !appointment.linkedVisit
   const canViewVisit = appointment.linkedVisit && onViewVisit
+  const canUpdateLifecycle =
+    appointment.status === 'scheduled' &&
+    !appointment.openVisit &&
+    !appointment.linkedVisit &&
+    onStatusChange
   const followUpLabel = getFollowUpLabel(appointment.linkedVisit)
   const durationLabel = getAppointmentDurationLabel(
     appointment.scheduled_start,
@@ -125,7 +129,7 @@ export function AppointmentCard({
           onSelect: onOpenPatient,
         }
       : null,
-    appointment.status === 'scheduled' && !appointment.openVisit && onStatusChange
+    canUpdateLifecycle
       ? {
           disabled: isBusy,
           icon: CheckCircle2,
@@ -134,20 +138,24 @@ export function AppointmentCard({
           onSelect: () => onStatusChange('completed'),
         }
       : null,
-    appointment.status === 'scheduled' && onStatusChange
+    canUpdateLifecycle
       ? {
           disabled: isBusy,
           icon: CalendarX,
-          label: statusUpdateStatus === 'cancelled' ? 'Updating...' : 'Cancel',
+          label:
+            statusUpdateStatus === 'cancelled'
+              ? 'Updating...'
+              : 'Cancel appointment',
           onSelect: () => onStatusChange('cancelled'),
           tone: 'danger' as const,
         }
       : null,
-    appointment.status === 'scheduled' && onStatusChange
+    canUpdateLifecycle
       ? {
           disabled: isBusy,
           icon: UserX,
-          label: statusUpdateStatus === 'no_show' ? 'Updating...' : 'No-show',
+          label:
+            statusUpdateStatus === 'no_show' ? 'Updating...' : 'Mark no-show',
           onSelect: () => onStatusChange('no_show'),
           tone: 'danger' as const,
         }
