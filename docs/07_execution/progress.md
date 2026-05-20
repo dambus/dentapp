@@ -2526,6 +2526,50 @@ Initial stack:
 
 ---
 
+### Completed (Task 47 - Appointment Creation Flow Polish)
+
+- Polished the existing patient-level appointment creation form in
+  `PatientAppointmentSummary`:
+	- clearer `Create appointment` section title,
+	- follow-up context badge and notice when launched from follow-up guidance,
+	- date/time/type/duration controls kept prominent,
+	- editable reason/context and notes fields,
+	- mobile-friendly spacing and action sizing,
+	- `Cancel` action to reset local form state.
+- Improved follow-up prefill behavior:
+	- reason is prefilled from follow-up guidance,
+	- user can edit the reason,
+	- a new prefill request does not overwrite an already edited reason,
+	- URL/search-param based prefill remains supported through `PatientDetailPage`.
+- Improved post-create behavior:
+	- success feedback is clear,
+	- created appointment is stored in component state,
+	- `View appointment` opens the appointment detail page,
+	- patient upcoming appointments refresh after create.
+- Updated browser smoke coverage to verify follow-up prefill, manual appointment
+  creation, post-create success feedback, appointment detail access, and existing
+  patient/schedule visibility.
+- No autosave, billing, payments, materials, attachments, treatment-plan
+  mutation, automatic appointment creation, reminders/tasks, new follow-up
+  schema, provider assignment schema, broad scheduling redesign, or global
+  calendar redesign was added.
+- Documented the task in
+  `docs/design/task-47-appointment-creation-flow-polish.md`.
+
+### Verification (Task 47 - Appointment Creation Flow Polish)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase URL, anon key, and service key loaded in the shell.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
 ### Completed (Task 46 - Follow-up Scheduling Entry Point)
 
 - Confirmed appointment creation already exists in the patient detail appointment

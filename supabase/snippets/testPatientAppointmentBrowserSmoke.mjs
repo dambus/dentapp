@@ -852,7 +852,7 @@ async function main() {
 
     await clickByText(cdp, 'Schedule follow-up')
     await waitFor(
-      () => textIncludes(cdp, 'Follow-up context copied into appointment reason.'),
+      () => textIncludes(cdp, 'Follow-up context is ready.'),
       'follow-up prefill feedback',
     )
 
@@ -947,6 +947,19 @@ async function main() {
     await waitFor(
       () => textIncludes(cdp, 'Appointment was created successfully.'),
       'appointment create success',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const success = document.querySelector('[data-testid="patient-appointment-success"]');
+            const text = success?.textContent ?? '';
+            return text.includes('Appointment was created successfully.') &&
+              text.includes('View appointment');
+          })()`,
+        ),
+      'appointment create success detail action',
     )
     await waitFor(
       () => textIncludes(cdp, EXPECTED_PREFILL),

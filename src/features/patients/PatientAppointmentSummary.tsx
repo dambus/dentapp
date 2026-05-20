@@ -311,11 +311,15 @@ export function PatientAppointmentSummary({
   )
   const [formError, setFormError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [prefillNotice, setPrefillNotice] = useState<string | null>(null)
+  const [lastCreatedAppointment, setLastCreatedAppointment] =
+    useState<Appointment | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [statusSubmitting, setStatusSubmitting] =
     useState<AppointmentStatus | null>(null)
   const createSubmittingRef = useRef(false)
   const statusSubmittingRef = useRef(false)
+  const appliedPrefillReasonRef = useRef('')
 
   async function loadUpcomingAppointments(showLoading = true) {
     if (showLoading) {
@@ -382,9 +386,17 @@ export function PatientAppointmentSummary({
       setFormValues((currentValues) => ({
         ...currentValues,
         appointmentTypeId: getAppointmentTypeForPrefill(prefillReason),
-        reason: prefillReason.trim(),
+        reason:
+          !currentValues.reason.trim() ||
+          currentValues.reason === appliedPrefillReasonRef.current
+            ? prefillReason.trim()
+            : currentValues.reason,
       }))
-      setSuccessMessage('Follow-up context copied into appointment reason.')
+      appliedPrefillReasonRef.current = prefillReason.trim()
+      setPrefillNotice(
+        'Follow-up context is ready. Review the reason, choose date and time, then schedule manually.',
+      )
+      setSuccessMessage(null)
       setFormError(null)
       document
         .getElementById('patient-appointment-form')
@@ -405,6 +417,7 @@ export function PatientAppointmentSummary({
 
     setFormError(null)
     setSuccessMessage(null)
+    setLastCreatedAppointment(null)
 
     if (schedulePreview.error || !schedulePreview.scheduledStart) {
       logAppointmentCreateDiagnostics({
@@ -440,6 +453,8 @@ export function PatientAppointmentSummary({
       }
 
       setSuccessMessage(result.message ?? 'Appointment was created successfully.')
+      setPrefillNotice(null)
+      setLastCreatedAppointment(result.appointment ?? null)
       setFormValues(getDefaultAppointmentValues())
       await loadUpcomingAppointments(false)
     } catch (error) {
@@ -493,6 +508,9 @@ export function PatientAppointmentSummary({
       ...currentValues,
       [field]: value,
     }))
+    if (field === 'reason') {
+      setPrefillNotice(null)
+    }
   }
 
   function updateAppointmentType(value: string) {
@@ -523,6 +541,15 @@ export function PatientAppointmentSummary({
 
   function openAppointmentDetail(appointmentId: string) {
     navigate(getAppointmentDetailPath(appointmentId))
+  }
+
+  function resetAppointmentForm() {
+    setFormValues(getDefaultAppointmentValues())
+    setFormError(null)
+    setPrefillNotice(null)
+    setSuccessMessage(null)
+    setLastCreatedAppointment(null)
+    appliedPrefillReasonRef.current = ''
   }
 
   return (
@@ -603,23 +630,45 @@ export function PatientAppointmentSummary({
         )}
 
         {successMessage ? (
-          <InlineNotice variant="success">{successMessage}</InlineNotice>
+          <InlineNotice
+            data-testid="patient-appointment-success"
+            variant="success"
+          >
+            <span>{successMessage}</span>
+            {lastCreatedAppointment ? (
+              <Button
+                className="ml-0 mt-3 sm:ml-3 sm:mt-0"
+                onClick={() => openAppointmentDetail(lastCreatedAppointment.id)}
+                size="sm"
+                variant="secondary"
+              >
+                View appointment
+              </Button>
+            ) : null}
+          </InlineNotice>
         ) : null}
         {formError ? (
           <InlineNotice variant="danger">{formError}</InlineNotice>
         ) : null}
 
         <div
-          className="rounded-md border border-slate-200 bg-white p-4 shadow-sm"
+          className="rounded-md border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+          data-testid="patient-appointment-form"
           id="patient-appointment-form"
         >
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <div className="text-sm font-semibold text-slate-950">
-                Schedule appointment
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="text-base font-semibold text-slate-950">
+                  Create appointment
+                </div>
+                {prefillNotice ? (
+                  <Badge variant="warning">Follow-up context</Badge>
+                ) : null}
               </div>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-              Creates a scheduled appointment linked to this patient. No visit, reminder, or calendar event is created.
+                Choose the appointment details and submit manually. No visit,
+                reminder, or task is created from this form.
               </p>
             </div>
             {schedulePreview.scheduledStart ? (
@@ -629,7 +678,13 @@ export function PatientAppointmentSummary({
             ) : null}
           </div>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {prefillNotice ? (
+            <InlineNotice className="mt-4" variant="info">
+              {prefillNotice}
+            </InlineNotice>
+          ) : null}
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label>
               <FieldLabel>Date</FieldLabel>
               <TextInput
@@ -684,7 +739,7 @@ export function PatientAppointmentSummary({
             </label>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
             <label>
               <FieldLabel>Reason / context</FieldLabel>
               <TextInput
@@ -697,6 +752,12 @@ export function PatientAppointmentSummary({
                   updateFormValue('reason', event.target.value)
                 }
               />
+              {prefillNotice ? (
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Prefilled from follow-up guidance. You can edit it before
+                  scheduling.
+                </p>
+              ) : null}
             </label>
             <label>
               <FieldLabel>Notes</FieldLabel>
@@ -716,13 +777,22 @@ export function PatientAppointmentSummary({
             <FieldError message={schedulePreview.error} />
           ) : null}
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Button
+              className="min-h-11 sm:w-auto"
               data-testid="patient-appointment-submit"
               disabled={isSubmitting || isLoading || Boolean(schedulePreview.error)}
               onClick={() => void handleCreateAppointment()}
             >
               {isSubmitting ? 'Scheduling...' : 'Schedule appointment'}
+            </Button>
+            <Button
+              className="min-h-11 sm:w-auto"
+              disabled={isSubmitting}
+              onClick={resetAppointmentForm}
+              variant="secondary"
+            >
+              Cancel
             </Button>
           </div>
         </div>

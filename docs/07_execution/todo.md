@@ -187,6 +187,7 @@ Status legend:
   - [x] Task 52: Appointment Module QA & UX Notes
   - [x] Task 45: Patient Overview Clinical Summary Polish
   - [x] Task 46: Follow-up Scheduling Entry Point
+  - [x] Task 47: Appointment Creation Flow Polish
   - [x] Task D1: Design System Icon & Action Pattern
   - [x] Task D2: Appointment Card Redesign
   - [x] Task D3: Appointment Type & 15-Min Duration Standardization
@@ -238,6 +239,7 @@ Status legend:
 - [x] Task 52 - Appointment Module QA & UX Notes
 - [x] Task 45 - Patient Overview Clinical Summary Polish
 - [x] Task 46 - Follow-up Scheduling Entry Point
+- [x] Task 47 - Appointment Creation Flow Polish
 - [x] Task D1 - Design System Icon & Action Pattern
 - [x] Task D2 - Appointment Card Redesign
 - [x] Task D3 - Appointment Type & 15-Min Duration Standardization
@@ -388,6 +390,20 @@ Completed direction:
 - require explicit user submit before appointment creation,
 - avoid automatic appointment creation, reminders, tasks, new follow-up schema,
   and fake scheduled appointments.
+
+### Completed Recommended Task
+
+Task 47 - Appointment Creation Flow Polish
+
+Completed direction:
+
+- polish the existing patient appointment form as the target for follow-up
+  scheduling,
+- show follow-up prefill context clearly and keep the reason editable,
+- avoid overwriting user-edited reason text,
+- keep appointment creation manual,
+- show success feedback and appointment detail access after creation,
+- refresh existing patient appointment context.
 
 ### Completed Recommended Task
 
