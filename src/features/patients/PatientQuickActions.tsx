@@ -54,6 +54,14 @@ const treatmentPlanWriteRoles: AppRole[] = [
   'specialist',
 ]
 
+const treatmentPlanReadRoles: AppRole[] = [
+  'owner_admin',
+  'doctor',
+  'specialist',
+  'assistant',
+  'reception_admin',
+]
+
 const medicalRecordEditRoles: AppRole[] = [
   'owner_admin',
   'doctor',
@@ -94,7 +102,7 @@ const actionMarkers: Record<string, string> = {
   'add-clinical-note': 'N',
   'update-odontogram': 'O',
   'view-odontogram': 'O',
-  'add-treatment-plan-item': 'TP',
+  'view-treatment-plan': 'TP',
   'edit-medical-record': 'MR',
   'schedule-next-appointment': 'S',
   'open-timeline': 'T',
@@ -252,14 +260,16 @@ export function PatientQuickActions({
     })
   }
 
-  if (roleCan(role, treatmentPlanWriteRoles)) {
+  if (roleCan(role, treatmentPlanReadRoles)) {
     actions.push({
-      id: 'add-treatment-plan-item',
-      title: 'Add Treatment Plan Item',
+      id: 'view-treatment-plan',
+      title: 'Treatment Plan',
       description:
-        'Jump to Treatment Plans. Select a plan there before adding a planned item.',
+        roleCan(role, treatmentPlanWriteRoles)
+          ? 'Open the patient treatment plan section. Existing plan editing remains in that section.'
+          : 'Open the read-only patient treatment plan section.',
       status: 'available',
-      cta: 'Open treatment plans',
+      cta: 'View treatment plan',
       onSelect: onOpenTreatmentPlans,
     })
   }

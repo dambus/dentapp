@@ -188,6 +188,7 @@ Status legend:
   - [x] Task 45: Patient Overview Clinical Summary Polish
   - [x] Task 46: Follow-up Scheduling Entry Point
   - [x] Task 47: Appointment Creation Flow Polish
+  - [x] Task 48: Treatment Plan Read-only Foundation
   - [x] Task D1: Design System Icon & Action Pattern
   - [x] Task D2: Appointment Card Redesign
   - [x] Task D3: Appointment Type & 15-Min Duration Standardization
@@ -240,6 +241,7 @@ Status legend:
 - [x] Task 45 - Patient Overview Clinical Summary Polish
 - [x] Task 46 - Follow-up Scheduling Entry Point
 - [x] Task 47 - Appointment Creation Flow Polish
+- [x] Task 48 - Treatment Plan Read-only Foundation
 - [x] Task D1 - Design System Icon & Action Pattern
 - [x] Task D2 - Appointment Card Redesign
 - [x] Task D3 - Appointment Type & 15-Min Duration Standardization
@@ -404,6 +406,18 @@ Completed direction:
 - keep appointment creation manual,
 - show success feedback and appointment detail access after creation,
 - refresh existing patient appointment context.
+
+### Completed Recommended Task
+
+Task 48 - Treatment Plan Read-only Foundation
+
+Completed direction:
+
+- confirm treatment plan schema/service already exists,
+- add a read-only treatment plan summary to the patient overview clinical area,
+- show existing plan status/items or a clean empty state,
+- link to the existing patient treatment plan section,
+- keep Visit Completion separate from treatment plan mutation.
 
 ### Completed Recommended Task
 

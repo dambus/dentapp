@@ -14,6 +14,7 @@ import { getPatientFullName } from '../features/patients/patientDisplay'
 import { PatientQuickActions } from '../features/patients/PatientQuickActions'
 import { PatientSnapshot } from '../features/patients/PatientSnapshot'
 import { PatientTodayPanel } from '../features/patients/PatientTodayPanel'
+import { PatientTreatmentPlanSummary } from '../features/patients/PatientTreatmentPlanSummary'
 import {
   archivePatient,
   getPatientById,
@@ -423,6 +424,11 @@ export function PatientDetailPage() {
       <PatientLatestClinicalActivity
         patientId={patient.id}
         onOpenTimeline={() => openFullRecordSection('timeline')}
+      />
+
+      <PatientTreatmentPlanSummary
+        patientId={patient.id}
+        onOpenTreatmentPlans={() => openFullRecordSection('treatment-plans')}
       />
 
       <PatientFollowUpSummary

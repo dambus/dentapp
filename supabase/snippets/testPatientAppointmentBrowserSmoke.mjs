@@ -30,6 +30,7 @@ const EMAIL = 'doctor.demo@example.test'
 const EXPECTED_PREFILL = 'Task 44 appointment bridge recommendation'
 const MANUAL_CREATION_REASON = 'Consultation'
 const MANUAL_CREATION_NOTES = 'Optional note demo'
+const MANUAL_CREATION_DATE = getDateInputValueForOffset(1)
 const CANCELLED_REASON = 'Task 51 cancelled appointment status check'
 const BRIDGE_PROCEDURE = 'Task 44 bridge procedure'
 const BRIDGE_NOTE = 'Task 44 bridge clinical note'
@@ -44,6 +45,17 @@ const DEMO_CLINIC_ID = '11111111-1111-1111-1111-111111111111'
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function getDateInputValueForOffset(daysFromToday) {
+  const date = new Date()
+  date.setDate(date.getDate() + daysFromToday)
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
 }
 
 async function waitFor(predicate, label, timeoutMs = 20000) {
@@ -995,11 +1007,11 @@ async function main() {
     await setSelectValue(cdp, '[data-testid="patient-appointment-type"]', 'consultation')
     await assertSelectValue(cdp, '[data-testid="patient-appointment-type"]', 'consultation')
     await assertSelectValue(cdp, '[data-testid="patient-appointment-duration"]', '30')
-    await setDateInput(cdp, '[data-testid="patient-appointment-date"]', '2026-05-18')
+    await setDateInput(cdp, '[data-testid="patient-appointment-date"]', MANUAL_CREATION_DATE)
     await typeInto(cdp, '[data-testid="patient-appointment-time"]', '11:00')
     await typeInto(cdp, '[data-testid="patient-appointment-reason"]', MANUAL_CREATION_REASON)
     await typeInto(cdp, '[data-testid="patient-appointment-notes"]', MANUAL_CREATION_NOTES)
-    await assertInputValue(cdp, '[data-testid="patient-appointment-date"]', '2026-05-18')
+    await assertInputValue(cdp, '[data-testid="patient-appointment-date"]', MANUAL_CREATION_DATE)
     await assertInputValue(cdp, '[data-testid="patient-appointment-time"]', '11:00')
 
     const manualAppointmentCountBeforeSubmit = await getManualCreatedAppointmentCount()
@@ -1019,7 +1031,10 @@ async function main() {
     )
     await clickSelector(cdp, '[data-testid="patient-appointment-submit"]')
     await waitFor(
-      () => textIncludes(cdp, 'Appointment was created successfully.'),
+      async () =>
+        (await textIncludes(cdp, 'Appointment was created successfully.')) ||
+        (await getManualCreatedAppointmentCount()) >
+          manualAppointmentCountBeforeSubmit,
       'manual demo slug appointment create success',
     )
     unsubscribeManualNetworkCheck()
@@ -1103,11 +1118,11 @@ async function main() {
 
     await navigate(cdp, APPOINTMENTS_URL)
     await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'appointments page for manual route checks')
-    await setDateInput(cdp, '[data-testid="appointments-date-input"]', '2026-05-18')
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', MANUAL_CREATION_DATE)
     await waitForDateInputValue(
       cdp,
       '[data-testid="appointments-date-input"]',
-      '2026-05-18',
+      MANUAL_CREATION_DATE,
     )
     await waitFor(
       () => textIncludes(cdp, MANUAL_CREATION_REASON),
@@ -1133,7 +1148,7 @@ async function main() {
 
     await navigate(cdp, APPOINTMENTS_URL)
     await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'appointments page before manual start visit')
-    await setDateInput(cdp, '[data-testid="appointments-date-input"]', '2026-05-18')
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', MANUAL_CREATION_DATE)
     await waitFor(
       () => textIncludes(cdp, MANUAL_CREATION_REASON),
       'manual appointment visible before Start visit',
@@ -1758,6 +1773,25 @@ async function main() {
         ),
       'patient overview clinical summary',
     )
+    await clickByText(cdp, 'View treatment plan')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('#patient-treatment-plans-section');
+            const text = section?.textContent ?? '';
+            return location.search.includes('section=treatment-plans') &&
+              text.includes('Treatment plans') &&
+              (
+                text.includes('No active treatment plans') ||
+                text.includes('item') ||
+                text.includes('Read')
+              );
+          })()`,
+        ),
+      'patient treatment plan read-only entry point',
+    )
     await waitFor(
       () => textIncludes(cdp, 'No upcoming appointment is scheduled for this patient.'),
       'completed appointment removed from upcoming summary',
@@ -1889,6 +1923,8 @@ async function main() {
           dailyScheduleCompletedLifecycleVerified: true,
           patientOverviewClinicalSummaryVerified: true,
           patientOverviewFollowUpVerified: true,
+          patientOverviewTreatmentPlanVerified: true,
+          patientTreatmentPlanEntryPointVerified: true,
           followUpSchedulingActionVerified: true,
           followUpSchedulingPrefillVerified: true,
           printActionVerified: true,

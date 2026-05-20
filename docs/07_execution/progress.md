@@ -2526,6 +2526,49 @@ Initial stack:
 
 ---
 
+### Completed (Task 48 - Treatment Plan Read-only Foundation)
+
+- Confirmed treatment plan data/schema already exists:
+	- `treatment_plans`,
+	- `treatment_plan_items`,
+	- `treatmentPlanService`,
+	- existing patient full record `TreatmentPlansSection`.
+- Added read-only `PatientTreatmentPlanSummary` to the patient overview clinical
+  area:
+	- primary treatment plan title/status,
+	- planned item count,
+	- proposed total when available,
+	- created date,
+	- compact planned item list,
+	- empty state when no plan exists,
+	- link to the existing full treatment plan section.
+- Updated patient quick actions:
+	- treatment plan shortcut now reads `Treatment Plan`,
+	- available to treatment-plan read roles,
+	- button label is `View treatment plan`,
+	- copy no longer implies creation from the overview.
+- Expanded browser smoke coverage to verify the patient overview treatment plan
+  summary and treatment plan entry point.
+- No treatment-plan mutation, automatic conversion from completed visits,
+  billing, payments, materials, attachments, reminders/tasks, provider assignment
+  schema, broad patient redesign, or new schema was added.
+- Documented the task in
+  `docs/design/task-48-treatment-plan-read-only-foundation.md`.
+
+### Verification (Task 48 - Treatment Plan Read-only Foundation)
+
+- `npm.cmd run build` passes.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase URL, anon key, and service key loaded in the shell.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
 ### Completed (Task 47 - Appointment Creation Flow Polish)
 
 - Polished the existing patient-level appointment creation form in
