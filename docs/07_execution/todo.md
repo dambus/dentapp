@@ -202,6 +202,7 @@ Status legend:
   - [x] Task 58: Provider Assignment Planning / Data Model Decision
   - [x] Task 59: Appointment Provider Assignment Schema/RLS Foundation
   - [x] Task 60: Appointment Provider Assignment Service/UI Wiring
+  - [x] Task 61: Provider Assignment UX/Test Cleanup + Appointment Menu Label Polish
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -263,6 +264,7 @@ Status legend:
 - [x] Task 58 - Provider Assignment Planning / Data Model Decision
 - [x] Task 59 - Appointment Provider Assignment Schema/RLS Foundation
 - [x] Task 60 - Appointment Provider Assignment Service/UI Wiring
+- [x] Task 61 - Provider Assignment UX/Test Cleanup + Appointment Menu Label Polish
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -730,6 +732,27 @@ Completed direction:
   checking, check-in states, billing, materials, treatment-plan mutation,
   reminders, broad profile RLS opening, and broad scheduling redesign out of
   scope.
+
+### Completed Recommended Task
+
+Task 61 - Provider Assignment UX/Test Cleanup + Appointment Menu Label Polish
+
+Completed direction:
+
+- centralized assigned-provider display fallback copy,
+- aligned appointment provider wording around `Assigned provider`, `Not
+  assigned`, and `Provider unavailable`,
+- kept completed visit metadata separate from assigned provider wording,
+- shortened the appointment card secondary menu label from `Cancel appointment`
+  to `Cancel`,
+- kept fuller cancellation copy where space allows, including Appointment Detail
+  and success feedback,
+- updated browser smoke assertions for provider wording and card menu label,
+- preserved provider dropdown, provider selection, appointment lifecycle,
+  Visit Completion, follow-up, and treatment-plan smoke coverage,
+- added no new provider functionality, schema, RLS, workload calendar,
+  availability checks, automatic assignment, check-in states, billing,
+  materials, treatment-plan mutation, reminders, or broad scheduling redesign.
 
 ### Later Appointment Direction
 

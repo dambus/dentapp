@@ -22,6 +22,7 @@ import {
   formatAppointmentTimeRange,
 } from '../appointments/appointmentDisplay'
 import type { Appointment } from '../appointments/appointmentService'
+import { getAssignedProviderDisplayName } from '../appointments/appointmentService'
 import {
   formatPatientDate,
   formatPatientDateTime,
@@ -779,9 +780,7 @@ function AppointmentContextNotice({
   appointment: Appointment
   patientName: string
 }) {
-  const providerLabel = appointment.assigned_provider_id
-    ? appointment.assignedProvider?.fullName ?? 'Provider unavailable'
-    : 'Not assigned'
+  const providerLabel = getAssignedProviderDisplayName(appointment)
 
   return (
     <Card

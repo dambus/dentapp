@@ -194,6 +194,16 @@ export function getAppointmentLifecycleSuccessMessage(status: AppointmentStatus)
     : 'Appointment was marked no-show.'
 }
 
+export function getAssignedProviderDisplayName(
+  appointment: Pick<Appointment, 'assigned_provider_id' | 'assignedProvider'>,
+) {
+  if (!appointment.assigned_provider_id) {
+    return 'Not assigned'
+  }
+
+  return appointment.assignedProvider?.fullName ?? 'Provider unavailable'
+}
+
 function mapRowToAppointment(row: SupabaseAppointmentRow): Appointment {
   return {
     id: row.id,

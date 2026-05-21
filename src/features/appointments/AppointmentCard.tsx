@@ -11,7 +11,10 @@ import {
   getAppointmentDurationLabel,
 } from './appointmentDisplay'
 import { detectAppointmentTypeFromReason } from './appointmentTypes'
-import { canUpdateAppointmentLifecycle } from './appointmentService'
+import {
+  canUpdateAppointmentLifecycle,
+  getAssignedProviderDisplayName,
+} from './appointmentService'
 import {
   CalendarClock,
   CalendarX,
@@ -116,9 +119,7 @@ export function AppointmentCard({
       : appointment.status === 'no_show'
           ? 'border-l-amber-500'
           : 'border-l-red-400 bg-slate-50'
-  const providerLabel = appointment.assigned_provider_id
-    ? appointment.assignedProvider?.fullName ?? 'Provider unavailable'
-    : 'Not assigned'
+  const providerLabel = getAssignedProviderDisplayName(appointment)
 
   const menuItems = [
     onOpenPatient
@@ -136,7 +137,7 @@ export function AppointmentCard({
           label:
             statusUpdateStatus === 'cancelled'
               ? 'Updating...'
-              : 'Cancel appointment',
+              : 'Cancel',
           onSelect: () => onStatusChange('cancelled'),
           tone: 'danger' as const,
         }
@@ -226,7 +227,7 @@ export function AppointmentCard({
           <span className="inline-flex items-center gap-1">
             <Stethoscope aria-hidden className="h-4 w-4 text-slate-400" />
             <span data-testid="appointment-card-provider">
-              Provider: {providerLabel}
+              Assigned provider: {providerLabel}
             </span>
           </span>
           {appointment.notes?.trim() ? (

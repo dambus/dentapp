@@ -3105,6 +3105,65 @@ Initial stack:
 
 ---
 
+### Completed (Task 61 - Provider Assignment UX/Test Cleanup + Appointment Menu Label Polish)
+
+- Reviewed provider wording across appointment-related surfaces:
+	- AppointmentCard,
+	- PatientAppointmentSummary,
+	- AppointmentDetailPage,
+	- Appointments page cards,
+	- VisitCompletionFlow appointment context.
+- Centralized assigned-provider display fallback copy with
+  `getAssignedProviderDisplayName()`:
+	- unassigned appointment: `Not assigned`,
+	- unreadable/no-longer-returned assigned profile: `Provider unavailable`,
+	- readable assigned profile: provider full name.
+- Aligned appointment card provider display to `Assigned provider: {name}`.
+- Kept completed visit metadata separate from assigned-provider context:
+	- `appointments.assigned_provider_id` remains planned assignment,
+	- `visits.completed_by` remains actual completion identity.
+- Polished appointment card secondary action menu label:
+	- changed card menu label from `Cancel appointment` to `Cancel`,
+	- kept `Mark no-show`,
+	- kept full cancellation copy where there is space, including Appointment
+	  Detail menu and `Appointment was cancelled.` success feedback.
+- Updated browser smoke coverage:
+	- provider card assertions now expect `Assigned provider: Doctor Demo`,
+	- lifecycle action constants now expect appointment card menu `Cancel`,
+	- existing detail/lifecycle assertions remain in place,
+	- provider dropdown, provider selection, appointment provider display, Visit
+	  Completion provider context, appointment lifecycle, Visit Completion,
+	  follow-up, and treatment-plan checks remain covered.
+- No provider workload calendar, availability conflict checking, automatic
+  provider assignment, check-in/in-room/ready-for-doctor state, schema, RLS,
+  billing/payments/materials/attachments, treatment-plan mutation,
+  reminders/tasks, broad scheduling redesign, or appointment lifecycle behavior
+  change was added.
+- Documented the task in
+  `docs/design/task-61-provider-assignment-ux-test-cleanup.md`.
+
+### Verification (Task 61)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning and a
+  Tailwind plugin timing warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local Supabase env from `npx supabase status -o env`.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local Supabase env from `npx supabase status -o env` and
+  `DENTAPP_APP_URL=http://localhost:5173`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase env from `npx supabase status -o env`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  Supabase env from `npx supabase status -o env`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance, or provider availability planning
+  if schedule capacity becomes the next priority.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

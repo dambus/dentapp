@@ -50,7 +50,7 @@ const APPOINTMENT_STATUS_MENU_LABEL = 'Appointment status actions'
 const LIFECYCLE_TRANSITION_ACTIONS = [
   'Start visit',
   'Continue visit',
-  'Cancel appointment',
+  'Cancel',
   'Mark no-show',
 ]
 
@@ -1205,7 +1205,7 @@ async function main() {
       'manual demo slug appointment reason shown',
     )
     await waitFor(
-      () => textIncludes(cdp, `Provider: ${ASSIGNED_PROVIDER_NAME}`),
+      () => textIncludes(cdp, `Assigned provider: ${ASSIGNED_PROVIDER_NAME}`),
       'manual demo slug appointment assigned provider shown',
     )
 
@@ -1223,7 +1223,7 @@ async function main() {
       'manual demo slug appointment survives refresh',
     )
     await waitFor(
-      () => textIncludes(cdp, `Provider: ${ASSIGNED_PROVIDER_NAME}`),
+      () => textIncludes(cdp, `Assigned provider: ${ASSIGNED_PROVIDER_NAME}`),
       'manual demo slug appointment provider survives refresh',
     )
     const manualAppointmentId = await getManualCreatedAppointmentId()
@@ -1500,7 +1500,7 @@ async function main() {
       cdp,
       CANCELLED_REASON,
       {
-        actionExcludes: ['Start visit', 'Cancel appointment', 'Mark no-show'],
+        actionExcludes: ['Start visit', 'Cancel', 'Mark no-show'],
         textIncludes: ['Cancelled'],
       },
       'cancelled appointment card status and actions',
@@ -1514,7 +1514,7 @@ async function main() {
       cdp,
       NO_SHOW_REASON,
       {
-        actionExcludes: ['Start visit', 'Cancel appointment', 'Mark no-show'],
+        actionExcludes: ['Start visit', 'Cancel', 'Mark no-show'],
         textIncludes: ['No-show'],
       },
       'no-show appointment card status and actions',
@@ -1619,7 +1619,7 @@ async function main() {
 
     if (
       !scheduledCardButtonTexts?.includes('Start visit') ||
-      scheduledCardButtonTexts.includes('Cancel appointment') ||
+      scheduledCardButtonTexts.includes('Cancel') ||
       scheduledCardButtonTexts.includes('Mark no-show')
     ) {
       throw new Error(
@@ -1633,7 +1633,7 @@ async function main() {
     )
 
     if (
-      !scheduledCardMenuTexts.includes('Cancel appointment') ||
+      !scheduledCardMenuTexts.includes('Cancel') ||
       !scheduledCardMenuTexts.includes('Mark no-show') ||
       scheduledCardMenuTexts.includes('Complete')
     ) {
@@ -2144,7 +2144,7 @@ async function main() {
     )
 
     if (
-      completedCardMenuTexts.includes('Cancel appointment') ||
+      completedCardMenuTexts.includes('Cancel') ||
       completedCardMenuTexts.includes('Mark no-show') ||
       completedCardMenuTexts.includes('Complete')
     ) {

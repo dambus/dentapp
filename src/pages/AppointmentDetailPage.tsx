@@ -29,6 +29,7 @@ import {
   canUpdateAppointmentLifecycle,
   fetchAssignableAppointmentProviders,
   fetchAppointmentById,
+  getAssignedProviderDisplayName,
   getAppointmentLifecycleSuccessMessage,
   updateAppointmentAssignedProvider,
   updateAppointmentStatus,
@@ -298,9 +299,7 @@ export function AppointmentDetailPage() {
   }
 
   const patientName = appointment.patient?.fullName ?? 'Unknown patient'
-  const providerLabel = appointment.assigned_provider_id
-    ? appointment.assignedProvider?.fullName ?? 'Provider unavailable'
-    : 'Not assigned'
+  const providerLabel = getAssignedProviderDisplayName(appointment)
   const patientRouteId = appointment.patient?.routeId ?? appointment.patient_id
   const hasOpenVisit = Boolean(appointment.openVisit)
   const hasCompletedVisit = Boolean(appointment.linkedVisit)
