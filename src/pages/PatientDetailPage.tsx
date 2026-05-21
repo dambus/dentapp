@@ -398,7 +398,7 @@ export function PatientDetailPage() {
         }
       />
 
-      <div className="space-y-4 sm:space-y-5 lg:space-y-6">
+      <div className="space-y-5 sm:space-y-6 lg:space-y-7">
         <PatientTodayPanel
           patient={patient}
           isArchived={isArchived}
@@ -454,24 +454,26 @@ export function PatientDetailPage() {
         />
       </div>
 
-      <PatientFullRecord
-        patient={patient}
-        patientName={patientName}
-        activePlanLabel={activePlanLabel}
-        activeSection={fullRecordSection}
-        onSectionChange={handleFullRecordSectionChange}
-        canEditMedicalRecord={canEditMedicalRecord}
-        canViewOdontogram={canViewOdontogram}
-        canEditOdontogram={canEditOdontogram}
-        canViewClinicalNotes={canViewClinicalNotes}
-        canManageClinicalNotes={canViewClinicalNotes}
-        canViewTreatmentPlans={canViewTreatmentPlans}
-        highlightedVisitId={highlightedVisitId}
-        isPatientArchived={isArchived}
-        onEditMedicalRecord={() =>
-          navigate(getPatientMedicalRecordEditPath(patient.id))
-        }
-      />
+      <div className="mt-6 sm:mt-7 lg:mt-8">
+        <PatientFullRecord
+          patient={patient}
+          patientName={patientName}
+          activePlanLabel={activePlanLabel}
+          activeSection={fullRecordSection}
+          onSectionChange={handleFullRecordSectionChange}
+          canEditMedicalRecord={canEditMedicalRecord}
+          canViewOdontogram={canViewOdontogram}
+          canEditOdontogram={canEditOdontogram}
+          canViewClinicalNotes={canViewClinicalNotes}
+          canManageClinicalNotes={canViewClinicalNotes}
+          canViewTreatmentPlans={canViewTreatmentPlans}
+          highlightedVisitId={highlightedVisitId}
+          isPatientArchived={isArchived}
+          onEditMedicalRecord={() =>
+            navigate(getPatientMedicalRecordEditPath(patient.id))
+          }
+        />
+      </div>
     </Page>
   )
 }

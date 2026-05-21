@@ -44,12 +44,6 @@ const statusBadgeVariants: Record<
   cancelled: 'danger',
 }
 
-const currencyFormatter = new Intl.NumberFormat('sr-RS', {
-  style: 'currency',
-  currency: 'RSD',
-  maximumFractionDigits: 0,
-})
-
 function getPlanStatusLabel(status: TreatmentPlanStatus) {
   return (
     treatmentPlanStatusOptions.find((option) => option.value === status)
@@ -62,10 +56,6 @@ function getItemStatusLabel(status: TreatmentPlanItemStatus) {
     treatmentPlanItemStatusOptions.find((option) => option.value === status)
       ?.label ?? 'Planned'
   )
-}
-
-function formatCurrency(value: number | null) {
-  return value === null ? 'No total recorded' : currencyFormatter.format(value)
 }
 
 function getSummaryErrorMessage(message: string | null) {
@@ -264,13 +254,32 @@ export function PatientTreatmentPlanSummary({
       </CardHeader>
 
       <CardContent className="space-y-4 sm:space-y-5">
+        <div className="rounded-md border border-indigo-200 bg-indigo-50/40 p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <div className="text-xs font-semibold uppercase tracking-normal text-indigo-800">
+                Primary plan
+              </div>
+              <p className="mt-1 text-lg font-semibold leading-7 text-slate-950">
+                {primaryPlan.title}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {primaryPlan.description || 'No description recorded.'}
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Badge variant={statusBadgeVariants[primaryPlan.status]}>
+                {getPlanStatusLabel(primaryPlan.status)}
+              </Badge>
+              <Badge variant="neutral">
+                {primaryPlan.items.length} planned item
+                {primaryPlan.items.length === 1 ? '' : 's'}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-3">
-          <MetricTile
-            label="Plan"
-            value={primaryPlan.title}
-            description={primaryPlan.description || 'No description recorded.'}
-            tone="info"
-          />
           <MetricTile
             label="Planned items"
             value={String(primaryPlan.items.length)}
@@ -278,25 +287,25 @@ export function PatientTreatmentPlanSummary({
             tone={primaryPlan.items.length > 0 ? 'success' : 'default'}
           />
           <MetricTile
-            label="Proposed total"
-            value={formatCurrency(primaryPlan.proposedTotal)}
-            description={`Created ${formatPatientDate(primaryPlan.createdAt)}.`}
-            tone={primaryPlan.proposedTotal !== null ? 'info' : 'default'}
+            label="Created"
+            value={formatPatientDate(primaryPlan.createdAt)}
+            description="Plan record date."
+            tone="default"
           />
         </div>
 
         {primaryPlan.items.length > 0 ? (
           <div
-            className="rounded-md border border-slate-200 bg-slate-50 p-4"
+            className="rounded-md border border-slate-200 bg-slate-50 p-4 sm:p-5"
             data-testid="patient-treatment-plan-items"
           >
             <div className="text-sm font-semibold text-slate-950">
               Planned items
             </div>
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-3 space-y-2.5">
               {primaryPlan.items.slice(0, 4).map((item) => (
                 <li
-                  className="rounded-md border border-slate-200 bg-white px-3 py-2"
+                  className="rounded-md border border-slate-200 bg-white px-3 py-2.5"
                   key={item.id}
                 >
                   <div className="flex flex-wrap items-center gap-2">

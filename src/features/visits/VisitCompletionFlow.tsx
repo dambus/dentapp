@@ -829,10 +829,11 @@ function AppointmentContextNotice({
               Assigned provider
             </div>
             <p
-              className="mt-1 text-sm font-semibold leading-6 text-slate-950"
+              className="mt-1 inline-flex max-w-full items-center rounded-md bg-cyan-100/70 px-2 py-1 text-sm font-semibold leading-5 text-slate-950"
               data-testid="visit-appointment-provider"
+              title={providerLabel}
             >
-              {providerLabel}
+              <span className="truncate whitespace-nowrap">{providerLabel}</span>
             </p>
           </div>
         </div>

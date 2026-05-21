@@ -428,7 +428,11 @@ export function AppointmentDetailPage() {
               />
               <MetricTile
                 label="Assigned provider"
-                value={providerLabel}
+                value={
+                  <span className="block truncate whitespace-nowrap" title={providerLabel}>
+                    {providerLabel}
+                  </span>
+                }
                 description="Planned appointment provider; completed visits record completed-by separately."
                 tone={appointment.assignedProvider ? 'success' : 'default'}
               />

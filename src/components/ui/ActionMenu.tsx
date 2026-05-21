@@ -23,6 +23,8 @@ type ActionMenuProps = {
   disabled?: boolean
   items: ActionMenuItem[]
   label?: string
+  menuClassName?: string
+  itemClassName?: string
 }
 
 export function ActionMenu({
@@ -30,6 +32,8 @@ export function ActionMenu({
   disabled = false,
   items,
   label = 'More actions',
+  menuClassName,
+  itemClassName,
 }: ActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -90,6 +94,7 @@ export function ActionMenu({
           className={classNames(
             'absolute top-full z-30 mt-2 min-w-48 rounded-md border border-slate-200 bg-white p-1 shadow-lg',
             align === 'right' ? 'right-0' : 'left-0',
+            menuClassName,
           )}
           role="menu"
         >
@@ -105,6 +110,7 @@ export function ActionMenu({
                     ? 'text-red-700 hover:bg-red-50'
                     : 'text-slate-700 hover:bg-slate-50',
                   item.disabled ? 'cursor-not-allowed opacity-50' : '',
+                  itemClassName,
                 )}
                 disabled={item.disabled}
                 key={item.label}

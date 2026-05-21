@@ -225,10 +225,10 @@ export function TreatmentPlansSection({
             description="Treatment plans and planned items will appear here once they are recorded for this patient."
           />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 sm:space-y-5">
             {sortedPlans.map((plan) => (
               <section
-                className="rounded-md border border-slate-200 bg-white p-4 shadow-sm"
+                className="rounded-md border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
                 data-testid="patient-treatment-plan-detail"
                 key={plan.id}
               >
@@ -241,6 +241,7 @@ export function TreatmentPlansSection({
                       <Badge variant={statusBadgeVariants[plan.status]}>
                         {getPlanStatusLabel(plan.status)}
                       </Badge>
+                      <Badge variant="neutral">Read-only</Badge>
                     </div>
                     {plan.description ? (
                       <p className="mt-2 max-w-4xl whitespace-pre-wrap text-sm leading-6 text-slate-600">
@@ -248,18 +249,17 @@ export function TreatmentPlansSection({
                       </p>
                     ) : null}
                   </div>
-                  <Badge variant="neutral">
-                    {getItemCountLabel(plan.items.length)}
-                  </Badge>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <Badge variant="neutral">
+                      {getItemCountLabel(plan.items.length)}
+                    </Badge>
+                    <Badge variant={plan.proposedTotal !== null ? 'info' : 'neutral'}>
+                      {formatCurrency(plan.proposedTotal)}
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <MetricTile
-                    label="Created"
-                    value={formatPatientDate(plan.createdAt)}
-                    description="Plan record date."
-                    tone="default"
-                  />
                   <MetricTile
                     label="Planned items"
                     value={String(plan.items.length)}
@@ -272,21 +272,28 @@ export function TreatmentPlansSection({
                     description="Recorded proposal amount."
                     tone={plan.proposedTotal !== null ? 'info' : 'default'}
                   />
+                  <MetricTile
+                    label="Created"
+                    value={formatPatientDate(plan.createdAt)}
+                    description="Plan record date."
+                    tone="default"
+                  />
                 </div>
 
                 <div className="mt-5">
-                  <div className="text-sm font-semibold text-slate-950">
+                  <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-950">
                     Planned items
+                    <Badge variant="neutral">Read-only list</Badge>
                   </div>
                   {plan.items.length === 0 ? (
                     <div className="mt-3 rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                       Treatment plan exists but has no planned items.
                     </div>
                   ) : (
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-3 space-y-2.5">
                       {plan.items.map((item) => (
                         <article
-                          className="rounded-md border border-slate-200 bg-slate-50 p-3"
+                          className="rounded-md border border-slate-200 bg-slate-50 p-3 sm:p-3.5"
                           key={item.id}
                         >
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

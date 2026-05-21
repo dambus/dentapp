@@ -213,6 +213,8 @@ export function AppointmentCard({
                 disabled={isBusy}
                 items={menuItems}
                 label="Appointment actions"
+                menuClassName="min-w-56 p-1.5"
+                itemClassName="min-h-10 gap-2.5 px-3.5 py-2.5 whitespace-nowrap font-medium"
               />
             ) : null}
           </div>
@@ -224,9 +226,13 @@ export function AppointmentCard({
             label={typeBadge.label}
             variant={typeBadge.variant}
           />
-          <span className="inline-flex items-center gap-1">
-            <Stethoscope aria-hidden className="h-4 w-4 text-slate-400" />
-            <span data-testid="appointment-card-provider">
+          <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md bg-slate-100/70 px-2 py-1">
+            <Stethoscope aria-hidden className="h-4 w-4 shrink-0 text-slate-400" />
+            <span
+              className="min-w-0 max-w-full truncate whitespace-nowrap"
+              data-testid="appointment-card-provider"
+              title={`Assigned provider: ${providerLabel}`}
+            >
               Assigned provider: {providerLabel}
             </span>
           </span>
