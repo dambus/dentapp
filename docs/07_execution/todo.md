@@ -203,6 +203,11 @@ Status legend:
   - [x] Task 59: Appointment Provider Assignment Schema/RLS Foundation
   - [x] Task 60: Appointment Provider Assignment Service/UI Wiring
   - [x] Task 61: Provider Assignment UX/Test Cleanup + Appointment Menu Label Polish
+  - [x] Task 62: Appointment Provider Filter / Daily Schedule Polish
+  - [x] Task 63: Appointment Schedule Filter UI Cleanup / Persistence Polish
+  - [x] Task 64: Appointment Schedule Compact Density / Mobile Readability Pass
+  - [x] Task 64B: Fix Appointments Responsive Overflow Regression
+  - [x] Task 65: Responsive Overflow Smoke Guard
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -265,6 +270,11 @@ Status legend:
 - [x] Task 59 - Appointment Provider Assignment Schema/RLS Foundation
 - [x] Task 60 - Appointment Provider Assignment Service/UI Wiring
 - [x] Task 61 - Provider Assignment UX/Test Cleanup + Appointment Menu Label Polish
+- [x] Task 62 - Appointment Provider Filter / Daily Schedule Polish
+- [x] Task 63 - Appointment Schedule Filter UI Cleanup / Persistence Polish
+- [x] Task 64 - Appointment Schedule Compact Density / Mobile Readability Pass
+- [x] Task 64B - Fix Appointments Responsive Overflow Regression
+- [x] Task 65 - Responsive Overflow Smoke Guard
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -753,6 +763,99 @@ Completed direction:
 - added no new provider functionality, schema, RLS, workload calendar,
   availability checks, automatic assignment, check-in states, billing,
   materials, treatment-plan mutation, reminders, or broad scheduling redesign.
+
+### Completed Recommended Task
+
+Task 62 - Appointment Provider Filter / Daily Schedule Polish
+
+Completed direction:
+
+- added an Appointments schedule `Assigned provider` filter with `All
+  providers`, `Unassigned`, and active same-clinic assignable providers from
+  the existing RPC,
+- kept filtering client-side against the loaded appointment range,
+- added clear empty states for filtered provider/unassigned schedules,
+- preserved appointment lifecycle, Visit Completion behavior, and the
+  separation between `appointments.assigned_provider_id` and
+  `visits.completed_by`,
+- expanded browser smoke coverage for provider filtering plus existing
+  lifecycle actions,
+- added no schema, migration, RLS, workload calendar, availability checking,
+  automatic assignment, check-in state, billing/materials/payments,
+  treatment-plan mutation, reminders, tasks, or broad redesign.
+
+### Completed Recommended Task
+
+Task 63 - Appointment Schedule Filter UI Cleanup / Persistence Polish
+
+Completed direction:
+
+- consolidated Appointments schedule controls into one responsive filter bar,
+- kept provider filtering client-side against the loaded schedule,
+- persisted provider filter state in the `provider` URL search param,
+- restored valid provider filters from shared/opened URLs,
+- safely rendered invalid provider params as `All providers`,
+- updated browser smoke coverage for URL updates, deep-link restore, invalid
+  fallback, visible list filtering, and existing lifecycle actions,
+- added no schema, migrations, RLS, lifecycle behavior, Visit Completion
+  behavior, workload calendar, availability logic, automatic assignment,
+  check-in states, billing/materials/payments, treatment-plan mutation,
+  reminders, tasks, or broad scheduling redesign.
+
+### Completed Recommended Task
+
+Task 64 - Appointment Schedule Compact Density / Mobile Readability Pass
+
+Completed direction:
+
+- tightened Appointments schedule filter bar spacing without changing controls,
+- improved daily and weekly schedule spacing consistency,
+- used compact appointment cards in weekly schedule sections,
+- refined appointment card hierarchy around time, patient, status, assigned
+  provider, reason/type, live state, and actions,
+- preserved provider filtering, provider URL params, lifecycle actions, Visit
+  Completion handoff, and appointment detail navigation,
+- added no schema, migrations, RLS, lifecycle changes, availability logic,
+  workload calendar, automatic assignment, check-in states,
+  billing/materials/payments, treatment-plan mutation, reminders, tasks, or
+  broad redesign.
+
+### Completed Recommended Task
+
+Task 64B - Fix Appointments Responsive Overflow Regression
+
+Completed direction:
+
+- fixed the Appointments mobile/tablet horizontal overflow regression found in
+  visual QA after Task 64,
+- added containment to the page wrapper, schedule card, filter bar, daily list,
+  weekly list, weekly day sections, and appointment cards,
+- allowed filter shortcut buttons and card status/action rows to wrap instead
+  of forcing wide layout,
+- bounded the appointment action menu width to the viewport,
+- removed nowrap pressure from the assigned-provider card label,
+- verified daily and weekly Appointments views at 390px, 430px, 912px, and
+  desktop widths with no horizontal document/body overflow,
+- preserved provider filtering, provider URL params, lifecycle actions, Visit
+  Completion handoff, appointment detail navigation, schema, RLS, and
+  scheduling business logic.
+
+### Completed Recommended Task
+
+Task 65 - Responsive Overflow Smoke Guard
+
+Completed direction:
+
+- added reusable browser-smoke helpers for responsive overflow checks,
+- checked document/body horizontal overflow with a 2px tolerance,
+- ran the guard at 390px, 430px, 912px, and 1440px widths,
+- covered Appointments daily, Appointments weekly, Patient overview, Patient
+  timeline, Appointment detail, Visit Completion, and completed visit detail,
+- made failures report screen label, viewport width, document widths, body
+  widths, and tolerance,
+- reused the existing authenticated browser smoke session and fixtures,
+- changed no product behavior, schema, migrations, RLS, provider workload,
+  availability logic, or appointment states.
 
 ### Later Appointment Direction
 

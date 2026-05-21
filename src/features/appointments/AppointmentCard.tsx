@@ -157,19 +157,19 @@ export function AppointmentCard({
   return (
     <article
       className={classNames(
-        'group rounded-md border border-l-4 border-slate-200 bg-white shadow-sm transition-colors hover:border-slate-300',
+        'group min-w-0 max-w-full rounded-md border border-l-4 border-slate-200 bg-white shadow-sm transition-colors hover:border-slate-300',
         statusToneClass,
-        variant === 'compact' ? 'p-4 sm:p-4' : 'p-4 sm:p-5',
+        variant === 'compact' ? 'p-3.5 sm:p-4' : 'p-4',
         className,
       )}
       data-testid="appointment-card"
     >
-      <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex min-w-0 flex-col gap-3.5">
+        <div className="grid min-w-0 max-w-full gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,auto)] md:items-start">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 text-lg font-semibold leading-6 text-slate-950 sm:text-xl">
-                <Clock3 aria-hidden className="h-4 w-4 text-cyan-700" />
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <div className="flex items-center gap-2 text-base font-semibold leading-6 text-slate-950 sm:text-lg">
+                <Clock3 aria-hidden className="h-4 w-4 shrink-0 text-cyan-700" />
                 <span>
                   {formatAppointmentClockRange(
                     appointment.scheduled_start,
@@ -178,7 +178,7 @@ export function AppointmentCard({
                 </span>
               </div>
               {durationLabel ? (
-                <span className="text-xs font-medium text-slate-500">
+                <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-500">
                   {durationLabel}
                 </span>
               ) : null}
@@ -186,7 +186,7 @@ export function AppointmentCard({
 
             {onOpenPatient ? (
               <button
-                className="mt-2 block max-w-full text-left text-base font-semibold leading-6 text-slate-950 underline-offset-4 hover:text-teal-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 sm:text-lg"
+                className="mt-1.5 block max-w-full text-left text-base font-semibold leading-6 text-slate-950 underline-offset-4 hover:text-teal-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 sm:text-lg"
                 disabled={isBusy}
                 onClick={onOpenPatient}
                 type="button"
@@ -194,13 +194,13 @@ export function AppointmentCard({
                 <span className="wrap-break-word">{displayPatientName}</span>
               </button>
             ) : (
-              <div className="wrap-break-word mt-2 text-base font-semibold leading-6 text-slate-950 sm:text-lg">
+              <div className="wrap-break-word mt-1.5 text-base font-semibold leading-6 text-slate-950 sm:text-lg">
                 {displayPatientName}
               </div>
             )}
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 md:justify-end">
             <StatusBadge status={appointment.status} />
             {hasOpenVisit ? (
               <Badge variant="warning">Visit in progress</Badge>
@@ -213,31 +213,33 @@ export function AppointmentCard({
                 disabled={isBusy}
                 items={menuItems}
                 label="Appointment actions"
-                menuClassName="min-w-56 p-1.5"
-                itemClassName="min-h-10 gap-2.5 px-3.5 py-2.5 whitespace-nowrap font-medium"
+                menuClassName="max-w-[calc(100vw-2rem)] min-w-48 p-1.5"
+                itemClassName="min-h-10 gap-2.5 px-3.5 py-2.5 whitespace-normal font-medium"
               />
             ) : null}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
-          <TypeBadge
-            className="max-w-full truncate"
-            label={typeBadge.label}
-            variant={typeBadge.variant}
-          />
-          <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md bg-slate-100/70 px-2 py-1">
-            <Stethoscope aria-hidden className="h-4 w-4 shrink-0 text-slate-400" />
-            <span
-              className="min-w-0 max-w-full truncate whitespace-nowrap"
-              data-testid="appointment-card-provider"
-              title={`Assigned provider: ${providerLabel}`}
-            >
-              Assigned provider: {providerLabel}
+        <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md bg-slate-100/70 px-2 py-1">
+              <Stethoscope aria-hidden className="h-4 w-4 shrink-0 text-slate-400" />
+              <span
+                className="min-w-0 max-w-full truncate"
+                data-testid="appointment-card-provider"
+                title={`Assigned provider: ${providerLabel}`}
+              >
+                Assigned provider: {providerLabel}
+              </span>
             </span>
-          </span>
+            <TypeBadge
+              className="max-w-full truncate"
+              label={typeBadge.label}
+              variant={typeBadge.variant}
+            />
+          </div>
           {appointment.notes?.trim() ? (
-            <span className="inline-flex min-w-0 items-center gap-1">
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1 text-slate-500 sm:justify-end">
               <FileText aria-hidden className="h-4 w-4 shrink-0 text-slate-400" />
               <span className="truncate">{appointment.notes.trim()}</span>
             </span>
@@ -246,7 +248,7 @@ export function AppointmentCard({
 
         {hasOpenVisit ? (
           <div
-            className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900"
+            className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900"
             data-testid="appointment-open-visit-state"
           >
             Visit Completion draft is in progress. Continue the visit to save
@@ -254,14 +256,14 @@ export function AppointmentCard({
           </div>
         ) : appointment.linkedVisit ? (
           <div
-            className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800"
+            className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800"
             data-testid="appointment-completed-visit-state"
           >
             Completed visit is linked to this appointment.
           </div>
         ) : appointment.status === 'scheduled' ? (
           <div
-            className="rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-medium text-cyan-900"
+            className="rounded-md border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-sm font-medium text-cyan-900"
             data-testid="appointment-ready-state"
           >
             Ready to start Visit Completion.
@@ -270,14 +272,14 @@ export function AppointmentCard({
 
         {followUpLabel ? (
           <div
-            className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900"
+            className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900"
             data-testid="appointment-follow-up-signal"
           >
             Follow-up from completed visit: {followUpLabel}
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2.5 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
             <CalendarClock aria-hidden className="h-4 w-4" />
             Clinical schedule item

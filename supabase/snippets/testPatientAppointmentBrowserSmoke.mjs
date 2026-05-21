@@ -32,6 +32,7 @@ const MANUAL_CREATION_REASON = 'Consultation'
 const MANUAL_CREATION_NOTES = 'Optional note demo'
 const MANUAL_CREATION_DATE = getDateInputValueForOffset(1)
 const ASSIGNED_PROVIDER_NAME = 'Doctor Demo'
+const UNASSIGNED_FILTER_REASON = 'Task 62 unassigned provider filter check'
 const CANCELLED_REASON = 'Task 51 cancelled appointment status check'
 const NO_SHOW_REASON = 'Task 54 no-show appointment status check'
 const BRIDGE_PROCEDURE = 'Task 44 bridge procedure'
@@ -52,6 +53,13 @@ const LIFECYCLE_TRANSITION_ACTIONS = [
   'Continue visit',
   'Cancel',
   'Mark no-show',
+]
+const OVERFLOW_TOLERANCE_PX = 2
+const RESPONSIVE_OVERFLOW_VIEWPORTS = [
+  { label: 'mobile 390', mobile: true, width: 390, height: 844, deviceScaleFactor: 3 },
+  { label: 'mobile 430', mobile: true, width: 430, height: 932, deviceScaleFactor: 3 },
+  { label: 'tablet 912', mobile: false, width: 912, height: 1368, deviceScaleFactor: 1 },
+  { label: 'desktop 1440', mobile: false, width: 1440, height: 1000, deviceScaleFactor: 1 },
 ]
 
 function delay(ms) {
@@ -125,6 +133,11 @@ async function prepareFixture() {
     .delete()
     .eq('patient_id', DEMO_SLUG_SUPABASE_PATIENT_ID)
     .eq('reason', MANUAL_CREATION_REASON)
+  await serviceClient
+    .from('appointments')
+    .delete()
+    .eq('patient_id', DEMO_SLUG_SUPABASE_PATIENT_ID)
+    .eq('reason', UNASSIGNED_FILTER_REASON)
   await serviceClient
     .from('visits')
     .update({
@@ -230,7 +243,12 @@ async function getManualCreatedAppointmentId() {
   return data.id
 }
 
-async function createServiceAppointment(reason, daysFromToday = 0) {
+async function createServiceAppointment(
+  reason,
+  daysFromToday = 0,
+  assignedProviderId = null,
+  patientId = PATIENT_ID,
+) {
   const serviceClient = getServiceClient()
   const profileResult = await serviceClient
     .from('profiles')
@@ -251,12 +269,13 @@ async function createServiceAppointment(reason, daysFromToday = 0) {
     .from('appointments')
     .insert({
       clinic_id: DEMO_CLINIC_ID,
-      patient_id: PATIENT_ID,
+      patient_id: patientId,
       scheduled_start: scheduledStart.toISOString(),
       scheduled_end: scheduledEnd.toISOString(),
       status: 'scheduled',
       reason,
       notes: 'Created by browser smoke status polish check.',
+      assigned_provider_id: assignedProviderId,
       created_by: profileResult.data.id,
       updated_by: profileResult.data.id,
     })
@@ -654,9 +673,10 @@ async function setSelectValue(cdp, selector, value) {
         'value',
       )?.set;
       setter?.call(input, ${JSON.stringify(value)});
+      const valueWasApplied = input.value === ${JSON.stringify(value)};
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));
-      return input.value === ${JSON.stringify(value)};
+      return valueWasApplied;
     })()`,
   )
 
@@ -819,6 +839,82 @@ async function waitForAppointmentsDateState(cdp) {
       ),
     'appointments date state ready',
   )
+}
+
+async function setViewport(cdp, viewport) {
+  await cdp.command('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: viewport.deviceScaleFactor,
+    height: viewport.height,
+    mobile: viewport.mobile,
+    width: viewport.width,
+  })
+}
+
+async function assertNoHorizontalOverflow(cdp, label, viewportWidth) {
+  const metrics = await evaluate(
+    cdp,
+    `(() => {
+      const documentElement = document.documentElement;
+      const body = document.body;
+
+      return {
+        bodyClientWidth: body?.clientWidth ?? 0,
+        bodyScrollWidth: body?.scrollWidth ?? 0,
+        documentClientWidth: documentElement.clientWidth,
+        documentScrollWidth: documentElement.scrollWidth,
+      };
+    })()`,
+  )
+
+  const documentOverflow =
+    metrics.documentScrollWidth >
+    metrics.documentClientWidth + OVERFLOW_TOLERANCE_PX
+  const bodyOverflow =
+    metrics.bodyScrollWidth > metrics.bodyClientWidth + OVERFLOW_TOLERANCE_PX
+
+  if (documentOverflow || bodyOverflow) {
+    throw new Error(
+      [
+        `Horizontal overflow detected on ${label}.`,
+        `viewportWidth=${viewportWidth}`,
+        `documentScrollWidth=${metrics.documentScrollWidth}`,
+        `documentClientWidth=${metrics.documentClientWidth}`,
+        `bodyScrollWidth=${metrics.bodyScrollWidth}`,
+        `bodyClientWidth=${metrics.bodyClientWidth}`,
+        `tolerance=${OVERFLOW_TOLERANCE_PX}`,
+      ].join(' '),
+    )
+  }
+}
+
+async function runResponsiveOverflowSmoke(cdp, screens) {
+  for (const viewport of RESPONSIVE_OVERFLOW_VIEWPORTS) {
+    await setViewport(cdp, viewport)
+
+    for (const screen of screens) {
+      const label = `${screen.label} (${viewport.label})`
+
+      await navigate(cdp, screen.url)
+      await waitFor(
+        () => textIncludes(cdp, screen.waitForText),
+        `${label} ready`,
+      )
+
+      if (screen.prepare) {
+        await screen.prepare(cdp, label)
+      }
+
+      await waitFor(
+        () =>
+          evaluate(
+            cdp,
+            `!document.querySelector('[data-testid="appointments-loading-state"]')`,
+          ),
+        `${label} loading settled`,
+      )
+      await assertNoHorizontalOverflow(cdp, label, viewport.width)
+    }
+  }
 }
 
 async function textIncludes(cdp, text) {
@@ -1272,6 +1368,12 @@ async function main() {
 
     const cancelledAppointmentId = await createServiceAppointment(CANCELLED_REASON)
     const noShowAppointmentId = await createServiceAppointment(NO_SHOW_REASON)
+    await createServiceAppointment(
+      UNASSIGNED_FILTER_REASON,
+      1,
+      null,
+      DEMO_SLUG_SUPABASE_PATIENT_ID,
+    )
 
     await navigate(cdp, APPOINTMENTS_URL)
     await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'appointments page for manual route checks')
@@ -1284,6 +1386,192 @@ async function main() {
     await waitFor(
       () => textIncludes(cdp, MANUAL_CREATION_REASON),
       'manual appointment appears in appointments list',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const select = document.querySelector('[data-testid="appointments-provider-filter"]');
+            return select instanceof HTMLSelectElement &&
+              select.textContent.includes('All providers') &&
+              select.textContent.includes('Unassigned') &&
+              select.textContent.includes(${JSON.stringify(ASSIGNED_PROVIDER_NAME)});
+          })()`,
+        ),
+      'appointments provider filter options',
+    )
+    const scheduleProviderValue = await getSelectOptionValueByText(
+      cdp,
+      '[data-testid="appointments-provider-filter"]',
+      ASSIGNED_PROVIDER_NAME,
+    )
+
+    if (!scheduleProviderValue) {
+      throw new Error('Appointments provider filter did not include Doctor Demo.')
+    }
+
+    const allProviderFilterCardCount = await evaluate(
+      cdp,
+      `document.querySelectorAll('[data-testid="appointment-card"]').length`,
+    )
+
+    await setSelectValue(
+      cdp,
+      '[data-testid="appointments-provider-filter"]',
+      scheduleProviderValue,
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `new URLSearchParams(location.search).get('provider') === ${JSON.stringify(scheduleProviderValue)}`,
+        ),
+      'appointments provider filter updates URL',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+            return cards.some((card) => card.textContent?.includes(${JSON.stringify(MANUAL_CREATION_REASON)})) &&
+              cards.every((card) => card.textContent?.includes(${JSON.stringify(`Assigned provider: ${ASSIGNED_PROVIDER_NAME}`)}));
+          })()`,
+        ),
+      'appointments provider filter shows assigned provider appointments',
+    )
+    const assignedProviderFilterCardCount = await evaluate(
+      cdp,
+      `document.querySelectorAll('[data-testid="appointment-card"]').length`,
+    )
+
+    if (assignedProviderFilterCardCount <= 0) {
+      throw new Error('Appointments provider filter hid all assigned provider appointments.')
+    }
+
+    const unassignedHiddenByProviderFilter = await textIncludes(
+      cdp,
+      UNASSIGNED_FILTER_REASON,
+    )
+
+    if (unassignedHiddenByProviderFilter) {
+      throw new Error('Provider-specific filter still showed an unassigned appointment.')
+    }
+
+    await setSelectValue(
+      cdp,
+      '[data-testid="appointments-provider-filter"]',
+      'unassigned',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `new URLSearchParams(location.search).get('provider') === 'unassigned'`,
+        ),
+      'appointments unassigned filter updates URL',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const filterEmpty = document.querySelector('[data-testid="appointments-filter-empty-state"]');
+            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+
+            if (filterEmpty) {
+              return filterEmpty.textContent?.includes('No unassigned appointments') ?? false;
+            }
+
+            return cards.length > 0 &&
+              cards.every((card) => card.textContent?.includes('Assigned provider: Not assigned'));
+          })()`,
+        ),
+      'appointments unassigned provider filter state',
+    )
+    const assignedHiddenByUnassignedFilter = await textIncludes(
+      cdp,
+      MANUAL_CREATION_REASON,
+    )
+
+    if (assignedHiddenByUnassignedFilter) {
+      throw new Error('Unassigned filter still showed an assigned provider appointment.')
+    }
+
+    await setSelectValue(cdp, '[data-testid="appointments-provider-filter"]', 'all')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `new URLSearchParams(location.search).get('provider') === 'all'`,
+        ),
+      'appointments all providers filter updates URL',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+            const bodyText = document.body?.innerText ?? '';
+            return cards.length >= ${allProviderFilterCardCount} &&
+              bodyText.includes(${JSON.stringify(MANUAL_CREATION_REASON)}) &&
+              bodyText.includes(${JSON.stringify(UNASSIGNED_FILTER_REASON)});
+          })()`,
+        ),
+      'appointments all providers filter restores full schedule',
+    )
+    await navigate(
+      cdp,
+      `${APPOINTMENTS_URL}?provider=${encodeURIComponent(scheduleProviderValue)}`,
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Daily schedule'),
+      'appointments provider deep link page',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const select = document.querySelector('[data-testid="appointments-provider-filter"]');
+            return select instanceof HTMLSelectElement &&
+              select.value === ${JSON.stringify(scheduleProviderValue)};
+          })()`,
+        ),
+      'appointments provider deep link restores filter',
+    )
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', MANUAL_CREATION_DATE)
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const cards = Array.from(document.querySelectorAll('[data-testid="appointment-card"]'));
+            return cards.some((card) => card.textContent?.includes(${JSON.stringify(MANUAL_CREATION_REASON)})) &&
+              cards.every((card) => card.textContent?.includes(${JSON.stringify(`Assigned provider: ${ASSIGNED_PROVIDER_NAME}`)}));
+          })()`,
+        ),
+      'appointments provider deep link filters list',
+    )
+    await navigate(cdp, `${APPOINTMENTS_URL}?provider=not-a-provider`)
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const select = document.querySelector('[data-testid="appointments-provider-filter"]');
+            return select instanceof HTMLSelectElement &&
+              select.value === 'all';
+          })()`,
+        ),
+      'appointments invalid provider param falls back to all',
+    )
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', MANUAL_CREATION_DATE)
+    await waitFor(
+      () => textIncludes(cdp, MANUAL_CREATION_REASON),
+      'appointments schedule restored after invalid provider fallback',
     )
     await clickAppointmentCardMenuAction(cdp, MANUAL_CREATION_REASON, 'Open patient')
     await waitFor(
@@ -2151,6 +2439,51 @@ async function main() {
       throw new Error('Completed appointment card should not expose lifecycle status actions.')
     }
 
+    await runResponsiveOverflowSmoke(cdp, [
+      {
+        label: 'Appointments daily schedule',
+        url: APPOINTMENTS_URL,
+        waitForText: 'Daily schedule',
+      },
+      {
+        label: 'Appointments weekly schedule',
+        url: APPOINTMENTS_URL,
+        waitForText: 'Daily schedule',
+        prepare: async (browser, label) => {
+          await clickByText(browser, 'Week')
+          await waitFor(
+            () => textIncludes(browser, 'Weekly schedule'),
+            `${label} weekly view ready`,
+          )
+        },
+      },
+      {
+        label: 'Patient overview',
+        url: PATIENT_URL,
+        waitForText: 'Full Record',
+      },
+      {
+        label: 'Patient timeline',
+        url: `${PATIENT_URL}?section=timeline`,
+        waitForText: BRIDGE_PROCEDURE,
+      },
+      {
+        label: 'Appointment detail',
+        url: `${APPOINTMENTS_URL}/${appointmentId}`,
+        waitForText: 'Appointment Detail',
+      },
+      {
+        label: 'Visit Completion',
+        url: `${PATIENT_URL}/visit-completion`,
+        waitForText: 'Visit Completion',
+      },
+      {
+        label: 'Completed visit detail',
+        url: `${PATIENT_URL}/visits/${linkedVisitId}`,
+        waitForText: 'Completed Visit Review',
+      },
+    ])
+
     await navigate(cdp, `${PATIENT_URL}/visit-completion`)
     await waitFor(() => textIncludes(cdp, 'Visit Completion'), 'normal visit route')
     await waitFor(
@@ -2225,6 +2558,7 @@ async function main() {
           followUpSchedulingActionVerified: true,
           followUpSchedulingPrefillVerified: true,
           printActionVerified: true,
+          responsiveOverflowSmokeVerified: true,
           detailRefreshVerified: true,
           backToTimelineVerified: true,
           normalVisitCompletionWithoutAppointmentVerified: true,

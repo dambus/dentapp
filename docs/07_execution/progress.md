@@ -3164,6 +3164,303 @@ Initial stack:
 
 ---
 
+### Completed (Task 62 - Appointment Provider Filter / Daily Schedule Polish)
+
+- Added an Appointments schedule provider filter using the existing provider
+  assignment foundation:
+	- `All providers`,
+	- `Unassigned`,
+	- active same-clinic assignable providers from
+	  `get_assignable_appointment_providers()`.
+- Kept filtering client-side against the currently loaded schedule range.
+- Added clear filtered empty states, including `No unassigned appointments`.
+- Kept provider wording aligned with Task 61:
+	- `Assigned provider`,
+	- `Not assigned`,
+	- `Provider unavailable`.
+- Preserved the separation between planned appointment provider assignment and
+  completed visit identity:
+	- `appointments.assigned_provider_id` remains planned provider context,
+	- `visits.completed_by` remains actual completed-by context.
+- Expanded browser smoke coverage for:
+	- provider filter visibility/options,
+	- specific provider filtering,
+	- unassigned filtering,
+	- returning to `All providers`,
+	- existing appointment lifecycle actions.
+- No schema, migration, RLS, appointment lifecycle behavior, Visit Completion
+  behavior, provider workload calendar, availability checking, automatic
+  assignment, check-in/in-room/ready-for-doctor state, billing/payments/
+  materials/attachments, treatment-plan mutation, reminders/tasks, or broad
+  scheduling redesign was added.
+- Documented the task in
+  `docs/design/task-62-appointment-provider-filter.md`.
+
+### Verification (Task 62)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance, or provider availability planning
+  if schedule capacity becomes the next priority.
+
+---
+
+### Completed (Task 63 - Appointment Schedule Filter UI Cleanup / Persistence Polish)
+
+- Consolidated Appointments schedule controls into one filter bar inside the
+  schedule card:
+	- view mode,
+	- date/week selector,
+	- assigned provider filter,
+	- date/week shortcuts,
+	- refresh.
+- Kept the Task 62 provider filtering behavior:
+	- `All providers`,
+	- `Unassigned`,
+	- active same-clinic assignable providers.
+- Added lightweight provider filter persistence through the `provider` URL
+  search param:
+	- `?provider=all`,
+	- `?provider=unassigned`,
+	- `?provider=<providerId>`.
+- Opening Appointments with a valid provider param restores the selected filter.
+- Invalid provider params safely render as `All providers`.
+- Changing the provider select updates the URL without a page reload.
+- Expanded browser smoke coverage for visible-list filtering, URL updates,
+  provider deep-link restore, invalid-param fallback, and existing lifecycle
+  actions after filter changes.
+- No appointment lifecycle behavior, Visit Completion behavior, schema,
+  migration, RLS, provider workload calendar, availability/conflict checking,
+  automatic assignment, check-in/in-room/ready-for-doctor state,
+  billing/payments/materials/attachments, treatment-plan mutation,
+  reminders/tasks, or broad scheduling redesign was added.
+- Documented the task in
+  `docs/design/task-63-appointment-schedule-filter-polish.md`.
+
+### Verification (Task 63)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance, or provider availability planning
+  if schedule capacity becomes the next priority.
+
+---
+
+### Completed (Task 64 - Appointment Schedule Compact Density / Mobile Readability Pass)
+
+- Reviewed the Appointments schedule UI after Task 63 provider filter and URL
+  persistence work.
+- Tightened the schedule filter bar without changing behavior:
+	- reduced filter bar padding,
+	- kept controls touch-friendly,
+	- stacked controls naturally through tablet widths,
+	- avoided horizontal overflow.
+- Improved daily and weekly schedule density:
+	- reduced list spacing,
+	- kept weekly day sections compact,
+	- used compact appointment cards in weekly view.
+- Refined `AppointmentCard` hierarchy:
+	- time/duration first,
+	- patient name directly under time,
+	- lifecycle status and secondary menu aligned to the right on wider screens,
+	- assigned provider and reason/type grouped into a metadata row,
+	- live Visit Completion state notices use less vertical padding,
+	- primary/detail actions remain touch-friendly.
+- Preserved all existing behavior:
+	- provider filtering,
+	- provider URL params,
+	- invalid provider fallback,
+	- lifecycle actions,
+	- Visit Completion handoff,
+	- appointment detail navigation.
+- No schema, migration, RLS, lifecycle rule, Visit Completion behavior,
+  availability/conflict checking, workload calendar, automatic assignment,
+  check-in/in-room/ready-for-doctor state, billing/payments/materials/
+  attachments, treatment-plan mutation, reminders/tasks, or broad scheduling
+  redesign was added.
+- Documented the task in
+  `docs/design/task-64-appointment-schedule-density-mobile-polish.md`.
+
+### Verification (Task 64)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance, or provider availability planning
+  if schedule capacity becomes the next priority.
+
+---
+
+### Completed (Task 64B - Fix Appointments Responsive Overflow Regression)
+
+- Fixed the responsive horizontal overflow regression found by visual QA after
+  Task 64.
+- Added explicit responsive containment:
+	- page wrapper now has `min-w-0` and `overflow-x-hidden`,
+	- Appointments schedule card, filter bar, daily list, weekly list, and
+	  weekly day sections use `min-w-0` / `max-w-full`,
+	- appointment cards use `min-w-0` / `max-w-full`.
+- Corrected filter bar wrapping:
+	- grid tracks no longer require fixed minimum widths on tablet,
+	- Today / Tomorrow / Refresh and weekly shortcut buttons can wrap.
+- Corrected card overflow pressure:
+	- status/menu row can wrap,
+	- assigned provider text truncates safely without nowrap,
+	- action menu width is bounded to the viewport.
+- Verified in a headless browser that daily and weekly Appointments views have
+  no horizontal document/body overflow and no off-viewport elements at:
+	- 390px mobile,
+	- 430px mobile,
+	- 912px tablet,
+	- 1440px desktop.
+- Preserved all existing behavior:
+	- provider filtering,
+	- provider URL params,
+	- invalid provider fallback,
+	- lifecycle actions,
+	- Visit Completion handoff,
+	- appointment detail navigation.
+- No schema, migration, RLS, lifecycle rule, Visit Completion behavior,
+  availability/conflict checking, workload calendar, automatic assignment,
+  check-in/in-room/ready-for-doctor state, billing/payments/materials/
+  attachments, treatment-plan mutation, reminders/tasks, or broad scheduling
+  redesign was added.
+- Updated
+  `docs/design/task-64-appointment-schedule-density-mobile-polish.md` with the
+  responsive overflow fix notes.
+
+### Verification (Task 64B)
+
+- Browser responsive overflow check passes for daily and weekly Appointments
+  views at 390px, 430px, 912px, and 1440px.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance, or provider availability planning
+  if schedule capacity becomes the next priority.
+
+---
+
+### Completed (Task 65 - Responsive Overflow Smoke Guard)
+
+- Added reusable responsive overflow helpers to
+  `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs`:
+	- `setViewport()`,
+	- `assertNoHorizontalOverflow()`,
+	- `runResponsiveOverflowSmoke()`.
+- The guard checks document and body horizontal overflow with a 2px tolerance:
+	- `document.documentElement.scrollWidth`,
+	- `document.documentElement.clientWidth`,
+	- `document.body.scrollWidth`,
+	- `document.body.clientWidth`.
+- Failure messages include:
+	- screen label,
+	- viewport width,
+	- document scroll/client widths,
+	- body scroll/client widths,
+	- tolerance.
+- The guard runs at:
+	- 390px mobile,
+	- 430px mobile,
+	- 912px tablet portrait,
+	- 1440px desktop.
+- Covered screens:
+	- Appointments daily schedule,
+	- Appointments weekly schedule,
+	- Patient overview,
+	- Patient timeline,
+	- Appointment detail,
+	- Visit Completion,
+	- completed visit detail.
+- Reused the existing authenticated browser smoke session and fixtures to avoid
+  a separate slow setup path.
+- No product behavior, schema, migrations, RLS, provider workload,
+  availability logic, or appointment states were changed.
+- Documented the task in
+  `docs/design/task-65-responsive-overflow-smoke-guard.md`.
+
+### Verification (Task 65)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance, or provider availability planning
+  if schedule capacity becomes the next priority.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

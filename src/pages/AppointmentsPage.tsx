@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -16,6 +16,7 @@ import {
   FieldLabel,
   InlineNotice,
   LoadingState,
+  Select,
   TextInput,
 } from '../components/ui'
 import { AppointmentCard } from '../features/appointments/AppointmentCard'
@@ -23,9 +24,11 @@ import {
   APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE,
   canUpdateAppointmentLifecycle,
   fetchAppointmentsForRange,
+  fetchAssignableAppointmentProviders,
   getAppointmentLifecycleSuccessMessage,
   updateAppointmentStatus,
   type AppointmentRangeItem,
+  type AppointmentProviderSummary,
   type AppointmentStatus,
 } from '../features/appointments/appointmentService'
 import { formatPatientDate } from '../features/patients/patientDisplay'
@@ -47,6 +50,8 @@ type ActionFeedback = {
 } | null
 
 type ScheduleViewMode = 'day' | 'week'
+type ProviderFilterValue = 'all' | 'unassigned' | string
+const defaultProviderFilter: ProviderFilterValue = 'all'
 
 function getDateInputValue(date: Date) {
   const year = date.getFullYear()
@@ -136,11 +141,55 @@ function groupAppointmentsByDay(appointments: AppointmentRangeItem[]) {
   )
 }
 
+function filterAppointmentsByProvider(
+  appointments: AppointmentRangeItem[],
+  providerFilter: ProviderFilterValue,
+) {
+  if (providerFilter === 'all') {
+    return appointments
+  }
+
+  if (providerFilter === 'unassigned') {
+    return appointments.filter((appointment) => !appointment.assigned_provider_id)
+  }
+
+  return appointments.filter(
+    (appointment) => appointment.assigned_provider_id === providerFilter,
+  )
+}
+
+function getProviderFilterEmptyTitle(
+  providerFilter: ProviderFilterValue,
+  providerOptions: AppointmentProviderSummary[],
+) {
+  if (providerFilter === 'unassigned') {
+    return 'No unassigned appointments'
+  }
+
+  const provider = providerOptions.find((option) => option.id === providerFilter)
+
+  return provider
+    ? `No appointments for ${provider.fullName}`
+    : 'No appointments for this provider'
+}
+
+function getProviderSearchParamValue(value: string | null) {
+  const normalizedValue = value?.trim() ?? ''
+
+  return normalizedValue || defaultProviderFilter
+}
+
 export function AppointmentsPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [viewMode, setViewMode] = useState<ScheduleViewMode>('day')
   const [selectedDate, setSelectedDate] = useState(() => getTodayDateInputValue())
   const [appointments, setAppointments] = useState<AppointmentRangeItem[]>([])
+  const [providerOptions, setProviderOptions] = useState<
+    AppointmentProviderSummary[]
+  >([])
+  const [hasLoadedProviderOptions, setHasLoadedProviderOptions] = useState(false)
+  const [providerLoadError, setProviderLoadError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [statusUpdateState, setStatusUpdateState] =
@@ -152,9 +201,27 @@ export function AppointmentsPage() {
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate])
   const weekEnd = useMemo(() => getWeekEnd(selectedDate), [selectedDate])
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate])
+  const providerFilterParam = getProviderSearchParamValue(
+    searchParams.get('provider'),
+  )
+  const isBuiltInProviderFilter =
+    providerFilterParam === 'all' || providerFilterParam === 'unassigned'
+  const isKnownProviderFilter = providerOptions.some(
+    (provider) => provider.id === providerFilterParam,
+  )
+  const providerFilter =
+    isBuiltInProviderFilter || isKnownProviderFilter || !hasLoadedProviderOptions
+      ? providerFilterParam
+      : defaultProviderFilter
+  const filteredAppointments = useMemo(
+    () => filterAppointmentsByProvider(appointments, providerFilter),
+    [appointments, providerFilter],
+  )
+  const hasFilteredOutLoadedAppointments =
+    appointments.length > 0 && filteredAppointments.length === 0
   const appointmentsByDay = useMemo(
-    () => groupAppointmentsByDay(appointments),
-    [appointments],
+    () => groupAppointmentsByDay(filteredAppointments),
+    [filteredAppointments],
   )
 
   const selectedRange = useMemo(
@@ -234,6 +301,42 @@ export function AppointmentsPage() {
       isCurrent = false
     }
   }, [selectedRange.end, selectedRange.start])
+
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadProviders() {
+      try {
+        const providers = await fetchAssignableAppointmentProviders()
+
+        if (isCurrent) {
+          setProviderOptions(providers)
+          setHasLoadedProviderOptions(true)
+          setProviderLoadError(null)
+        }
+      } catch {
+        if (isCurrent) {
+          setHasLoadedProviderOptions(true)
+          setProviderLoadError('Provider filter options could not be loaded.')
+        }
+      }
+    }
+
+    void loadProviders()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
+
+  function handleProviderFilterChange(nextProviderFilter: ProviderFilterValue) {
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams)
+      nextParams.set('provider', nextProviderFilter)
+
+      return nextParams
+    })
+  }
 
   async function handleStatusUpdate(
     appointment: AppointmentRangeItem,
@@ -323,7 +426,10 @@ export function AppointmentsPage() {
     )
   }
 
-  function renderAppointmentCard(appointment: AppointmentRangeItem) {
+  function renderAppointmentCard(
+    appointment: AppointmentRangeItem,
+    variant: 'default' | 'compact' = 'default',
+  ) {
     const isStatusUpdating = statusUpdateState?.appointmentId === appointment.id
     const isBusy = isLoading || Boolean(statusUpdateState)
 
@@ -340,6 +446,7 @@ export function AppointmentsPage() {
           appointment.linkedVisit ? () => viewCompletedVisit(appointment) : undefined
         }
         statusUpdateStatus={isStatusUpdating ? statusUpdateState?.status : null}
+        variant={variant}
       />
     )
   }
@@ -353,118 +460,147 @@ export function AppointmentsPage() {
             ? 'Daily operational schedule.'
             : 'Weekly operational schedule.'
         }
-        actions={
-          <div className="flex flex-col gap-2 sm:items-end">
-            <div className="flex w-full rounded-md border border-slate-200 bg-white p-1 sm:w-auto">
-              <Button
-                className="flex-1 sm:flex-none"
-                onClick={() => setViewMode('day')}
-                size="sm"
-                variant={viewMode === 'day' ? 'primary' : 'ghost'}
-              >
-                Day
-              </Button>
-              <Button
-                className="flex-1 sm:flex-none"
-                data-testid="appointments-week-mode"
-                onClick={() => setViewMode('week')}
-                size="sm"
-                variant={viewMode === 'week' ? 'primary' : 'ghost'}
-              >
-                Week
-              </Button>
-            </div>
-
-            {viewMode === 'day' ? (
-              <div className="flex flex-nowrap items-end gap-2 overflow-x-auto pb-0.5">
-                <label>
-                  <FieldLabel>Date</FieldLabel>
-                  <TextInput
-                    data-testid="appointments-date-input"
-                    onChange={(event) => setSelectedDate(event.target.value)}
-                    type="date"
-                    value={selectedDate}
-                  />
-                </label>
-                <Button
-                  disabled={isLoading}
-                  onClick={() => setSelectedDate(todayDateValue)}
-                  size="sm"
-                  variant="secondary"
-                >
-                  Today
-                </Button>
-                <Button
-                  disabled={isLoading}
-                  onClick={() => setSelectedDate(addDays(todayDateValue, 1))}
-                  size="sm"
-                  variant="secondary"
-                >
-                  Tomorrow
-                </Button>
-                <Button
-                  disabled={isLoading}
-                  onClick={() => void loadAppointments()}
-                  size="sm"
-                  variant="ghost"
-                >
-                  {isLoading ? 'Refreshing...' : 'Refresh'}
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-0.5">
-                <Button
-                  disabled={isLoading}
-                  onClick={() => setSelectedDate(addDays(weekStart, -7))}
-                  size="sm"
-                  variant="secondary"
-                >
-                  Previous week
-                </Button>
-                <Button
-                  disabled={isLoading}
-                  onClick={() => setSelectedDate(todayDateValue)}
-                  size="sm"
-                  variant="secondary"
-                >
-                  This week
-                </Button>
-                <Button
-                  disabled={isLoading}
-                  onClick={() => setSelectedDate(addDays(weekStart, 7))}
-                  size="sm"
-                  variant="secondary"
-                >
-                  Next week
-                </Button>
-                <Button
-                  disabled={isLoading}
-                  onClick={() => void loadAppointments()}
-                  size="sm"
-                  variant="ghost"
-                >
-                  {isLoading ? 'Refreshing...' : 'Refresh'}
-                </Button>
-              </div>
-            )}
-          </div>
-        }
       />
 
-      <Card className="border-slate-200 shadow-sm">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
+      <Card className="min-w-0 max-w-full border-slate-200 shadow-sm">
+        <CardHeader className="space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <CardTitle>{selectedRange.title}</CardTitle>
               <CardDescription>{selectedRange.label}</CardDescription>
             </div>
             <Badge variant="info">
-              {appointments.length}{' '}
-              {appointments.length === 1 ? 'appointment' : 'appointments'}
+              {filteredAppointments.length}{' '}
+              {filteredAppointments.length === 1 ? 'appointment' : 'appointments'}
             </Badge>
           </div>
+
+          <div className="min-w-0 max-w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <div className="grid min-w-0 max-w-full grid-cols-1 gap-2.5 lg:grid-cols-[auto_minmax(0,15rem)_minmax(0,18rem)_minmax(0,1fr)] lg:items-end">
+              <div className="min-w-0">
+                <FieldLabel>View</FieldLabel>
+                <div className="mt-2 flex rounded-md border border-slate-200 bg-white p-1">
+                  <Button
+                    className="flex-1 sm:flex-none"
+                    onClick={() => setViewMode('day')}
+                    size="sm"
+                    variant={viewMode === 'day' ? 'primary' : 'ghost'}
+                  >
+                    Day
+                  </Button>
+                  <Button
+                    className="flex-1 sm:flex-none"
+                    data-testid="appointments-week-mode"
+                    onClick={() => setViewMode('week')}
+                    size="sm"
+                    variant={viewMode === 'week' ? 'primary' : 'ghost'}
+                  >
+                    Week
+                  </Button>
+                </div>
+              </div>
+
+              <label className="min-w-0">
+                <FieldLabel>{viewMode === 'day' ? 'Date' : 'Week'}</FieldLabel>
+                <TextInput
+                  data-testid="appointments-date-input"
+                  onChange={(event) => setSelectedDate(event.target.value)}
+                  type="date"
+                  value={selectedDate}
+                />
+              </label>
+
+              <label className="min-w-0">
+                <FieldLabel>Assigned provider</FieldLabel>
+                <Select
+                  data-testid="appointments-provider-filter"
+                  disabled={isLoading}
+                  onChange={(event) =>
+                    handleProviderFilterChange(event.target.value)
+                  }
+                  value={providerFilter}
+                >
+                  <option value="all">All providers</option>
+                  <option value="unassigned">Unassigned</option>
+                  {providerOptions.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.fullName} ({provider.role})
+                    </option>
+                  ))}
+                </Select>
+              </label>
+
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
+                {viewMode === 'day' ? (
+                  <>
+                    <Button
+                      className="min-h-10"
+                      disabled={isLoading}
+                      onClick={() => setSelectedDate(todayDateValue)}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Today
+                    </Button>
+                    <Button
+                      className="min-h-10"
+                      disabled={isLoading}
+                      onClick={() => setSelectedDate(addDays(todayDateValue, 1))}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Tomorrow
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      className="min-h-10"
+                      disabled={isLoading}
+                      onClick={() => setSelectedDate(addDays(weekStart, -7))}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Previous week
+                    </Button>
+                    <Button
+                      className="min-h-10"
+                      disabled={isLoading}
+                      onClick={() => setSelectedDate(todayDateValue)}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      This week
+                    </Button>
+                    <Button
+                      className="min-h-10"
+                      disabled={isLoading}
+                      onClick={() => setSelectedDate(addDays(weekStart, 7))}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Next week
+                    </Button>
+                  </>
+                )}
+                <Button
+                  className="min-h-10"
+                  disabled={isLoading}
+                  onClick={() => void loadAppointments()}
+                  size="sm"
+                  variant="ghost"
+                >
+                  {isLoading ? 'Refreshing...' : 'Refresh'}
+                </Button>
+              </div>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4 sm:space-y-5">
+        <CardContent className="space-y-3.5 sm:space-y-4">
+          {!loadError && providerLoadError ? (
+            <InlineNotice variant="warning">{providerLoadError}</InlineNotice>
+          ) : null}
+
           {isLoading ? (
             <div data-testid="appointments-loading-state">
               <LoadingState label="Loading schedule..." />
@@ -510,20 +646,39 @@ export function AppointmentsPage() {
             </div>
           ) : null}
 
-          {!isLoading && !loadError && appointments.length > 0 && viewMode === 'day' ? (
-            <div className="space-y-4 sm:space-y-5" data-testid="appointments-list">
-              {appointments.map((appointment) => renderAppointmentCard(appointment))}
+          {!isLoading &&
+          !loadError &&
+          hasFilteredOutLoadedAppointments ? (
+            <div data-testid="appointments-filter-empty-state">
+              <EmptyState
+                description="Switch provider filters or choose another date."
+                title={getProviderFilterEmptyTitle(providerFilter, providerOptions)}
+              />
             </div>
           ) : null}
 
-          {!isLoading && !loadError && viewMode === 'week' ? (
-            <div className="space-y-3 sm:space-y-4" data-testid="appointments-week-list">
+          {!isLoading &&
+          !loadError &&
+          filteredAppointments.length > 0 &&
+          viewMode === 'day' ? (
+            <div className="min-w-0 max-w-full space-y-3 sm:space-y-4" data-testid="appointments-list">
+              {filteredAppointments.map((appointment) =>
+                renderAppointmentCard(appointment),
+              )}
+            </div>
+          ) : null}
+
+          {!isLoading &&
+          !loadError &&
+          !hasFilteredOutLoadedAppointments &&
+          viewMode === 'week' ? (
+            <div className="min-w-0 max-w-full space-y-3" data-testid="appointments-week-list">
               {weekDays.map((dayValue) => {
                 const dayAppointments = appointmentsByDay[dayValue] ?? []
 
                 return (
                   <section
-                    className="rounded-md border border-slate-200 bg-slate-50 p-3 sm:p-4"
+                    className="min-w-0 max-w-full rounded-md border border-slate-200 bg-slate-50 p-3"
                     data-testid="appointments-week-day"
                     key={dayValue}
                   >
@@ -545,9 +700,9 @@ export function AppointmentsPage() {
                     </div>
 
                     {dayAppointments.length > 0 ? (
-                      <div className="mt-3 space-y-3 sm:space-y-4">
+                      <div className="mt-3 space-y-3">
                         {dayAppointments.map((appointment) =>
-                          renderAppointmentCard(appointment),
+                          renderAppointmentCard(appointment, 'compact'),
                         )}
                       </div>
                     ) : (
