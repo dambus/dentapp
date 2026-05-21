@@ -202,7 +202,7 @@ export function PatientTreatmentPlanSummary({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle>Treatment Plan</CardTitle>
-                <Badge variant="neutral">Read-only foundation</Badge>
+                <Badge variant="neutral">Read-only</Badge>
               </div>
               <CardDescription>
                 Treatment plan records and planned items for this patient.
@@ -214,7 +214,7 @@ export function PatientTreatmentPlanSummary({
               size="sm"
               variant="secondary"
             >
-              Open treatment plans
+              View treatment plan
             </Button>
           </div>
         </CardHeader>
@@ -258,7 +258,7 @@ export function PatientTreatmentPlanSummary({
             size="sm"
             variant="secondary"
           >
-            Open treatment plans
+            View treatment plan
           </Button>
         </div>
       </CardHeader>

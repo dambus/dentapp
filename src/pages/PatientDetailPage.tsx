@@ -65,12 +65,6 @@ const treatmentPlanReadRoles: AppRole[] = [
   'reception_admin',
 ]
 
-const treatmentPlanWriteRoles: AppRole[] = [
-  'owner_admin',
-  'doctor',
-  'specialist',
-]
-
 const visitCompletionRoles: AppRole[] = [
   'owner_admin',
   'doctor',
@@ -219,9 +213,6 @@ export function PatientDetailPage() {
     : false
   const canViewTreatmentPlans = currentProfile.profile
     ? treatmentPlanReadRoles.includes(currentProfile.profile.role)
-    : false
-  const canManageTreatmentPlans = currentProfile.profile
-    ? treatmentPlanWriteRoles.includes(currentProfile.profile.role)
     : false
   const canCompleteVisit = currentProfile.profile
     ? visitCompletionRoles.includes(currentProfile.profile.role)
@@ -475,7 +466,6 @@ export function PatientDetailPage() {
         canViewClinicalNotes={canViewClinicalNotes}
         canManageClinicalNotes={canViewClinicalNotes}
         canViewTreatmentPlans={canViewTreatmentPlans}
-        canManageTreatmentPlans={canManageTreatmentPlans}
         highlightedVisitId={highlightedVisitId}
         isPatientArchived={isArchived}
         onEditMedicalRecord={() =>

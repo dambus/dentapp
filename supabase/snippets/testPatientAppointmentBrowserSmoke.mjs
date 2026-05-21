@@ -1978,12 +1978,19 @@ async function main() {
           `(() => {
             const section = document.querySelector('#patient-treatment-plans-section');
             const text = section?.textContent ?? '';
+            const sectionActions = Array.from(section?.querySelectorAll('button, a') ?? [])
+              .map((element) => element.textContent?.trim())
+              .filter(Boolean);
             return location.search.includes('section=treatment-plans') &&
-              text.includes('Treatment plans') &&
+              text.includes('Treatment Plan') &&
+              text.includes('Read-only') &&
+              !sectionActions.includes('Create treatment plan') &&
+              !sectionActions.includes('Edit plan') &&
+              !sectionActions.includes('Add item') &&
               (
-                text.includes('No active treatment plans') ||
-                text.includes('item') ||
-                text.includes('Read')
+                text.includes('No treatment plan configured') ||
+                text.includes('Treatment plan exists but has no planned items') ||
+                Boolean(section.querySelector('[data-testid="patient-treatment-plan-detail"]'))
               );
           })()`,
         ),

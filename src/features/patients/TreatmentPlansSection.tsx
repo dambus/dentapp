@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
 
 import {
   Badge,
@@ -11,49 +10,25 @@ import {
   CardTitle,
   EmptyState,
   ErrorState,
+  InlineNotice,
   LoadingState,
+  MetricTile,
 } from '../../components/ui'
+import { formatPatientDate } from './patientDisplay'
 import {
-  archiveTreatmentPlan,
-  archiveTreatmentPlanItem,
-  createTreatmentPlan,
-  createTreatmentPlanItem,
   getPatientTreatmentPlans,
   treatmentPlanItemStatusOptions,
   treatmentPlanStatusOptions,
-  updateTreatmentPlan,
-  updateTreatmentPlanItem,
 } from './treatmentPlanService'
 import type {
   TreatmentPlan,
-  TreatmentPlanInput,
-  TreatmentPlanItem,
-  TreatmentPlanItemInput,
   TreatmentPlanItemStatus,
   TreatmentPlanStatus,
 } from './treatmentPlanService'
 
 type TreatmentPlansSectionProps = {
   patientId: string
-  canManageTreatmentPlans: boolean
   isPatientArchived: boolean
-}
-
-const emptyPlanFormValues: TreatmentPlanInput = {
-  title: '',
-  description: '',
-  status: 'draft',
-  proposedTotal: '',
-}
-
-const emptyItemFormValues: TreatmentPlanItemInput = {
-  toothNumber: '',
-  title: '',
-  description: '',
-  serviceCode: '',
-  status: 'planned',
-  estimatedPrice: '',
-  sortOrder: '0',
 }
 
 const statusBadgeVariants: Record<
@@ -80,13 +55,13 @@ const currencyFormatter = new Intl.NumberFormat('sr-RS', {
 })
 
 function formatCurrency(value: number | null) {
-  return value === null ? 'No total' : currencyFormatter.format(value)
+  return value === null ? 'No total recorded' : currencyFormatter.format(value)
 }
 
 function getPlanStatusLabel(status: TreatmentPlanStatus) {
   return (
-    treatmentPlanStatusOptions.find((option) => option.value === status)?.label ??
-    'Draft'
+    treatmentPlanStatusOptions.find((option) => option.value === status)
+      ?.label ?? 'Draft'
   )
 }
 
@@ -97,60 +72,39 @@ function getItemStatusLabel(status: TreatmentPlanItemStatus) {
   )
 }
 
-function getTreatmentPlanErrorMessage(
-  action: 'load' | 'planSave' | 'planArchive' | 'itemSave' | 'itemArchive',
-  serviceError: string | undefined,
-) {
-  const normalizedError = serviceError?.toLowerCase() ?? ''
+function getTreatmentPlanLoadErrorMessage(message: string | null) {
+  const normalizedMessage = message?.toLowerCase() ?? ''
 
   if (
-    normalizedError.includes('permission') ||
-    normalizedError.includes('row-level security') ||
-    normalizedError.includes('not allowed')
+    normalizedMessage.includes('permission') ||
+    normalizedMessage.includes('row-level security') ||
+    normalizedMessage.includes('not allowed')
   ) {
-    return 'You do not have permission to edit treatment plans.'
+    return 'Treatment plans could not be loaded for the current role.'
   }
 
-  if (action === 'load') {
-    return 'Treatment plans could not be loaded.'
+  if (
+    normalizedMessage.includes('failed to fetch') ||
+    normalizedMessage.includes('network')
+  ) {
+    return 'Treatment plans could not be loaded. Check the local Supabase connection and try again.'
   }
 
-  if (action === 'itemSave') {
-    return 'Treatment plan item could not be saved.'
-  }
+  return 'Treatment plans could not be loaded.'
+}
 
-  if (action === 'itemArchive') {
-    return 'Treatment plan item could not be archived.'
-  }
-
-  if (action === 'planArchive') {
-    return 'Treatment plan could not be archived.'
-  }
-
-  return 'Treatment plan could not be saved.'
+function getItemCountLabel(count: number) {
+  return `${count} planned item${count === 1 ? '' : 's'}`
 }
 
 export function TreatmentPlansSection({
   patientId,
-  canManageTreatmentPlans,
   isPatientArchived,
 }: TreatmentPlansSectionProps) {
   const [plans, setPlans] = useState<TreatmentPlan[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [isPlanFormOpen, setIsPlanFormOpen] = useState(false)
-  const [editingPlan, setEditingPlan] = useState<TreatmentPlan | null>(null)
-  const [planFormValues, setPlanFormValues] =
-    useState<TreatmentPlanInput>(emptyPlanFormValues)
-  const [itemFormPlanId, setItemFormPlanId] = useState<string | null>(null)
-  const [editingItem, setEditingItem] = useState<TreatmentPlanItem | null>(null)
-  const [itemFormValues, setItemFormValues] =
-    useState<TreatmentPlanItemInput>(emptyItemFormValues)
 
-  const canShowActions = canManageTreatmentPlans && !isPatientArchived
   const sortedPlans = useMemo(
     () =>
       [...plans].sort(
@@ -171,7 +125,11 @@ export function TreatmentPlansSection({
       setPlans(loadedPlans)
       setLoadError(null)
     } catch (error) {
-      setLoadError(getTreatmentPlanErrorMessage('load', undefined))
+      setLoadError(
+        getTreatmentPlanLoadErrorMessage(
+          error instanceof Error ? error.message : null,
+        ),
+      )
 
       if (import.meta.env.DEV) {
         console.warn('[TreatmentPlansSection] Treatment plans load failed:', error)
@@ -185,6 +143,9 @@ export function TreatmentPlansSection({
     let isCurrent = true
 
     async function loadInitialTreatmentPlans() {
+      setIsLoading(true)
+      setLoadError(null)
+
       try {
         const loadedPlans = await getPatientTreatmentPlans(patientId)
 
@@ -194,7 +155,11 @@ export function TreatmentPlansSection({
         }
       } catch (error) {
         if (isCurrent) {
-          setLoadError(getTreatmentPlanErrorMessage('load', undefined))
+          setLoadError(
+            getTreatmentPlanLoadErrorMessage(
+              error instanceof Error ? error.message : null,
+            ),
+          )
         }
 
         if (import.meta.env.DEV) {
@@ -217,383 +182,54 @@ export function TreatmentPlansSection({
     }
   }, [patientId])
 
-  function openCreatePlanForm() {
-    setEditingPlan(null)
-    setPlanFormValues(emptyPlanFormValues)
-    setSubmitError(null)
-    setSuccessMessage(null)
-    setIsPlanFormOpen(true)
-  }
-
-  function openEditPlanForm(plan: TreatmentPlan) {
-    setEditingPlan(plan)
-    setPlanFormValues({
-      title: plan.title,
-      description: plan.description,
-      status: plan.status,
-      proposedTotal: plan.proposedTotal?.toString() ?? '',
-    })
-    setSubmitError(null)
-    setSuccessMessage(null)
-    setIsPlanFormOpen(true)
-  }
-
-  function closePlanForm() {
-    setEditingPlan(null)
-    setPlanFormValues(emptyPlanFormValues)
-    setIsPlanFormOpen(false)
-  }
-
-  function openCreateItemForm(plan: TreatmentPlan) {
-    setItemFormPlanId(plan.id)
-    setEditingItem(null)
-    setItemFormValues({
-      ...emptyItemFormValues,
-      sortOrder: plan.items.length.toString(),
-    })
-    setSubmitError(null)
-    setSuccessMessage(null)
-  }
-
-  function openEditItemForm(planId: string, item: TreatmentPlanItem) {
-    setItemFormPlanId(planId)
-    setEditingItem(item)
-    setItemFormValues({
-      toothNumber: item.toothNumber,
-      title: item.title,
-      description: item.description,
-      serviceCode: item.serviceCode,
-      status: item.status,
-      estimatedPrice: item.estimatedPrice?.toString() ?? '',
-      sortOrder: item.sortOrder.toString(),
-    })
-    setSubmitError(null)
-    setSuccessMessage(null)
-  }
-
-  function closeItemForm() {
-    setItemFormPlanId(null)
-    setEditingItem(null)
-    setItemFormValues(emptyItemFormValues)
-  }
-
-  async function handlePlanSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    if (!planFormValues.title.trim()) {
-      setSubmitError('Treatment plan title is required.')
-      return
-    }
-
-    setSubmitError(null)
-    setSuccessMessage(null)
-    setIsSubmitting(true)
-
-    const result = editingPlan
-      ? await updateTreatmentPlan(patientId, editingPlan.id, planFormValues)
-      : await createTreatmentPlan(patientId, planFormValues)
-
-    setIsSubmitting(false)
-
-    if (result.reason === 'demo_mode') {
-      setSuccessMessage(result.message)
-      closePlanForm()
-      return
-    }
-
-    if (!result.ok) {
-      setSubmitError(getTreatmentPlanErrorMessage('planSave', result.error))
-
-      if (import.meta.env.DEV && result.error) {
-        console.warn(
-          '[TreatmentPlansSection] Treatment plan save failed:',
-          result.error,
-        )
-      }
-
-      return
-    }
-
-    setSuccessMessage(result.message ?? 'Treatment plan was saved successfully.')
-    closePlanForm()
-    await loadTreatmentPlans(false)
-  }
-
-  async function handlePlanArchive(plan: TreatmentPlan) {
-    const confirmed = window.confirm(
-      `Archive treatment plan "${plan.title}"? It will be hidden from the active list.`,
-    )
-
-    if (!confirmed) {
-      return
-    }
-
-    setSubmitError(null)
-    setSuccessMessage(null)
-    setIsSubmitting(true)
-
-    const result = await archiveTreatmentPlan(patientId, plan.id)
-
-    setIsSubmitting(false)
-
-    if (result.reason === 'demo_mode') {
-      setSuccessMessage(result.message)
-      return
-    }
-
-    if (!result.ok) {
-      setSubmitError(getTreatmentPlanErrorMessage('planArchive', result.error))
-
-      if (import.meta.env.DEV && result.error) {
-        console.warn(
-          '[TreatmentPlansSection] Treatment plan archive failed:',
-          result.error,
-        )
-      }
-
-      return
-    }
-
-    setSuccessMessage(
-      result.message ?? 'Treatment plan was archived successfully.',
-    )
-    await loadTreatmentPlans(false)
-  }
-
-  async function handleItemSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    if (!itemFormPlanId) {
-      setSubmitError('Select a treatment plan before saving an item.')
-      return
-    }
-
-    if (!itemFormValues.title.trim()) {
-      setSubmitError('Treatment plan item title is required.')
-      return
-    }
-
-    setSubmitError(null)
-    setSuccessMessage(null)
-    setIsSubmitting(true)
-
-    const result = editingItem
-      ? await updateTreatmentPlanItem(
-          patientId,
-          itemFormPlanId,
-          editingItem.id,
-          itemFormValues,
-        )
-      : await createTreatmentPlanItem(patientId, itemFormPlanId, itemFormValues)
-
-    setIsSubmitting(false)
-
-    if (result.reason === 'demo_mode') {
-      setSuccessMessage(result.message)
-      closeItemForm()
-      return
-    }
-
-    if (!result.ok) {
-      setSubmitError(getTreatmentPlanErrorMessage('itemSave', result.error))
-
-      if (import.meta.env.DEV && result.error) {
-        console.warn(
-          '[TreatmentPlansSection] Treatment plan item save failed:',
-          result.error,
-        )
-      }
-
-      return
-    }
-
-    setSuccessMessage(
-      result.message ?? 'Treatment plan item was saved successfully.',
-    )
-    closeItemForm()
-    await loadTreatmentPlans(false)
-  }
-
-  async function handleItemArchive(planId: string, item: TreatmentPlanItem) {
-    const confirmed = window.confirm(
-      `Archive treatment item "${item.title}"? It will be hidden from the active item list.`,
-    )
-
-    if (!confirmed) {
-      return
-    }
-
-    setSubmitError(null)
-    setSuccessMessage(null)
-    setIsSubmitting(true)
-
-    const result = await archiveTreatmentPlanItem(patientId, planId, item.id)
-
-    setIsSubmitting(false)
-
-    if (result.reason === 'demo_mode') {
-      setSuccessMessage(result.message)
-      return
-    }
-
-    if (!result.ok) {
-      setSubmitError(getTreatmentPlanErrorMessage('itemArchive', result.error))
-
-      if (import.meta.env.DEV && result.error) {
-        console.warn(
-          '[TreatmentPlansSection] Treatment plan item archive failed:',
-          result.error,
-        )
-      }
-
-      return
-    }
-
-    setSuccessMessage(
-      result.message ?? 'Treatment plan item was archived successfully.',
-    )
-    await loadTreatmentPlans(false)
-  }
-
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <CardTitle>Treatment plans</CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Treatment Plan</CardTitle>
+              <Badge variant="neutral">Read-only</Badge>
+            </div>
             <CardDescription>
-              MVP patient treatment plans and planned items.
+              Clinical planning reference for existing treatment plans and
+              planned items.
             </CardDescription>
           </div>
-          {canShowActions ? (
-            <Button onClick={openCreatePlanForm}>Create treatment plan</Button>
-          ) : null}
+          <Badge variant="info">Planning reference</Badge>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4 sm:space-y-5">
         {isPatientArchived ? (
-          <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
-            This patient is archived. Restore the profile before editing
-            treatment plans.
-          </p>
-        ) : null}
-
-        {successMessage ? (
-          <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
-            {successMessage}
-          </p>
-        ) : null}
-
-        {submitError ? (
-          <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
-            {submitError}
-          </p>
-        ) : null}
-
-        {isPlanFormOpen ? (
-          <form
-            className="mb-5 rounded-md border border-slate-200 bg-slate-50 p-4"
-            onSubmit={(event) => void handlePlanSubmit(event)}
-          >
-            <div className="grid gap-4 lg:grid-cols-[1fr_180px_180px]">
-              <label className="grid gap-1 text-sm font-medium text-slate-700">
-                Title
-                <input
-                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                  value={planFormValues.title}
-                  onChange={(event) =>
-                    setPlanFormValues((current) => ({
-                      ...current,
-                      title: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-
-              <label className="grid gap-1 text-sm font-medium text-slate-700">
-                Status
-                <select
-                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                  value={planFormValues.status}
-                  onChange={(event) =>
-                    setPlanFormValues((current) => ({
-                      ...current,
-                      status: event.target.value as TreatmentPlanStatus,
-                    }))
-                  }
-                >
-                  {treatmentPlanStatusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="grid gap-1 text-sm font-medium text-slate-700">
-                Proposed total
-                <input
-                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                  min="0"
-                  type="number"
-                  value={planFormValues.proposedTotal}
-                  onChange={(event) =>
-                    setPlanFormValues((current) => ({
-                      ...current,
-                      proposedTotal: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-            </div>
-
-            <label className="mt-4 grid gap-1 text-sm font-medium text-slate-700">
-              Description
-              <textarea
-                className="min-h-24 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm leading-6 text-slate-950 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                value={planFormValues.description}
-                onChange={(event) =>
-                  setPlanFormValues((current) => ({
-                    ...current,
-                    description: event.target.value,
-                  }))
-                }
-              />
-            </label>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : 'Save treatment plan'}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={closePlanForm}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
+          <InlineNotice variant="warning">
+            This patient is archived. Treatment plan information is shown as a
+            read-only reference.
+          </InlineNotice>
         ) : null}
 
         {isLoading ? (
           <LoadingState label="Loading treatment plans..." />
         ) : loadError ? (
           <ErrorState
-            title="Treatment plans unavailable"
+            action={
+              <Button onClick={() => void loadTreatmentPlans()}>
+                Try again
+              </Button>
+            }
+            title="Failed to load treatment plans"
             description={loadError}
           />
         ) : sortedPlans.length === 0 ? (
           <EmptyState
-            title="No active treatment plans"
-            description="Treatment plans created in this section will appear here."
+            title="No treatment plan configured"
+            description="Treatment plans and planned items will appear here once they are recorded for this patient."
           />
         ) : (
           <div className="space-y-4">
             {sortedPlans.map((plan) => (
               <section
-                className="rounded-md border border-slate-200 bg-white p-4"
+                className="rounded-md border border-slate-200 bg-white p-4 shadow-sm"
+                data-testid="patient-treatment-plan-detail"
                 key={plan.id}
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -605,245 +241,97 @@ export function TreatmentPlansSection({
                       <Badge variant={statusBadgeVariants[plan.status]}>
                         {getPlanStatusLabel(plan.status)}
                       </Badge>
-                      <Badge variant="neutral">
-                        {plan.items.length} item{plan.items.length === 1 ? '' : 's'}
-                      </Badge>
                     </div>
-                    <p className="mt-2 text-sm font-medium text-slate-700">
-                      {formatCurrency(plan.proposedTotal)}
-                    </p>
                     {plan.description ? (
                       <p className="mt-2 max-w-4xl whitespace-pre-wrap text-sm leading-6 text-slate-600">
                         {plan.description}
                       </p>
                     ) : null}
                   </div>
-                  {canShowActions ? (
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="secondary"
-                        onClick={() => openEditPlanForm(plan)}
-                        disabled={isSubmitting}
-                      >
-                        Edit plan
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => openCreateItemForm(plan)}
-                        disabled={isSubmitting}
-                      >
-                        Add item
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => void handlePlanArchive(plan)}
-                        disabled={isSubmitting}
-                      >
-                        Archive plan
-                      </Button>
-                    </div>
-                  ) : null}
+                  <Badge variant="neutral">
+                    {getItemCountLabel(plan.items.length)}
+                  </Badge>
                 </div>
 
-                {itemFormPlanId === plan.id ? (
-                  <form
-                    className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4"
-                    onSubmit={(event) => void handleItemSubmit(event)}
-                  >
-                    <div className="grid gap-4 lg:grid-cols-[1fr_120px_150px_150px]">
-                      <label className="grid gap-1 text-sm font-medium text-slate-700">
-                        Item title
-                        <input
-                          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                          value={itemFormValues.title}
-                          onChange={(event) =>
-                            setItemFormValues((current) => ({
-                              ...current,
-                              title: event.target.value,
-                            }))
-                          }
-                        />
-                      </label>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <MetricTile
+                    label="Created"
+                    value={formatPatientDate(plan.createdAt)}
+                    description="Plan record date."
+                    tone="default"
+                  />
+                  <MetricTile
+                    label="Planned items"
+                    value={String(plan.items.length)}
+                    description="Existing treatment plan item count."
+                    tone={plan.items.length > 0 ? 'success' : 'warning'}
+                  />
+                  <MetricTile
+                    label="Proposed total"
+                    value={formatCurrency(plan.proposedTotal)}
+                    description="Recorded proposal amount."
+                    tone={plan.proposedTotal !== null ? 'info' : 'default'}
+                  />
+                </div>
 
-                      <label className="grid gap-1 text-sm font-medium text-slate-700">
-                        Tooth
-                        <input
-                          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                          placeholder="Optional"
-                          value={itemFormValues.toothNumber}
-                          onChange={(event) =>
-                            setItemFormValues((current) => ({
-                              ...current,
-                              toothNumber: event.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-
-                      <label className="grid gap-1 text-sm font-medium text-slate-700">
-                        Status
-                        <select
-                          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                          value={itemFormValues.status}
-                          onChange={(event) =>
-                            setItemFormValues((current) => ({
-                              ...current,
-                              status: event.target.value as TreatmentPlanItemStatus,
-                            }))
-                          }
-                        >
-                          {treatmentPlanItemStatusOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-
-                      <label className="grid gap-1 text-sm font-medium text-slate-700">
-                        Price
-                        <input
-                          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                          min="0"
-                          type="number"
-                          value={itemFormValues.estimatedPrice}
-                          onChange={(event) =>
-                            setItemFormValues((current) => ({
-                              ...current,
-                              estimatedPrice: event.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-                    </div>
-
-                    <div className="mt-4 grid gap-4 lg:grid-cols-[180px_1fr]">
-                      <label className="grid gap-1 text-sm font-medium text-slate-700">
-                        Service code
-                        <input
-                          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                          placeholder="Optional"
-                          value={itemFormValues.serviceCode}
-                          onChange={(event) =>
-                            setItemFormValues((current) => ({
-                              ...current,
-                              serviceCode: event.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-
-                      <label className="grid gap-1 text-sm font-medium text-slate-700">
-                        Sort order
-                        <input
-                          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                          type="number"
-                          value={itemFormValues.sortOrder}
-                          onChange={(event) =>
-                            setItemFormValues((current) => ({
-                              ...current,
-                              sortOrder: event.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-                    </div>
-
-                    <label className="mt-4 grid gap-1 text-sm font-medium text-slate-700">
-                      Description
-                      <textarea
-                        className="min-h-24 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm leading-6 text-slate-950 outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                        value={itemFormValues.description}
-                        onChange={(event) =>
-                          setItemFormValues((current) => ({
-                            ...current,
-                            description: event.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Saving...' : 'Save item'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={closeItemForm}
-                        disabled={isSubmitting}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                ) : null}
-
-                {plan.items.length === 0 ? (
-                  <div className="mt-4 rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-                    No active treatment plan items.
+                <div className="mt-5">
+                  <div className="text-sm font-semibold text-slate-950">
+                    Planned items
                   </div>
-                ) : (
-                  <div className="mt-4 space-y-2">
-                    {plan.items.map((item) => (
-                      <div
-                        className="rounded-md border border-slate-200 bg-slate-50 p-3"
-                        key={item.id}
-                      >
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <div className="text-sm font-semibold text-slate-950">
-                                {item.title}
+                  {plan.items.length === 0 ? (
+                    <div className="mt-3 rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                      Treatment plan exists but has no planned items.
+                    </div>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {plan.items.map((item) => (
+                        <article
+                          className="rounded-md border border-slate-200 bg-slate-50 p-3"
+                          key={item.id}
+                        >
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="text-sm font-semibold text-slate-950">
+                                  {item.title}
+                                </h4>
+                                <Badge
+                                  variant={statusBadgeVariants[item.status]}
+                                >
+                                  {getItemStatusLabel(item.status)}
+                                </Badge>
+                                {item.toothNumber ? (
+                                  <Badge variant="neutral">
+                                    Tooth {item.toothNumber}
+                                  </Badge>
+                                ) : null}
+                                {item.serviceCode ? (
+                                  <Badge variant="neutral">
+                                    {item.serviceCode}
+                                  </Badge>
+                                ) : null}
                               </div>
-                              <Badge variant={statusBadgeVariants[item.status]}>
-                                {getItemStatusLabel(item.status)}
-                              </Badge>
-                              {item.toothNumber ? (
-                                <Badge variant="neutral">
-                                  Tooth {item.toothNumber}
-                                </Badge>
-                              ) : null}
-                              {item.serviceCode ? (
-                                <Badge variant="neutral">
-                                  {item.serviceCode}
-                                </Badge>
-                              ) : null}
+                              {item.description ? (
+                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                                  {item.description}
+                                </p>
+                              ) : (
+                                <p className="mt-2 text-sm leading-6 text-slate-500">
+                                  No item notes recorded.
+                                </p>
+                              )}
                             </div>
-                            <p className="mt-2 text-sm font-medium text-slate-700">
-                              {formatCurrency(item.estimatedPrice)}
-                            </p>
-                            {item.description ? (
-                              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                                {item.description}
-                              </p>
+                            {item.estimatedPrice !== null ? (
+                              <div className="text-sm font-semibold text-slate-700">
+                                {formatCurrency(item.estimatedPrice)}
+                              </div>
                             ) : null}
                           </div>
-                          {canShowActions ? (
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                variant="secondary"
-                                onClick={() => openEditItemForm(plan.id, item)}
-                                disabled={isSubmitting}
-                              >
-                                Edit item
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                onClick={() =>
-                                  void handleItemArchive(plan.id, item)
-                                }
-                                disabled={isSubmitting}
-                              >
-                                Archive item
-                              </Button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </section>
             ))}
           </div>

@@ -48,12 +48,6 @@ const odontogramEditRoles: AppRole[] = [
 
 const odontogramContextRoles: AppRole[] = ['assistant']
 
-const treatmentPlanWriteRoles: AppRole[] = [
-  'owner_admin',
-  'doctor',
-  'specialist',
-]
-
 const treatmentPlanReadRoles: AppRole[] = [
   'owner_admin',
   'doctor',
@@ -264,10 +258,7 @@ export function PatientQuickActions({
     actions.push({
       id: 'view-treatment-plan',
       title: 'Treatment Plan',
-      description:
-        roleCan(role, treatmentPlanWriteRoles)
-          ? 'Open the patient treatment plan section. Existing plan editing remains in that section.'
-          : 'Open the read-only patient treatment plan section.',
+      description: 'Open the read-only patient treatment plan section.',
       status: 'available',
       cta: 'View treatment plan',
       onSelect: onOpenTreatmentPlans,

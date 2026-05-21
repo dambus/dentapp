@@ -2759,6 +2759,126 @@ Initial stack:
 
 ---
 
+### Completed (Task 56 - Treatment Plan Detail Read-only Polish)
+
+- Confirmed the treatment plan foundation already existed:
+	- `treatment_plans`,
+	- `treatment_plan_items`,
+	- `treatmentPlanService`,
+	- patient full-record `TreatmentPlansSection`,
+	- overview `PatientTreatmentPlanSummary`.
+- Polished the patient full-record treatment plan section as a read-only
+  clinical planning reference:
+	- plan title/status,
+	- created date,
+	- planned item count,
+	- proposed total when available,
+	- planned item list,
+	- item status,
+	- item notes/description when available.
+- Updated treatment plan reads to use existing demo treatment-plan context for
+  non-UUID demo patient IDs instead of attempting a Supabase UUID query.
+- Removed patient-detail treatment plan mutation controls from this surface:
+	- create/edit/archive plan,
+	- add/edit/archive item.
+- Aligned summary/detail/quick-action wording:
+	- `Treatment Plan`,
+	- `View treatment plan`,
+	- `Read-only`.
+- Improved treatment-plan section states:
+	- loading treatment plans,
+	- no treatment plan configured,
+	- failed to load treatment plans,
+	- treatment plan exists but has no planned items.
+- Updated browser smoke coverage for summary-to-detail navigation and stable
+  read-only treatment-plan detail/empty/no-items display.
+- No treatment-plan mutation, automatic conversion from completed visits,
+  billing, payments, materials, attachments, reminders/tasks, provider
+  assignment, fake treatment plans, broad patient redesign, or schema changes
+  were added.
+- Documented the task in
+  `docs/design/task-56-treatment-plan-detail-read-only-polish.md`.
+
+### Verification (Task 56)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local Supabase env from `npx supabase status -o env` and
+  `DENTAPP_APP_URL=http://localhost:5173`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase env from `npx supabase status -o env`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
+### Completed (Task 57 - Treatment Plan Data/RLS Smoke Coverage Review)
+
+- Reviewed existing treatment plan schema/RLS:
+	- `treatment_plans` is scoped by `clinic_id`, `patient_id`, status, totals,
+	  timestamps, and `deleted_at`,
+	- `treatment_plan_items` is scoped by `clinic_id`, `patient_id`,
+	  `treatment_plan_id`, tooth/service context, status, price, ordering,
+	  timestamps, and `deleted_at`,
+	- treatment plan read roles are `owner_admin`, `doctor`, `specialist`,
+	  `assistant`, and `reception_admin`,
+	- `inventory_responsible` has no treatment plan read policy.
+- Found a narrow RLS integrity gap: treatment plan item policies were
+  clinic/role scoped but did not explicitly require the item row to match its
+  parent treatment plan by plan, clinic, and patient.
+- Added minimal RLS hardening migration:
+  `20260521130000_harden_treatment_plan_item_rls_parent_scope.sql`.
+	- item select/insert/update now require a matching non-archived parent
+	  `treatment_plans` row with the same `treatment_plan_id`, `clinic_id`, and
+	  `patient_id`.
+- Reviewed `treatmentPlanService`:
+	- real Supabase UUID patient reads use RLS-protected Supabase queries,
+	- treatment plan reads are patient scoped and exclude `deleted_at`,
+	- item reads are limited to returned treatment plan IDs and exclude
+	  `deleted_at`,
+	- non-UUID demo slug fallback only uses existing demo context and does not
+	  bypass Supabase authorization for real UUID patients,
+	- read-only patient UI no longer exposes treatment plan mutation controls.
+- Added focused read RLS smoke:
+  `supabase/snippets/testTreatmentPlanReadRls.mjs`.
+	- verifies owner_admin, doctor, assistant, and reception can read in-clinic
+	  treatment plans/items,
+	- verifies inventory cannot read treatment plans/items,
+	- verifies out-of-clinic treatment plans/items are hidden,
+	- verifies mismatched parent-plan items are hidden.
+- Updated browser smoke treatment-plan check to verify the read-only section
+  has no `Create treatment plan`, `Edit plan`, or `Add item` controls.
+- No treatment-plan mutation UI, automatic conversion from completed visits,
+  billing, payments, materials, attachments, reminders/tasks, provider
+  assignment, fake treatment plans for product data, broad patient redesign, or
+  broad schema changes were added.
+- Documented the task in
+  `docs/design/task-57-treatment-plan-data-rls-smoke-coverage-review.md`.
+
+### Verification (Task 57)
+
+- `npx supabase migration up` applied
+  `20260521130000_harden_treatment_plan_item_rls_parent_scope.sql` locally.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning and a
+  Tailwind plugin timing warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  Supabase env from `npx supabase status -o env`.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local Supabase env from `npx supabase status -o env` and
+  `DENTAPP_APP_URL=http://localhost:5173`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase env from `npx supabase status -o env`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

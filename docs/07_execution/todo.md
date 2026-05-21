@@ -197,6 +197,8 @@ Status legend:
   - [x] Task 53: Restore Appointment Lifecycle Secondary Actions
   - [x] Task 54: Appointment Lifecycle State Transition Hardening
   - [x] Task 55: Appointment Lifecycle Service/Test Cleanup
+  - [x] Task 56: Treatment Plan Detail Read-only Polish
+  - [x] Task 57: Treatment Plan Data/RLS Smoke Coverage Review
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -253,6 +255,8 @@ Status legend:
 - [x] Task 53 - Restore Appointment Lifecycle Secondary Actions
 - [x] Task 54 - Appointment Lifecycle State Transition Hardening
 - [x] Task 55 - Appointment Lifecycle Service/Test Cleanup
+- [x] Task 56 - Treatment Plan Detail Read-only Polish
+- [x] Task 57 - Treatment Plan Data/RLS Smoke Coverage Review
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -624,6 +628,39 @@ Completed direction:
   completed, and Visit Completion happy-path behavior,
 - avoided schema changes, new lifecycle states, provider assignment, check-in
   states, autosave, billing, attachments, reminders, tasks, and broad redesign.
+
+### Completed Recommended Task
+
+Task 56 - Treatment Plan Detail Read-only Polish
+
+Completed direction:
+
+- polish the patient full-record treatment plan section as a read-only clinical
+  planning reference,
+- show plan title, status, created date, planned item count, proposed total,
+  planned items, item status, and item notes where available,
+- align overview, quick action, and detail wording around `Treatment Plan` and
+  `View treatment plan`,
+- improve loading, empty, error, and no-items states,
+- keep Visit Completion, billing, materials, attachments, reminders, provider
+  assignment, and automatic treatment-plan mutation out of scope.
+
+### Completed Recommended Task
+
+Task 57 - Treatment Plan Data/RLS Smoke Coverage Review
+
+Completed direction:
+
+- review treatment plan schema and RLS read boundaries,
+- harden treatment plan item RLS so item access must match the parent
+  treatment plan clinic and patient,
+- add focused treatment plan read RLS smoke coverage for in-clinic roles,
+  inventory denial, out-of-clinic denial, and mismatched parent item denial,
+- keep browser smoke treatment plan entry-point coverage and verify mutation
+  controls are absent,
+- keep treatment-plan mutation, Visit Completion conversion, billing, materials,
+  attachments, reminders, provider assignment, fake treatment plans, and broad
+  UI redesign out of scope.
 
 ### Later Appointment Direction
 
