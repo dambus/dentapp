@@ -200,6 +200,7 @@ Status legend:
   - [x] Task 56: Treatment Plan Detail Read-only Polish
   - [x] Task 57: Treatment Plan Data/RLS Smoke Coverage Review
   - [x] Task 58: Provider Assignment Planning / Data Model Decision
+  - [x] Task 59: Appointment Provider Assignment Schema/RLS Foundation
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -259,6 +260,7 @@ Status legend:
 - [x] Task 56 - Treatment Plan Detail Read-only Polish
 - [x] Task 57 - Treatment Plan Data/RLS Smoke Coverage Review
 - [x] Task 58 - Provider Assignment Planning / Data Model Decision
+- [x] Task 59 - Appointment Provider Assignment Schema/RLS Foundation
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -685,6 +687,27 @@ Completed direction:
   materials, treatment-plan mutation, reminders, provider workload calendar,
   automatic assignment, fake provider data, and broad scheduling redesign out of
   scope.
+
+### Completed Recommended Task
+
+Task 59 - Appointment Provider Assignment Schema/RLS Foundation
+
+Completed direction:
+
+- added nullable `appointments.assigned_provider_id`,
+- added FK to `public.profiles(id)` with `on delete set null`,
+- added provider schedule index on clinic, assigned provider, and scheduled
+  start,
+- enforced provider assignment through both appointment RLS `with check` logic
+  and a database trigger,
+- allowed null assignment plus active same-clinic doctor/specialist profiles,
+- blocked cross-clinic, inactive, suspended, and non-provider profile
+  assignment,
+- added focused provider-assignment RLS smoke coverage,
+- verified changing appointment assignment does not change `visits.completed_by`,
+- left provider assignment UI, provider display read path, automatic assignment,
+  workload calendar, check-in states, billing, materials, treatment-plan
+  mutation, reminders, and broad scheduling redesign out of scope.
 
 ### Later Appointment Direction
 

@@ -2945,6 +2945,79 @@ Initial stack:
 
 ---
 
+### Completed (Task 59 - Appointment Provider Assignment Schema/RLS Foundation)
+
+- Added migration
+  `supabase/migrations/20260521143000_add_appointment_assigned_provider.sql`.
+- Added nullable `appointments.assigned_provider_id`.
+	- FK target: `public.profiles(id)`.
+	- Delete behavior: `on delete set null`.
+	- No existing appointments were backfilled.
+- Added provider scheduling lookup index:
+  `appointments_clinic_provider_scheduled_start_idx` on
+  `(clinic_id, assigned_provider_id, scheduled_start)`.
+- Added `public.is_valid_appointment_assigned_provider(uuid, uuid)`:
+	- allows null assignment,
+	- allows active same-clinic `doctor` profiles,
+	- allows active same-clinic `specialist` profiles,
+	- rejects cross-clinic profiles,
+	- rejects inactive/suspended profiles,
+	- rejects assistant, reception, inventory, and other non-provider roles.
+- Added trigger function `public.enforce_appointment_assigned_provider()` and
+  trigger `enforce_appointment_assigned_provider`.
+	- The trigger enforces provider validity before appointment insert and before
+	  updates to `clinic_id` or `assigned_provider_id`.
+	- This protects the invariant even for privileged writes that bypass RLS.
+- Recreated appointment insert/update RLS policies with the existing role,
+  clinic, patient, created-by, and updated-by checks plus the new provider
+  validation helper in `with check`.
+- Added focused smoke coverage:
+  `supabase/snippets/testAppointmentProviderAssignmentRls.mjs`.
+	- owner/admin can create/update with active same-clinic doctor provider,
+	- owner/admin can create/update with active same-clinic specialist provider,
+	- null provider assignment is allowed,
+	- cross-clinic doctor assignment is blocked,
+	- inactive doctor assignment is blocked,
+	- suspended specialist assignment is blocked,
+	- assistant/reception/inventory assignment is blocked,
+	- inventory cannot update assignment through existing appointment RLS,
+	- changing appointment assignment does not change `visits.completed_by`.
+- Documented that Task 60/provider UI work still needs a safe provider display
+  read path:
+	- limited same-clinic provider profile read policy, or
+	- secure provider display view/RPC.
+- No provider assignment UI, appointment form provider dropdown, provider
+  display wiring, automatic provider assignment, provider workload calendar,
+  check-in/in-room/ready-for-doctor state, billing/payments/materials/
+  attachments, treatment-plan mutation, reminders/tasks, fake provider data, or
+  broad profile RLS opening was added.
+- Documented the task in
+  `docs/design/task-59-appointment-provider-assignment-schema-rls-foundation.md`.
+
+### Verification (Task 59)
+
+- `npx.cmd supabase migration up` applied
+  `20260521143000_add_appointment_assigned_provider.sql` locally.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning and a
+  Tailwind plugin timing warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local Supabase env from `npx supabase status -o env`.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local Supabase env from `npx supabase status -o env` and
+  `DENTAPP_APP_URL=http://localhost:5173`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase env from `npx supabase status -o env`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  Supabase env from `npx supabase status -o env`.
+
+### Next Recommended Task
+
+- Provider assignment service/read-path and UI wiring, including a safe provider
+  display profile policy or secure view/RPC.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:
