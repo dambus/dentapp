@@ -199,6 +199,7 @@ Status legend:
   - [x] Task 55: Appointment Lifecycle Service/Test Cleanup
   - [x] Task 56: Treatment Plan Detail Read-only Polish
   - [x] Task 57: Treatment Plan Data/RLS Smoke Coverage Review
+  - [x] Task 58: Provider Assignment Planning / Data Model Decision
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -257,6 +258,7 @@ Status legend:
 - [x] Task 55 - Appointment Lifecycle Service/Test Cleanup
 - [x] Task 56 - Treatment Plan Detail Read-only Polish
 - [x] Task 57 - Treatment Plan Data/RLS Smoke Coverage Review
+- [x] Task 58 - Provider Assignment Planning / Data Model Decision
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -661,6 +663,28 @@ Completed direction:
 - keep treatment-plan mutation, Visit Completion conversion, billing, materials,
   attachments, reminders, provider assignment, fake treatment plans, and broad
   UI redesign out of scope.
+
+### Completed Recommended Task
+
+Task 58 - Provider Assignment Planning / Data Model Decision
+
+Completed direction:
+
+- reviewed current profile, appointment, visit, service, UI, and RLS surfaces
+  for provider-related data,
+- confirmed appointments do not currently have a provider/assignee field,
+- confirmed `visits.completed_by` records actual completion identity and should
+  remain separate from appointment assignment,
+- recommended nullable `appointments.assigned_provider_id` as the next minimal
+  schema field,
+- recommended `public.profiles(id)` as the FK target with same-clinic, active
+  doctor/specialist enforcement,
+- documented provider-profile read-path, RLS, UI, and test requirements for the
+  implementation task,
+- kept schema changes, provider assignment behavior, check-in states, billing,
+  materials, treatment-plan mutation, reminders, provider workload calendar,
+  automatic assignment, fake provider data, and broad scheduling redesign out of
+  scope.
 
 ### Later Appointment Direction
 

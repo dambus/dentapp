@@ -2879,6 +2879,72 @@ Initial stack:
 
 ---
 
+### Completed (Task 58 - Provider Assignment Planning / Data Model Decision)
+
+- Reviewed provider-related schema and code surfaces:
+	- `profiles` already represents clinic users with role and status,
+	- appointment rows are clinic/patient/schedule scoped but have no provider,
+	  assignee, doctor, owner, or resource field,
+	- visits already track actual completion identity through `completed_by`,
+	- appointment services and UI currently have no provider assignment data,
+	- Treatment Plan read-only surfaces are not provider-aware and do not need
+	  changes for the minimal appointment assignment model.
+- Confirmed current provider-related UI is placeholder/context-only:
+	- Appointment cards show `Provider TBD`,
+	- Visit Completion appointment context shows `Not assigned in appointment
+	  record`,
+	- completed visit timeline/detail show completed-by context when profile
+	  metadata is readable.
+- Recommended the next implementation use nullable
+  `appointments.assigned_provider_id`.
+	- FK target: `public.profiles(id)`.
+	- Delete behavior: `on delete set null`.
+	- Allowed assignment target for new writes: active same-clinic `doctor` or
+	  `specialist` profile.
+	- Recommended index:
+	  `appointments(clinic_id, assigned_provider_id, scheduled_start)`.
+- Documented why `assigned_provider_id` is preferred over `provider_id` and
+  `doctor_id`:
+	- it clearly describes planned appointment assignment,
+	- it stays distinct from `visits.completed_by`,
+	- it supports specialists without narrowing the model to doctors only.
+- Identified an important RLS/read-path consideration:
+	- current profile RLS lets users read their own profile and owner/admins read
+	  clinic profiles,
+	- provider-name display for doctors, specialists, assistants, and reception
+	  users will need either a limited same-clinic provider-profile read policy
+	  or a secure view/RPC.
+- Documented implementation impact for appointment creation, appointment
+  service types/selects, appointment cards, appointment detail, patient
+  appointment summary, Visit Completion appointment context, and smoke fixtures.
+- Documented the testing plan for provider assignment implementation:
+	- same-clinic doctor/specialist assignment,
+	- optional null provider,
+	- cross-clinic denial,
+	- inactive/wrong-role provider denial,
+	- role behavior across scheduling roles,
+	- appointment display and Visit Completion context checks,
+	- preservation of existing appointment lifecycle and Visit Completion smoke.
+- No schema migration, RLS policy, provider assignment behavior, check-in/in-room
+  state, billing/payments/materials/attachments, treatment-plan mutation,
+  reminders/tasks, provider workload calendar, automatic assignment, fake
+  provider data, or broad scheduling redesign was added.
+- Documented the task in
+  `docs/design/task-58-provider-assignment-planning-data-model-decision.md`.
+
+### Verification (Task 58)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning and a
+  Tailwind plugin timing warning.
+- `npm.cmd run lint` passes.
+
+### Next Recommended Task
+
+- Provider Assignment implementation for appointments, using the Task 58 data
+  model and RLS decision.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:
