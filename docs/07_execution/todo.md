@@ -201,6 +201,7 @@ Status legend:
   - [x] Task 57: Treatment Plan Data/RLS Smoke Coverage Review
   - [x] Task 58: Provider Assignment Planning / Data Model Decision
   - [x] Task 59: Appointment Provider Assignment Schema/RLS Foundation
+  - [x] Task 60: Appointment Provider Assignment Service/UI Wiring
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -261,6 +262,7 @@ Status legend:
 - [x] Task 57 - Treatment Plan Data/RLS Smoke Coverage Review
 - [x] Task 58 - Provider Assignment Planning / Data Model Decision
 - [x] Task 59 - Appointment Provider Assignment Schema/RLS Foundation
+- [x] Task 60 - Appointment Provider Assignment Service/UI Wiring
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -708,6 +710,26 @@ Completed direction:
 - left provider assignment UI, provider display read path, automatic assignment,
   workload calendar, check-in states, billing, materials, treatment-plan
   mutation, reminders, and broad scheduling redesign out of scope.
+
+### Completed Recommended Task
+
+Task 60 - Appointment Provider Assignment Service/UI Wiring
+
+Completed direction:
+
+- added a narrow assignable-provider RPC instead of broad profile reads,
+- wired `assigned_provider_id` into appointment service reads and writes,
+- added assignable provider loading for appointment dropdowns,
+- added optional provider selection to patient appointment creation,
+- added provider-only assignment editing on Appointment Detail,
+- displayed assigned provider in appointment cards, appointment detail, patient
+  appointment summary, schedule views, and Visit Completion appointment context,
+- kept assigned provider separate from completed visit `completed_by`,
+- expanded provider RLS/read-path and browser smoke coverage,
+- kept automatic assignment, provider workload calendar, availability conflict
+  checking, check-in states, billing, materials, treatment-plan mutation,
+  reminders, broad profile RLS opening, and broad scheduling redesign out of
+  scope.
 
 ### Later Appointment Direction
 

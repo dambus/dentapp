@@ -390,6 +390,40 @@ async function testDeniedRoleUpdate(fixture) {
   )
 }
 
+async function testProviderReadPath(fixture) {
+  const ownerSession = await signIn('owner.demo@example.test')
+  const inventorySession = await signIn('inventory.demo@example.test')
+  const ownerClient = getAuthedClient(ownerSession.access_token)
+  const inventoryClient = getAuthedClient(inventorySession.access_token)
+
+  const ownerRead = await ownerClient.rpc('get_assignable_appointment_providers')
+  const inventoryRead = await inventoryClient.rpc(
+    'get_assignable_appointment_providers',
+  )
+  const ownerRows = ownerRead.data ?? []
+  const ownerIds = new Set(ownerRows.map((row) => row.id))
+
+  return {
+    ownerReadAllowed: !ownerRead.error,
+    ownerReadError: ownerRead.error?.message ?? null,
+    ownerRows,
+    includesDoctor: ownerIds.has(fixture.doctorId),
+    includesSpecialist: ownerIds.has(fixture.specialistId),
+    excludesAssistant: !ownerIds.has(fixture.assistantId),
+    excludesReception: !ownerIds.has(fixture.receptionId),
+    excludesInventory: !ownerIds.has(fixture.inventoryId),
+    excludesInactiveDoctor: !ownerIds.has(fixture.inactiveDoctorId),
+    excludesSuspendedSpecialist: !ownerIds.has(fixture.suspendedSpecialistId),
+    excludesCrossClinicDoctor: !ownerIds.has(fixture.outClinicDoctorId),
+    onlyProviderRoles: ownerRows.every((row) =>
+      ['doctor', 'specialist'].includes(row.role),
+    ),
+    inventoryRows: inventoryRead.data ?? [],
+    inventoryReadAllowed: !inventoryRead.error,
+    inventoryReadError: inventoryRead.error?.message ?? null,
+  }
+}
+
 async function testCompletedBySeparation(fixture) {
   const serviceClient = getServiceClient()
   const appointmentId = await createServiceAppointment(
@@ -486,6 +520,7 @@ async function main() {
 
   try {
     const schema = await verifySchemaObjects()
+    const providerReadPath = await testProviderReadPath(fixture)
     const ownerAssignments = await testOwnerAssignments(fixture)
     const deniedRoleUpdate = await testDeniedRoleUpdate(fixture)
     const completedBy = await testCompletedBySeparation(fixture)
@@ -498,6 +533,39 @@ async function main() {
 
     if (!schema.helperAllowsNull) {
       failures.push(`schema: provider helper did not allow null (${schema.helperError})`)
+    }
+
+    if (!providerReadPath.ownerReadAllowed) {
+      failures.push(
+        `provider read path: owner read rejected (${providerReadPath.ownerReadError})`,
+      )
+    }
+
+    if (!providerReadPath.includesDoctor) {
+      failures.push('provider read path: active same-clinic doctor missing')
+    }
+
+    if (!providerReadPath.includesSpecialist) {
+      failures.push('provider read path: active same-clinic specialist missing')
+    }
+
+    if (
+      !providerReadPath.excludesAssistant ||
+      !providerReadPath.excludesReception ||
+      !providerReadPath.excludesInventory ||
+      !providerReadPath.excludesInactiveDoctor ||
+      !providerReadPath.excludesSuspendedSpecialist ||
+      !providerReadPath.excludesCrossClinicDoctor
+    ) {
+      failures.push('provider read path: returned non-assignable provider rows')
+    }
+
+    if (!providerReadPath.onlyProviderRoles) {
+      failures.push('provider read path: returned roles outside doctor/specialist')
+    }
+
+    if (providerReadPath.inventoryRows.length > 0) {
+      failures.push('provider read path: inventory received assignable providers')
     }
 
     expectAllowed(
@@ -570,6 +638,7 @@ async function main() {
       JSON.stringify(
         {
           schema,
+          providerReadPath,
           ownerAssignments,
           deniedRoleUpdate,
           completedBy,

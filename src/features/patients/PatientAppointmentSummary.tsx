@@ -26,10 +26,12 @@ import {
   APPOINTMENT_REASON_MAX_LENGTH,
   canUpdateAppointmentLifecycle,
   createAppointment,
+  fetchAssignableAppointmentProviders,
   fetchUpcomingAppointmentsForPatient,
   getAppointmentLifecycleSuccessMessage,
   updateAppointmentStatus,
   type Appointment,
+  type AppointmentProviderSummary,
   type AppointmentStatus,
 } from '../appointments/appointmentService'
 import {
@@ -61,6 +63,7 @@ type AppointmentFormValues = {
   duration: string
   reason: string
   notes: string
+  assignedProviderId: string
 }
 
 type AppointmentSchedulePreview = {
@@ -85,6 +88,7 @@ function getDefaultAppointmentValues(): AppointmentFormValues {
     duration: String(defaultAppointmentType.defaultDurationMinutes),
     reason: '',
     notes: '',
+    assignedProviderId: '',
   }
 }
 
@@ -248,6 +252,7 @@ function getCreateErrorMessage(message: string | null) {
     normalizedMessage.includes('duration') ||
     normalizedMessage.includes('reason') ||
     normalizedMessage.includes('notes') ||
+    normalizedMessage.includes('provider') ||
     normalizedMessage.includes('after start')
   ) {
     return message ?? 'Appointment details need a quick check.'
@@ -312,6 +317,10 @@ export function PatientAppointmentSummary({
   const [formValues, setFormValues] = useState<AppointmentFormValues>(() =>
     getDefaultAppointmentValues(),
   )
+  const [providerOptions, setProviderOptions] = useState<
+    AppointmentProviderSummary[]
+  >([])
+  const [providerLoadError, setProviderLoadError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [prefillNotice, setPrefillNotice] = useState<string | null>(null)
@@ -381,6 +390,35 @@ export function PatientAppointmentSummary({
   }, [patientId])
 
   useEffect(() => {
+    let isCurrent = true
+
+    async function loadProviders() {
+      setProviderLoadError(null)
+
+      try {
+        const providers = await fetchAssignableAppointmentProviders()
+
+        if (isCurrent) {
+          setProviderOptions(providers)
+        }
+      } catch {
+        if (isCurrent) {
+          setProviderOptions([])
+          setProviderLoadError(
+            'Assigned provider options could not be loaded. You can still schedule without a provider.',
+          )
+        }
+      }
+    }
+
+    void loadProviders()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
+
+  useEffect(() => {
     if (!prefillRequestId || !prefillReason?.trim()) {
       return
     }
@@ -440,6 +478,7 @@ export function PatientAppointmentSummary({
         patientId,
         scheduledStart: schedulePreview.scheduledStart,
         scheduledEnd: schedulePreview.scheduledEnd,
+        assignedProviderId: formValues.assignedProviderId || null,
         reason: buildAppointmentReason(formValues),
         notes: formValues.notes.trim(),
       })
@@ -749,6 +788,32 @@ export function PatientAppointmentSummary({
                   </option>
                 ))}
               </Select>
+            </label>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <label>
+              <FieldLabel>Assigned provider</FieldLabel>
+              <Select
+                data-testid="patient-appointment-provider"
+                disabled={isSubmitting}
+                value={formValues.assignedProviderId}
+                onChange={(event) =>
+                  updateFormValue('assignedProviderId', event.target.value)
+                }
+              >
+                <option value="">Not assigned</option>
+                {providerOptions.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.fullName} ({provider.role})
+                  </option>
+                ))}
+              </Select>
+              {providerLoadError ? (
+                <p className="mt-1 text-xs leading-5 text-amber-700">
+                  {providerLoadError}
+                </p>
+              ) : null}
             </label>
           </div>
 

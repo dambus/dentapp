@@ -18,6 +18,7 @@ import {
   InlineNotice,
   LoadingState,
   MetricTile,
+  Select,
   StatusBadge,
 } from '../components/ui'
 import {
@@ -26,10 +27,13 @@ import {
 import {
   APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE,
   canUpdateAppointmentLifecycle,
+  fetchAssignableAppointmentProviders,
   fetchAppointmentById,
   getAppointmentLifecycleSuccessMessage,
+  updateAppointmentAssignedProvider,
   updateAppointmentStatus,
   type AppointmentDetail,
+  type AppointmentProviderSummary,
   type AppointmentStatus,
 } from '../features/appointments/appointmentService'
 import {
@@ -83,6 +87,12 @@ export function AppointmentDetailPage() {
   const [statusSubmitting, setStatusSubmitting] =
     useState<AppointmentStatus | null>(null)
   const [actionFeedback, setActionFeedback] = useState<string | null>(null)
+  const [providerOptions, setProviderOptions] = useState<
+    AppointmentProviderSummary[]
+  >([])
+  const [providerSelection, setProviderSelection] = useState('')
+  const [isProviderSaving, setIsProviderSaving] = useState(false)
+  const [providerLoadError, setProviderLoadError] = useState<string | null>(null)
   const statusSubmittingRef = useRef(false)
 
   useEffect(() => {
@@ -99,6 +109,7 @@ export function AppointmentDetailPage() {
 
         if (isCurrent) {
           setAppointment(loadedAppointment)
+          setProviderSelection(loadedAppointment?.assigned_provider_id ?? '')
         }
       } catch (error) {
         if (isCurrent) {
@@ -121,6 +132,33 @@ export function AppointmentDetailPage() {
       isCurrent = false
     }
   }, [appointmentId])
+
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadProviders() {
+      setProviderLoadError(null)
+
+      try {
+        const providers = await fetchAssignableAppointmentProviders()
+
+        if (isCurrent) {
+          setProviderOptions(providers)
+        }
+      } catch {
+        if (isCurrent) {
+          setProviderOptions([])
+          setProviderLoadError('Assigned provider options could not be loaded.')
+        }
+      }
+    }
+
+    void loadProviders()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
 
   function startVisit() {
     if (!appointment) {
@@ -181,6 +219,39 @@ export function AppointmentDetailPage() {
     }
   }
 
+  async function handleProviderUpdate() {
+    if (!appointment || isProviderSaving) {
+      return
+    }
+
+    setActionFeedback(null)
+    setIsProviderSaving(true)
+
+    try {
+      const result = await updateAppointmentAssignedProvider({
+        appointmentId: appointment.id,
+        assignedProviderId: providerSelection || null,
+      })
+
+      if (!result.ok || !result.appointment) {
+        setActionFeedback(
+          result.error ?? 'Assigned provider could not be updated.',
+        )
+        return
+      }
+
+      setAppointment({
+        ...appointment,
+        ...result.appointment,
+      })
+      setActionFeedback(result.message ?? 'Assigned provider was updated.')
+    } catch {
+      setActionFeedback('Assigned provider could not be updated.')
+    } finally {
+      setIsProviderSaving(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <Page>
@@ -227,6 +298,9 @@ export function AppointmentDetailPage() {
   }
 
   const patientName = appointment.patient?.fullName ?? 'Unknown patient'
+  const providerLabel = appointment.assigned_provider_id
+    ? appointment.assignedProvider?.fullName ?? 'Provider unavailable'
+    : 'Not assigned'
   const patientRouteId = appointment.patient?.routeId ?? appointment.patient_id
   const hasOpenVisit = Boolean(appointment.openVisit)
   const hasCompletedVisit = Boolean(appointment.linkedVisit)
@@ -337,7 +411,7 @@ export function AppointmentDetailPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 sm:space-y-5">
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-4">
               <MetricTile
                 label="Scheduled"
                 value={formatPatientDate(appointment.scheduled_start)}
@@ -352,6 +426,12 @@ export function AppointmentDetailPage() {
                 value={patientName}
                 description={appointment.patient?.phone || 'No phone recorded.'}
                 tone="success"
+              />
+              <MetricTile
+                label="Assigned provider"
+                value={providerLabel}
+                description="Planned appointment provider; completed visits record completed-by separately."
+                tone={appointment.assignedProvider ? 'success' : 'default'}
               />
               <MetricTile
                 label="Last updated"
@@ -412,6 +492,48 @@ export function AppointmentDetailPage() {
         </Card>
 
         <div className="grid gap-5 lg:grid-cols-2">
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader>
+              <div className="flex flex-col gap-2">
+                <CardTitle>Assigned Provider</CardTitle>
+                <CardDescription>
+                  Planned appointment assignment. Completed visits keep their
+                  own completed-by record.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Select
+                data-testid="appointment-detail-provider"
+                disabled={isProviderSaving}
+                value={providerSelection}
+                onChange={(event) => setProviderSelection(event.target.value)}
+              >
+                <option value="">Not assigned</option>
+                {providerOptions.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.fullName} ({provider.role})
+                  </option>
+                ))}
+              </Select>
+              {providerLoadError ? (
+                <InlineNotice variant="warning">{providerLoadError}</InlineNotice>
+              ) : null}
+              <Button
+                data-testid="appointment-detail-provider-save"
+                disabled={
+                  isProviderSaving ||
+                  providerSelection === (appointment.assigned_provider_id ?? '')
+                }
+                onClick={() => void handleProviderUpdate()}
+                size="sm"
+                variant="secondary"
+              >
+                {isProviderSaving ? 'Saving...' : 'Save provider'}
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card className="border-slate-200 shadow-sm">
             <CardHeader>
               <div className="flex flex-col gap-2">
@@ -520,7 +642,10 @@ export function AppointmentDetailPage() {
         {actionFeedback ? (
           <InlineNotice
             variant={
-              actionFeedback.startsWith('Could not') ? 'danger' : 'success'
+              actionFeedback.startsWith('Could not') ||
+              actionFeedback.startsWith('Choose')
+                ? 'danger'
+                : 'success'
             }
           >
             {actionFeedback}

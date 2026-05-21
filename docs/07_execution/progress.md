@@ -3018,6 +3018,93 @@ Initial stack:
 
 ---
 
+### Completed (Task 60 - Appointment Provider Assignment Service/UI Wiring)
+
+- Added migration
+  `supabase/migrations/20260521150000_create_assignable_appointment_providers_rpc.sql`.
+- Added safe provider display/options read path:
+	- `public.get_assignable_appointment_providers()`,
+	- returns only `id`, `full_name`, and `role`,
+	- returns active same-clinic `doctor` and `specialist` profiles,
+	- available only to active appointment scheduling/read roles,
+	- does not broaden general `profiles` table read access.
+- Updated `appointmentService`:
+	- appointment reads include `assigned_provider_id`,
+	- appointment mappers expose `assignedProvider`,
+	- added `AppointmentProviderSummary`,
+	- added `fetchAssignableAppointmentProviders()`,
+	- added provider display hydration for patient, schedule, and detail reads,
+	- added optional `assignedProviderId` to appointment creation,
+	- added `updateAppointmentAssignedProvider()` for provider-only edits,
+	- added provider-assignment friendly error wording.
+- Updated patient appointment creation:
+	- optional `Assigned provider` dropdown,
+	- `Not assigned` option,
+	- active same-clinic doctor/specialist options,
+	- selected provider is submitted as `assigned_provider_id`,
+	- existing follow-up prefill and date/time/type/duration/reason/notes
+	  validation are preserved.
+- Updated appointment display:
+	- appointment cards show `Provider: {name}` or `Provider: Not assigned`,
+	- Appointment Detail shows an `Assigned provider` metric,
+	- Appointment Detail includes a provider-only edit selector and save action,
+	- Appointments page/daily and weekly schedule inherit the shared card display,
+	- Patient Appointment Summary inherits the shared card display.
+- Updated Visit Completion appointment context:
+	- shows `Assigned provider`,
+	- displays assigned provider name when available,
+	- falls back to `Not assigned` or `Provider unavailable`,
+	- remains context only and does not change Visit Completion persistence.
+- Preserved completed-by separation:
+	- `appointments.assigned_provider_id` is planned appointment context,
+	- `visits.completed_by` remains the actual completing profile,
+	- completed visit timeline/detail behavior was not changed.
+- Updated `supabase/snippets/testAppointmentProviderAssignmentRls.mjs`:
+	- verifies provider RPC returns active same-clinic doctor/specialist,
+	- verifies assistant/reception/inventory/inactive/suspended/cross-clinic
+	  profiles are not returned,
+	- verifies inventory receives no assignable provider rows,
+	- keeps existing provider assignment validation and completed-by separation
+	  coverage.
+- Updated `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs`:
+	- verifies the provider dropdown exists,
+	- selects `Doctor Demo`,
+	- verifies created appointment provider display,
+	- verifies provider display survives refresh,
+	- verifies Appointment Detail provider display and prefilled selector,
+	- verifies Visit Completion appointment context displays assigned provider.
+- No automatic provider assignment, provider workload calendar, provider
+  availability conflict checking, check-in/in-room/ready-for-doctor state,
+  billing/payments/materials/attachments, treatment-plan mutation,
+  reminders/tasks, broad profile RLS opening, fake provider data, or broad
+  scheduling redesign was added.
+- Documented the task in
+  `docs/design/task-60-appointment-provider-assignment-service-ui-wiring.md`.
+
+### Verification (Task 60)
+
+- `npx.cmd supabase migration up` applied
+  `20260521150000_create_assignable_appointment_providers_rpc.sql` locally.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning and a
+  Tailwind plugin timing warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local Supabase env from `npx supabase status -o env`.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local Supabase env from `npx supabase status -o env` and
+  `DENTAPP_APP_URL=http://localhost:5173`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  Supabase env from `npx supabase status -o env`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  Supabase env from `npx supabase status -o env`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance, or focused provider availability
+  planning if scheduling workload becomes the next priority.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

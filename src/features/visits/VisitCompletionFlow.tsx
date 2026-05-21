@@ -779,6 +779,10 @@ function AppointmentContextNotice({
   appointment: Appointment
   patientName: string
 }) {
+  const providerLabel = appointment.assigned_provider_id
+    ? appointment.assignedProvider?.fullName ?? 'Provider unavailable'
+    : 'Not assigned'
+
   return (
     <Card
       className="border-cyan-200 bg-cyan-50/50 shadow-sm"
@@ -823,10 +827,13 @@ function AppointmentContextNotice({
           </div>
           <div>
             <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
-              Provider
+              Assigned provider
             </div>
-            <p className="mt-1 text-sm font-semibold leading-6 text-slate-950">
-              Not assigned in appointment record
+            <p
+              className="mt-1 text-sm font-semibold leading-6 text-slate-950"
+              data-testid="visit-appointment-provider"
+            >
+              {providerLabel}
             </p>
           </div>
         </div>

@@ -13,6 +13,8 @@ export type Appointment = {
   id: string
   clinic_id: string
   patient_id: string
+  assigned_provider_id: string | null
+  assignedProvider: AppointmentProviderSummary | null
   scheduled_start: string
   scheduled_end: string | null
   status: AppointmentStatus
@@ -30,6 +32,12 @@ export type AppointmentPatientSummary = {
   routeId: string
   phone?: string | null
   email?: string | null
+}
+
+export type AppointmentProviderSummary = {
+  id: string
+  fullName: string
+  role: 'doctor' | 'specialist' | string
 }
 
 export type AppointmentRangeItem = Appointment & {
@@ -65,6 +73,7 @@ export type AppointmentDetail = Appointment & {
 
 export type CreateAppointmentInput = {
   patientId: string
+  assignedProviderId?: string | null
   scheduledStart: string
   scheduledEnd?: string | null
   reason?: string | null
@@ -74,6 +83,11 @@ export type CreateAppointmentInput = {
 export type UpdateAppointmentStatusInput = {
   appointmentId: string
   status: AppointmentStatus
+}
+
+export type UpdateAppointmentProviderInput = {
+  appointmentId: string
+  assignedProviderId: string | null
 }
 
 export type AppointmentLifecycleEligibility = Pick<Appointment, 'status'> & {
@@ -112,7 +126,13 @@ type SupabasePatientRow = {
   email?: string | null
 }
 
-type SupabaseAppointmentRow = Appointment
+type SupabaseAppointmentRow = Omit<Appointment, 'assignedProvider'>
+
+type SupabaseProviderRow = {
+  id: string
+  full_name: string
+  role: string
+}
 
 type SupabaseLinkedVisitRow = {
   id: string
@@ -143,6 +163,8 @@ export const APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE =
 
 export const APPOINTMENT_REASON_MAX_LENGTH = 160
 export const APPOINTMENT_NOTES_MAX_LENGTH = 500
+const appointmentSelectFields =
+  'id, clinic_id, patient_id, assigned_provider_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at'
 
 function normalizeText(value: string | null | undefined) {
   return value?.trim() ?? ''
@@ -177,6 +199,8 @@ function mapRowToAppointment(row: SupabaseAppointmentRow): Appointment {
     id: row.id,
     clinic_id: row.clinic_id,
     patient_id: row.patient_id,
+    assigned_provider_id: row.assigned_provider_id ?? null,
+    assignedProvider: null,
     scheduled_start: row.scheduled_start,
     scheduled_end: row.scheduled_end,
     status: isValidAppointmentStatus(row.status) ? row.status : 'scheduled',
@@ -187,6 +211,38 @@ function mapRowToAppointment(row: SupabaseAppointmentRow): Appointment {
     created_at: row.created_at,
     updated_at: row.updated_at,
   }
+}
+
+function mapProviderRow(row: SupabaseProviderRow): AppointmentProviderSummary {
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    role: row.role,
+  }
+}
+
+function normalizeProviderId(value: string | null | undefined) {
+  const normalized = value?.trim() ?? ''
+
+  return normalized || null
+}
+
+function attachProviderSummaries<T extends Appointment>(
+  appointments: T[],
+  providers: AppointmentProviderSummary[],
+): T[] {
+  if (appointments.length === 0) {
+    return appointments
+  }
+
+  const providerById = new Map(providers.map((provider) => [provider.id, provider]))
+
+  return appointments.map((appointment) => ({
+    ...appointment,
+    assignedProvider: appointment.assigned_provider_id
+      ? providerById.get(appointment.assigned_provider_id) ?? null
+      : null,
+  }))
 }
 
 function mapLinkedVisit(row: SupabaseLinkedVisitRow): AppointmentLinkedVisitSummary {
@@ -270,6 +326,7 @@ function validateCreateAppointmentInput(
 ): string | null {
   const reason = input.reason ?? ''
   const notes = input.notes ?? ''
+  const assignedProviderId = input.assignedProviderId ?? ''
   const normalizedReason = normalizeText(reason)
   const normalizedNotes = normalizeText(notes)
 
@@ -307,6 +364,10 @@ function validateCreateAppointmentInput(
     return 'Notes cannot be only spaces.'
   }
 
+  if (assignedProviderId.length > 0 && !normalizeText(assignedProviderId)) {
+    return 'Assigned provider cannot be only spaces.'
+  }
+
   if (normalizedReason.length > APPOINTMENT_REASON_MAX_LENGTH) {
     return `Reason must be ${APPOINTMENT_REASON_MAX_LENGTH} characters or fewer.`
   }
@@ -318,6 +379,20 @@ function validateCreateAppointmentInput(
   return null
 }
 
+function getProviderAssignmentErrorMessage(errorMessage: string | undefined) {
+  const normalizedError = errorMessage?.toLowerCase() ?? ''
+
+  if (
+    normalizedError.includes('assigned_provider_id') ||
+    normalizedError.includes('same-clinic doctor or specialist') ||
+    normalizedError.includes('foreign key')
+  ) {
+    return 'Choose an active doctor or specialist from this clinic, or leave provider unassigned.'
+  }
+
+  return errorMessage ?? 'Provider assignment could not be saved.'
+}
+
 async function getSupabaseClientSafe() {
   try {
     const supabaseModule = await import('../../lib/supabaseClient')
@@ -327,6 +402,51 @@ async function getSupabaseClientSafe() {
     console.warn('[appointmentService] Supabase client unavailable.', error)
 
     return null
+  }
+}
+
+export async function fetchAssignableAppointmentProviders(): Promise<
+  AppointmentProviderSummary[]
+> {
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    throw new Error('Supabase client is not available.')
+  }
+
+  const { data, error } = await supabase.rpc(
+    'get_assignable_appointment_providers',
+  )
+
+  if (error) {
+    console.warn(
+      '[appointmentService] Assignable providers failed to load.',
+      error,
+    )
+    throw new Error(error.message ?? 'Assignable providers could not be loaded.')
+  }
+
+  return ((data as SupabaseProviderRow[] | null) ?? []).map(mapProviderRow)
+}
+
+async function fetchProviderSummariesForAppointments<T extends Appointment>(
+  appointments: T[],
+): Promise<T[]> {
+  if (!appointments.some((appointment) => appointment.assigned_provider_id)) {
+    return appointments
+  }
+
+  try {
+    const providers = await fetchAssignableAppointmentProviders()
+
+    return attachProviderSummaries(appointments, providers)
+  } catch (error) {
+    console.warn(
+      '[appointmentService] Assigned provider display lookup failed.',
+      error,
+    )
+
+    return appointments
   }
 }
 
@@ -405,9 +525,7 @@ export async function fetchAppointmentsForPatient(
 
   const { data, error } = await supabase
     .from('appointments')
-    .select(
-      'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
-    )
+    .select(appointmentSelectFields)
     .eq('patient_id', resolvedPatientId)
     .order('scheduled_start', { ascending: false })
 
@@ -416,8 +534,10 @@ export async function fetchAppointmentsForPatient(
     throw new Error(error.message ?? 'Patient appointments could not be loaded.')
   }
 
-  return ((data as SupabaseAppointmentRow[] | null) ?? []).map(
-    mapRowToAppointment,
+  return fetchProviderSummariesForAppointments(
+    ((data as unknown as SupabaseAppointmentRow[] | null) ?? []).map(
+      mapRowToAppointment,
+    ),
   )
 }
 
@@ -438,9 +558,7 @@ export async function fetchUpcomingAppointmentsForPatient(
 
   const { data, error } = await supabase
     .from('appointments')
-    .select(
-      'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
-    )
+    .select(appointmentSelectFields)
     .eq('patient_id', resolvedPatientId)
     .eq('status', 'scheduled')
     .gte('scheduled_start', new Date().toISOString())
@@ -454,8 +572,10 @@ export async function fetchUpcomingAppointmentsForPatient(
     throw new Error(error.message ?? 'Upcoming appointments could not be loaded.')
   }
 
-  return ((data as SupabaseAppointmentRow[] | null) ?? []).map(
-    mapRowToAppointment,
+  return fetchProviderSummariesForAppointments(
+    ((data as unknown as SupabaseAppointmentRow[] | null) ?? []).map(
+      mapRowToAppointment,
+    ),
   )
 }
 
@@ -477,9 +597,7 @@ export async function fetchAppointmentForPatient(
 
   const { data, error } = await supabase
     .from('appointments')
-    .select(
-      'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
-    )
+    .select(appointmentSelectFields)
     .eq('id', appointmentId)
     .eq('patient_id', resolvedPatientId)
     .maybeSingle()
@@ -489,7 +607,15 @@ export async function fetchAppointmentForPatient(
     throw new Error(error.message ?? 'Appointment could not be loaded.')
   }
 
-  return data ? mapRowToAppointment(data as SupabaseAppointmentRow) : null
+  if (!data) {
+    return null
+  }
+
+  const [appointment] = await fetchProviderSummariesForAppointments([
+    mapRowToAppointment(data as unknown as SupabaseAppointmentRow),
+  ])
+
+  return appointment ?? null
 }
 
 export async function fetchAppointmentById(
@@ -507,9 +633,7 @@ export async function fetchAppointmentById(
 
   const { data: appointmentData, error: appointmentError } = await supabase
     .from('appointments')
-    .select(
-      'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
-    )
+    .select(appointmentSelectFields)
     .eq('id', appointmentId)
     .maybeSingle()
 
@@ -522,7 +646,9 @@ export async function fetchAppointmentById(
     return null
   }
 
-  const appointment = mapRowToAppointment(appointmentData as SupabaseAppointmentRow)
+  const [appointment] = await fetchProviderSummariesForAppointments([
+    mapRowToAppointment(appointmentData as unknown as SupabaseAppointmentRow),
+  ])
 
   const [
     { data: patientData, error: patientError },
@@ -609,9 +735,7 @@ export async function fetchAppointmentsForRange(
 
   const { data: appointmentsData, error: appointmentsError } = await supabase
     .from('appointments')
-    .select(
-      'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
-    )
+    .select(appointmentSelectFields)
     .gte('scheduled_start', rangeStart.toISOString())
     .lte('scheduled_start', rangeEnd.toISOString())
     .order('scheduled_start', { ascending: true })
@@ -621,7 +745,8 @@ export async function fetchAppointmentsForRange(
     throw new Error(appointmentsError.message ?? 'Appointments could not be loaded.')
   }
 
-  const appointmentRows = (appointmentsData as SupabaseAppointmentRow[] | null) ?? []
+  const appointmentRows =
+    (appointmentsData as unknown as SupabaseAppointmentRow[] | null) ?? []
 
   if (appointmentRows.length === 0) {
     return []
@@ -687,12 +812,14 @@ export async function fetchAppointmentsForRange(
     }
   })
 
-  return appointmentRows.map((appointment) => ({
+  const mappedAppointments = appointmentRows.map((appointment) => ({
     ...mapRowToAppointment(appointment),
     linkedVisit: completedVisitByAppointmentId.get(appointment.id) ?? null,
     openVisit: openVisitByAppointmentId.get(appointment.id) ?? null,
     patient: patientById.get(appointment.patient_id) ?? null,
   }))
+
+  return fetchProviderSummariesForAppointments(mappedAppointments)
 }
 
 export async function createAppointment(
@@ -764,12 +891,11 @@ export async function createAppointment(
       status: 'scheduled',
       reason: normalizeText(input.reason) || null,
       notes: normalizeText(input.notes) || null,
+      assigned_provider_id: normalizeProviderId(input.assignedProviderId),
       created_by: profileContext.id,
       updated_by: profileContext.id,
     })
-    .select(
-      'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
-    )
+    .select(appointmentSelectFields)
     .single()
 
   if (error || !data) {
@@ -779,14 +905,18 @@ export async function createAppointment(
       ok: false,
       appointment: null,
       message: null,
-      error: errorMessage,
+      error: getProviderAssignmentErrorMessage(errorMessage),
       reason: classifyAppointmentError(errorMessage),
     }
   }
 
   return {
     ok: true,
-    appointment: mapRowToAppointment(data as SupabaseAppointmentRow),
+    appointment: (
+      await fetchProviderSummariesForAppointments([
+        mapRowToAppointment(data as unknown as SupabaseAppointmentRow),
+      ])
+    )[0],
     message: 'Appointment was created successfully.',
   }
 }
@@ -855,9 +985,7 @@ export async function updateAppointmentStatus(
   ] = await Promise.all([
     supabase
       .from('appointments')
-      .select(
-        'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
-      )
+      .select(appointmentSelectFields)
       .eq('id', input.appointmentId)
       .eq('clinic_id', profileContext.clinic_id)
       .maybeSingle(),
@@ -907,7 +1035,7 @@ export async function updateAppointmentStatus(
   }
 
   const currentAppointment = mapRowToAppointment(
-    appointmentData as SupabaseAppointmentRow,
+    appointmentData as unknown as SupabaseAppointmentRow,
   )
   const linkedVisits = (linkedVisitData as Array<{ id: string; status: string }> | null) ?? []
 
@@ -942,9 +1070,7 @@ export async function updateAppointmentStatus(
     .eq('id', input.appointmentId)
     .eq('clinic_id', profileContext.clinic_id)
     .eq('status', 'scheduled')
-    .select(
-      'id, clinic_id, patient_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at',
-    )
+    .select(appointmentSelectFields)
     .single()
 
   if (error || !data) {
@@ -961,7 +1087,79 @@ export async function updateAppointmentStatus(
 
   return {
     ok: true,
-    appointment: mapRowToAppointment(data as SupabaseAppointmentRow),
+    appointment: mapRowToAppointment(data as unknown as SupabaseAppointmentRow),
     message: 'Appointment status was updated successfully.',
+  }
+}
+
+export async function updateAppointmentAssignedProvider(
+  input: UpdateAppointmentProviderInput,
+): Promise<AppointmentWriteResult> {
+  if (!normalizeText(input.appointmentId)) {
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: 'Appointment ID is required to update assigned provider.',
+      reason: 'validation',
+    }
+  }
+
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: 'Supabase client is not available.',
+      reason: 'unknown',
+    }
+  }
+
+  const profileContext = await getCurrentSupabaseProfileContext()
+
+  if (!profileContext || profileContext.status !== 'active') {
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: 'Active profile context is required to update assigned provider.',
+      reason: 'permission',
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({
+      assigned_provider_id: normalizeProviderId(input.assignedProviderId),
+      updated_by: profileContext.id,
+    })
+    .eq('id', input.appointmentId)
+    .eq('clinic_id', profileContext.clinic_id)
+    .select(appointmentSelectFields)
+    .single()
+
+  if (error || !data) {
+    const errorMessage =
+      error?.message ?? 'Assigned provider could not be updated.'
+
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: getProviderAssignmentErrorMessage(errorMessage),
+      reason: classifyAppointmentError(errorMessage),
+    }
+  }
+
+  const [appointment] = await fetchProviderSummariesForAppointments([
+    mapRowToAppointment(data as unknown as SupabaseAppointmentRow),
+  ])
+
+  return {
+    ok: true,
+    appointment,
+    message: 'Assigned provider was updated.',
   }
 }

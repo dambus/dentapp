@@ -31,6 +31,7 @@ const EXPECTED_PREFILL = 'Task 44 appointment bridge recommendation'
 const MANUAL_CREATION_REASON = 'Consultation'
 const MANUAL_CREATION_NOTES = 'Optional note demo'
 const MANUAL_CREATION_DATE = getDateInputValueForOffset(1)
+const ASSIGNED_PROVIDER_NAME = 'Doctor Demo'
 const CANCELLED_REASON = 'Task 51 cancelled appointment status check'
 const NO_SHOW_REASON = 'Task 54 no-show appointment status check'
 const BRIDGE_PROCEDURE = 'Task 44 bridge procedure'
@@ -749,6 +750,25 @@ async function assertSelectValue(cdp, selector, expectedValue) {
   }
 }
 
+async function getSelectOptionValueByText(cdp, selector, text) {
+  return evaluate(
+    cdp,
+    `(() => {
+      const select = document.querySelector(${JSON.stringify(selector)});
+
+      if (!(select instanceof HTMLSelectElement)) {
+        return null;
+      }
+
+      const option = Array.from(select.options).find((item) =>
+        item.textContent?.includes(${JSON.stringify(text)}),
+      );
+
+      return option?.value ?? null;
+    })()`,
+  )
+}
+
 async function collectAppointmentsDebugSnapshot(cdp) {
   return evaluate(
     cdp,
@@ -1102,6 +1122,39 @@ async function main() {
     await setSelectValue(cdp, '[data-testid="patient-appointment-type"]', 'consultation')
     await assertSelectValue(cdp, '[data-testid="patient-appointment-type"]', 'consultation')
     await assertSelectValue(cdp, '[data-testid="patient-appointment-duration"]', '30')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const select = document.querySelector('[data-testid="patient-appointment-provider"]');
+            return select instanceof HTMLSelectElement &&
+              select.textContent.includes(${JSON.stringify(ASSIGNED_PROVIDER_NAME)}) &&
+              select.textContent.includes('Not assigned');
+          })()`,
+        ),
+      'appointment provider dropdown options',
+    )
+    const assignedProviderValue = await getSelectOptionValueByText(
+      cdp,
+      '[data-testid="patient-appointment-provider"]',
+      ASSIGNED_PROVIDER_NAME,
+    )
+
+    if (!assignedProviderValue) {
+      throw new Error('Doctor Demo provider option was not available.')
+    }
+
+    await setSelectValue(
+      cdp,
+      '[data-testid="patient-appointment-provider"]',
+      assignedProviderValue,
+    )
+    await assertSelectValue(
+      cdp,
+      '[data-testid="patient-appointment-provider"]',
+      assignedProviderValue,
+    )
     await setDateInput(cdp, '[data-testid="patient-appointment-date"]', MANUAL_CREATION_DATE)
     await typeInto(cdp, '[data-testid="patient-appointment-time"]', '11:00')
     await typeInto(cdp, '[data-testid="patient-appointment-reason"]', MANUAL_CREATION_REASON)
@@ -1151,6 +1204,10 @@ async function main() {
       () => textIncludes(cdp, MANUAL_CREATION_REASON),
       'manual demo slug appointment reason shown',
     )
+    await waitFor(
+      () => textIncludes(cdp, `Provider: ${ASSIGNED_PROVIDER_NAME}`),
+      'manual demo slug appointment assigned provider shown',
+    )
 
     const manualAppointmentCountAfterSubmit = await getManualCreatedAppointmentCount()
 
@@ -1164,6 +1221,10 @@ async function main() {
     await waitFor(
       () => textIncludes(cdp, MANUAL_CREATION_REASON),
       'manual demo slug appointment survives refresh',
+    )
+    await waitFor(
+      () => textIncludes(cdp, `Provider: ${ASSIGNED_PROVIDER_NAME}`),
+      'manual demo slug appointment provider survives refresh',
     )
     const manualAppointmentId = await getManualCreatedAppointmentId()
 
@@ -1262,11 +1323,24 @@ async function main() {
       () => textIncludes(cdp, 'Appointment context'),
       'manual appointment Visit Completion context',
     )
+    await waitFor(
+      () => textIncludes(cdp, ASSIGNED_PROVIDER_NAME),
+      'manual appointment Visit Completion assigned provider context',
+    )
 
     await navigate(cdp, `${APPOINTMENTS_URL}/${manualAppointmentId}`)
     await waitFor(
       () => textIncludes(cdp, 'Appointment Detail'),
       'manual appointment detail page',
+    )
+    await waitFor(
+      () => textIncludes(cdp, ASSIGNED_PROVIDER_NAME),
+      'manual appointment detail assigned provider',
+    )
+    await assertSelectValue(
+      cdp,
+      '[data-testid="appointment-detail-provider"]',
+      assignedProviderValue,
     )
     await clickByText(cdp, 'Open patient')
     await waitFor(
@@ -1295,6 +1369,10 @@ async function main() {
     await waitFor(
       () => textIncludes(cdp, 'Appointment context'),
       'manual appointment detail Visit Completion context',
+    )
+    await waitFor(
+      () => textIncludes(cdp, ASSIGNED_PROVIDER_NAME),
+      'manual appointment detail Visit Completion assigned provider context',
     )
 
     let demoLinkedVisitNetworkRequests = 0
@@ -1633,7 +1711,7 @@ async function main() {
             return text.includes('Scheduled') &&
               text.includes('Patient') &&
               text.includes('Reason / type') &&
-              text.includes('Provider') &&
+              text.includes('Assigned provider') &&
               text.includes(${JSON.stringify(EXPECTED_PREFILL)}) &&
               text.includes('marks the linked appointment completed');
           })()`,

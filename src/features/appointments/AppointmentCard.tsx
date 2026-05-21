@@ -113,9 +113,12 @@ export function AppointmentCard({
       ? 'border-l-cyan-500'
       : appointment.status === 'completed'
         ? 'border-l-emerald-500'
-        : appointment.status === 'no_show'
+      : appointment.status === 'no_show'
           ? 'border-l-amber-500'
           : 'border-l-red-400 bg-slate-50'
+  const providerLabel = appointment.assigned_provider_id
+    ? appointment.assignedProvider?.fullName ?? 'Provider unavailable'
+    : 'Not assigned'
 
   const menuItems = [
     onOpenPatient
@@ -222,7 +225,9 @@ export function AppointmentCard({
           />
           <span className="inline-flex items-center gap-1">
             <Stethoscope aria-hidden className="h-4 w-4 text-slate-400" />
-            Provider TBD
+            <span data-testid="appointment-card-provider">
+              Provider: {providerLabel}
+            </span>
           </span>
           {appointment.notes?.trim() ? (
             <span className="inline-flex min-w-0 items-center gap-1">
