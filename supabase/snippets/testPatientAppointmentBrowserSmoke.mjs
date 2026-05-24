@@ -42,6 +42,12 @@ const BRIDGE_NOTE = 'Task 44 bridge clinical note'
 const BRIDGE_RECOMMENDATION = 'Task 44 follow-up recommendation'
 const BRIDGE_NEXT_STEP = 'schedule_control_visit'
 const BRIDGE_NEXT_STEP_LABEL = 'Schedule control visit'
+const PERFORMED_SERVICE_CATEGORY = 'Task 77 services smoke category'
+const PERFORMED_SERVICE_NAME = 'Task 77 composite filling'
+const PERFORMED_SERVICE_CODE = 'TASK77-SVC'
+const PERFORMED_SERVICE_PRICE = '4200'
+const PERFORMED_SERVICE_QUANTITY = '2'
+const PERFORMED_SERVICE_TOOTH = '16'
 const DEMO_ADHOC_PROCEDURE = 'Task 52 demo slug ad hoc procedure'
 const DEMO_ADHOC_NOTE = 'Task 52 demo slug ad hoc clinical note'
 const DEMO_LINKED_PROCEDURE = 'Task 52 demo slug linked procedure'
@@ -163,6 +169,60 @@ async function prepareFixture() {
     .in('patient_id', [PATIENT_ID, DEMO_SLUG_SUPABASE_PATIENT_ID])
     .in('status', ['draft', 'in_progress'])
     .is('deleted_at', null)
+
+  await serviceClient
+    .from('services')
+    .delete()
+    .eq('clinic_id', DEMO_CLINIC_ID)
+    .eq('code', PERFORMED_SERVICE_CODE)
+  await serviceClient
+    .from('service_categories')
+    .delete()
+    .eq('clinic_id', DEMO_CLINIC_ID)
+    .eq('name', PERFORMED_SERVICE_CATEGORY)
+
+  const categoryResult = await serviceClient
+    .from('service_categories')
+    .insert({
+      clinic_id: DEMO_CLINIC_ID,
+      name: PERFORMED_SERVICE_CATEGORY,
+      active: true,
+      sort_order: 1,
+      created_by: profileResult.data.id,
+      updated_by: profileResult.data.id,
+    })
+    .select('id')
+    .single()
+
+  if (categoryResult.error || !categoryResult.data) {
+    throw new Error(
+      categoryResult.error?.message ??
+        'Could not create browser smoke service category fixture.',
+    )
+  }
+
+  const serviceResult = await serviceClient
+    .from('services')
+    .insert({
+      clinic_id: DEMO_CLINIC_ID,
+      category_id: categoryResult.data.id,
+      name: PERFORMED_SERVICE_NAME,
+      code: PERFORMED_SERVICE_CODE,
+      default_price: PERFORMED_SERVICE_PRICE,
+      currency: 'RSD',
+      active: true,
+      created_by: profileResult.data.id,
+      updated_by: profileResult.data.id,
+    })
+    .select('id')
+    .single()
+
+  if (serviceResult.error || !serviceResult.data) {
+    throw new Error(
+      serviceResult.error?.message ??
+        'Could not create browser smoke service catalog fixture.',
+    )
+  }
 
   const visitResult = await serviceClient
     .from('visits')
@@ -483,6 +543,26 @@ async function clickByText(cdp, text, selector = 'button, a') {
 
   if (!clicked) {
     throw new Error(`Could not click ${text}`)
+  }
+}
+
+async function clickEnabledButtonByText(cdp, text) {
+  const clicked = await evaluate(
+    cdp,
+    `(() => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const target = buttons.find((element) =>
+        element.textContent?.trim() === ${JSON.stringify(text)} &&
+        !element.disabled
+      );
+      if (!target) return false;
+      target.click();
+      return true;
+    })()`,
+  )
+
+  if (!clicked) {
+    throw new Error(`Could not click enabled button ${text}`)
   }
 }
 
@@ -1088,6 +1168,12 @@ async function completeVisibleVisit(cdp, procedureName, clinicalNote) {
   )
   await typeInto(cdp, 'input[placeholder="16, upper right, full mouth"]', '16')
   await clickByText(cdp, 'Next')
+  await waitFor(() => textIncludes(cdp, 'Services & Charges'), 'services step')
+  await waitFor(
+    () => textIncludes(cdp, 'No chargeable services added for this visit.'),
+    'zero-service visit remains allowed',
+  )
+  await clickByText(cdp, 'Next')
   await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'notes step')
   await typeInto(
     cdp,
@@ -1109,6 +1195,179 @@ async function completeVisibleVisit(cdp, procedureName, clinicalNote) {
     () => textIncludes(cdp, 'Visit was completed successfully.'),
     'visit completion success message',
   )
+}
+
+async function addPerformedServiceDraftRow(cdp) {
+  await waitFor(() => textIncludes(cdp, 'Services & Charges'), 'services step')
+  await waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `(() => {
+          const button = document.querySelector('[data-testid="visit-add-service"]');
+          return button instanceof HTMLButtonElement && !button.disabled;
+        })()`,
+      ),
+    'performed service add button ready',
+  )
+  await clickSelector(cdp, '[data-testid="visit-add-service"]')
+  await waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `document.querySelector('[data-testid="visit-service-row"]') !== null`,
+      ),
+    'performed service row added',
+  )
+
+  const serviceOptionValue = await waitFor(
+    () =>
+      getSelectOptionValueByText(
+        cdp,
+        '[data-testid="visit-service-select"]',
+        PERFORMED_SERVICE_NAME,
+      ),
+    'performed service catalog option',
+  )
+  await setSelectValue(
+    cdp,
+    '[data-testid="visit-service-select"]',
+    serviceOptionValue,
+  )
+  await waitFor(
+    () =>
+      getFieldValue(cdp, '[data-testid="visit-service-unit-price"]').then(
+        (value) => value === PERFORMED_SERVICE_PRICE,
+      ),
+    'performed service default unit price',
+  )
+
+  const providerOptionValue = await waitFor(
+    () =>
+      getSelectOptionValueByText(
+        cdp,
+        '[data-testid="visit-service-provider"]',
+        ASSIGNED_PROVIDER_NAME,
+      ),
+    'performed service credited provider option',
+  )
+  await setSelectValue(
+    cdp,
+    '[data-testid="visit-service-provider"]',
+    providerOptionValue,
+  )
+  await typeInto(
+    cdp,
+    '[data-testid="visit-service-quantity"]',
+    PERFORMED_SERVICE_QUANTITY,
+  )
+  await typeInto(
+    cdp,
+    '[data-testid="visit-service-tooth"]',
+    PERFORMED_SERVICE_TOOTH,
+  )
+  await waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `(() => {
+          const total = document.querySelector('[data-testid="visit-services-draft-total"]');
+          return total?.textContent?.includes('8.400') ?? false;
+        })()`,
+      ),
+    'performed service draft total',
+  )
+}
+
+async function assertPerformedServiceDraftRowReloaded(cdp) {
+  await waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `(() => {
+          const row = document.querySelector('[data-testid="visit-service-row"]');
+          const text = row?.textContent ?? '';
+          const total = document.querySelector('[data-testid="visit-services-draft-total"]')?.textContent ?? '';
+          return text.includes(${JSON.stringify(PERFORMED_SERVICE_NAME)}) &&
+            text.includes(${JSON.stringify(ASSIGNED_PROVIDER_NAME)}) &&
+            total.includes('8.400');
+        })()`,
+      ),
+    'performed service draft row reloaded',
+  )
+  await assertFieldValue(
+    cdp,
+    '[data-testid="visit-service-unit-price"]',
+    PERFORMED_SERVICE_PRICE,
+  )
+  await assertFieldValue(
+    cdp,
+    '[data-testid="visit-service-quantity"]',
+    PERFORMED_SERVICE_QUANTITY,
+  )
+  await assertFieldValue(
+    cdp,
+    '[data-testid="visit-service-tooth"]',
+    PERFORMED_SERVICE_TOOTH,
+  )
+}
+
+async function assertPerformedServicesReviewSummary(cdp) {
+  await waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `(() => {
+          const summary = document.querySelector('[data-testid="visit-services-review-summary"]');
+          const text = summary?.textContent ?? '';
+          return text.includes(${JSON.stringify(PERFORMED_SERVICE_NAME)}) &&
+            text.includes(${JSON.stringify(ASSIGNED_PROVIDER_NAME)}) &&
+            text.includes('8.400') &&
+            text.includes('Draft total');
+        })()`,
+      ),
+    'performed services review summary',
+  )
+}
+
+async function waitForDraftSaveSuccess(cdp, label) {
+  let result
+
+  try {
+    result = await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const bodyText = document.body?.innerText ?? '';
+            if (bodyText.includes('Visit draft was saved successfully.')) {
+              return { ok: true, bodyText: '' };
+            }
+            if (
+              bodyText.includes('Visit draft was not saved') ||
+              bodyText.includes('services and charges were not saved') ||
+              bodyText.includes('Each service row needs') ||
+              bodyText.includes('could not be saved') ||
+              bodyText.includes('A credited provider is required')
+            ) {
+              return { ok: false, bodyText: bodyText.slice(0, 1200) };
+            }
+            return null;
+          })()`,
+        ),
+      label,
+    )
+  } catch (error) {
+    const bodyText = await evaluate(
+      cdp,
+      `(document.body?.innerText ?? '').slice(0, 1600)`,
+    )
+    throw new Error(`${label} timed out:\n${bodyText}`)
+  }
+
+  if (!result.ok) {
+    throw new Error(`${label} failed:\n${result.bodyText}`)
+  }
 }
 
 async function main() {
@@ -2404,6 +2663,8 @@ async function main() {
     )
     await typeInto(cdp, '[data-testid="visit-procedure-tooth"]', '16')
     await clickByText(cdp, 'Next')
+    await addPerformedServiceDraftRow(cdp)
+    await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'notes step')
     await typeInto(
       cdp,
@@ -2420,11 +2681,9 @@ async function main() {
     await setSelectValue(cdp, '[data-testid="visit-next-step"]', BRIDGE_NEXT_STEP)
     await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'Review and complete'), 'review step')
-    await clickByText(cdp, 'Save Draft')
-    await waitFor(
-      () => textIncludes(cdp, 'Visit draft was saved successfully.'),
-      'draft save success feedback',
-    )
+    await assertPerformedServicesReviewSummary(cdp)
+    await clickEnabledButtonByText(cdp, 'Save Draft')
+    await waitForDraftSaveSuccess(cdp, 'draft save success feedback')
     await waitFor(
       () => textIncludes(cdp, 'Last saved'),
       'draft save timestamp feedback',
@@ -2500,6 +2759,9 @@ async function main() {
     )
     await assertFieldValue(cdp, '[data-testid="visit-procedure-tooth"]', '16')
     await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'Services & Charges'), 'reloaded services step')
+    await assertPerformedServiceDraftRowReloaded(cdp)
+    await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'reloaded notes step')
     await assertFieldValue(
       cdp,
@@ -2516,6 +2778,7 @@ async function main() {
     await assertFieldValue(cdp, '[data-testid="visit-next-step"]', BRIDGE_NEXT_STEP)
     await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'Review and complete'), 'reloaded review step')
+    await assertPerformedServicesReviewSummary(cdp)
     await clickByText(cdp, 'Complete Visit')
     await waitFor(
       () => textIncludes(cdp, 'Confirm Visit Completion'),
@@ -2893,6 +3156,19 @@ async function main() {
         label: 'Visit Completion',
         url: `${PATIENT_URL}/visit-completion`,
         waitForText: 'Visit Completion',
+        prepare: async (browser, label) => {
+          await clickByText(browser, 'Next')
+          await waitFor(() => textIncludes(browser, 'What was done?'), `${label} procedures step`)
+          await clickByText(browser, 'Next')
+          await waitFor(
+            () => textIncludes(browser, 'Services & Charges'),
+            `${label} services step`,
+          )
+          await waitFor(
+            () => textIncludes(browser, 'No chargeable services added for this visit.'),
+            `${label} zero services state`,
+          )
+        },
       },
       {
         label: 'Completed visit detail',
@@ -2903,6 +3179,14 @@ async function main() {
 
     await navigate(cdp, `${PATIENT_URL}/visit-completion`)
     await waitFor(() => textIncludes(cdp, 'Visit Completion'), 'normal visit route')
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'What was done?'), 'normal route procedures step')
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'Services & Charges'), 'normal route services step')
+    await waitFor(
+      () => textIncludes(cdp, 'No chargeable services added for this visit.'),
+      'normal route zero-service state',
+    )
     await waitFor(
       () =>
         evaluate(
@@ -2960,6 +3244,10 @@ async function main() {
           startVisitFromAppointmentVerified: true,
           appointmentContextVerified: true,
           appointmentContextDetailsVerified: true,
+          servicesChargesStepVerified: true,
+          servicesDraftSaveReloadVerified: true,
+          servicesReviewSummaryVerified: true,
+          zeroServiceFlowVerified: true,
           dailyScheduleInProgressLifecycleVerified: true,
           appointmentDetailReadyLifecycleVerified: true,
           appointmentDetailInProgressLifecycleVerified: true,

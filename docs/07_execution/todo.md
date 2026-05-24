@@ -290,12 +290,16 @@ Status legend:
 - [x] Checkpoint B - Product Roadmap Re-balance
 - [x] Task 72 - Performed Services Foundation Planning
 - [x] Task 73 - Service Catalog and Performed Services Schema/RLS
-- [ ] Task 74 - Performed Services Service Layer
-- [ ] Task 75 - Visit Completion Performed Services UI Slice
-- [ ] Task 76 - Patient Ledger Planning
-- [ ] Task 77 - Patient Ledger Schema/RLS Foundation
-- [ ] Task 78 - Patient Ledger UI Slice
-- [ ] Task 79 - Doctor Commission Planning
+- [x] Task 74 - Performed Services Service Layer
+- [x] Task 75 - Visit Completion Performed Services UI Slice Planning / Finalization Review
+- [x] Task 76 - Performed Services Completion / Finalization Safety Foundation
+- [x] Task 77 - Visit Completion Services & Charges Draft UI
+- [ ] Task 78 - Visit Completion Performed Services Finalization Wiring
+- [ ] Task 79 - Completed Visit Performed Services Read-only Display
+- [ ] Task 80 - Patient Ledger Planning
+- [ ] Task 81 - Patient Ledger Schema/RLS Foundation
+- [ ] Task 82 - Patient Ledger UI Slice
+- [ ] Task 83 - Doctor Commission Planning
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
 
@@ -599,16 +603,89 @@ Completed direction:
 - avoid automatic appointment creation, treatment-plan mutation, reminders,
   billing, materials, payments, and attachments.
 
-### Next Recommended Task
+### Completed Recommended Task
 
 Task 74 - Performed Services Service Layer
 
+Completed direction:
+
+- added typed catalog and performed-service service functions,
+- added active service catalog reads,
+- added visit-scoped performed-service reads,
+- added performed-service draft creation,
+- added narrow draft replacement and finalization methods,
+- reused the existing assignable-provider read path for credited provider
+  options,
+- kept UI, Visit Completion integration, ledger, payment, commission, materials,
+  and treatment-plan mutation out of scope.
+
+### Next Recommended Task
+
+Task 75 - Visit Completion Performed Services UI Slice Planning / Finalization Review
+
+Completed direction:
+
+- reviewed Task 73 schema/RLS, Task 74 service behavior, and current Visit
+  Completion flow,
+- confirmed the Task 74 service layer is usable for UI wiring,
+- documented that clinical completion and performed-service finalization are
+  not atomic and need explicit failure handling in the UI task,
+- chose a separate `Services & Charges` step before Review,
+- defined MVP fields as catalog service, quantity, unit price, credited
+  provider, optional tooth/region, and calculated total,
+- deferred discount, treatment-plan item linking, procedure linking, payment,
+  ledger, commission, material, and completed-surface display,
+- documented role behavior for owner/admin, doctor, specialist, reception,
+  assistant, and inventory.
+
+### Next Recommended Task
+
+Task 76 - Performed Services Completion / Finalization Safety Foundation
+
+Completed direction:
+
+- added structured performed-service finalization state helpers,
+- added retry-safe finalization for completed visits,
+- preserved valid no-service completion behavior,
+- made unresolved completed-visit draft rows explicit through
+  `finalization_required`,
+- kept already finalized rows idempotent on retry,
+- extended performed-services RLS/data smoke coverage for finalization safety,
+- kept UI, ledger, payments, commissions, treatment-plan mutation, and material
+  usage out of scope.
+
+### Next Recommended Task
+
+Task 77 - Visit Completion Services & Charges Draft UI
+
+Completed direction:
+
+- added the `Services & Charges` step before Review,
+- wired active service catalog options and credited provider options for
+  authorized financial clinical roles,
+- allowed draft performed-service rows with catalog snapshot, quantity,
+  editable unit price, calculated line amount, credited provider, and optional
+  tooth/region,
+- saved performed-service drafts after clinical draft save and reloaded them
+  when reopening an open Visit Completion flow,
+- added a Review summary with draft service rows and draft total,
+- preserved zero-service completion flow without fake rows,
+- kept finalization, completed visit display, ledger, payments, invoices,
+  commissions, materials, and treatment-plan mutation out of scope.
+
+### Next Recommended Task
+
+Task 78 - Visit Completion Performed Services Finalization Wiring
+
 Suggested direction:
 
-- add typed catalog and performed-service service functions,
-- support draft performed-service replacement/finalization around open visits,
-- keep UI, ledger, payment, commission, materials, and treatment-plan mutation
-  out of scope.
+- call retry-safe finalization after successful clinical completion,
+- surface `finalization_required` with a clear retry path,
+- keep no-service visits valid,
+- avoid duplicate finalized rows,
+- keep completed visit detail, patient timeline, patient overview, ledger,
+  payments, invoices, commissions, materials, and treatment-plan mutation out of
+  scope.
 
 ### Completed Recommended Task
 

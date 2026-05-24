@@ -4027,6 +4027,259 @@ Initial stack:
 
 ---
 
+### Completed (Task 74 - Performed Services Service Layer)
+
+- Added `src/features/performed-services/performedServicesService.ts` as the
+  typed application boundary for the Task 73 schema/RLS foundation.
+- Added typed service catalog options for future selectable service entry.
+- Added typed performed-service records for future read-only display and Visit
+  Completion integration.
+- Added active service catalog reads that return only active, non-archived
+  services and preserve category display context where available.
+- Added visit-scoped performed-service reads that rely on RLS and use stored
+  service/price snapshots as the display truth.
+- Added `createPerformedService` for one draft chargeable performed-service row
+  with explicit snapshots, quantity, pricing, currency, and credited provider
+  attribution.
+- Added a narrow draft replacement method that only archives/replaces draft
+  performed-service rows for an open visit.
+- Added a narrow finalization method that moves draft rows to `finalized` after
+  the linked visit has been completed.
+- Reused the existing assignable appointment provider RPC helper for credited
+  provider options, keeping provider attribution separate from appointment
+  assignment and `visits.completed_by`.
+- Added `docs/design/task-74-performed-services-service-layer.md`.
+- Kept Visit Completion UI, completed visit detail, patient timeline, patient
+  overview, treatment-plan UI, ledger, payments, commission calculation,
+  material usage, inventory deduction, and treatment-plan mutation out of scope.
+
+### Verification (Task 74)
+
+- `npx.cmd supabase migration up` reports the local database is up to date.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node supabase/snippets/testPerformedServicesRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testAppointmentOperationalStateRls.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testAppointmentProviderAssignmentRls.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testVisitCompletionRls.mjs` passes with local `.env`
+  loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `git diff --check` passes with only expected line-ending normalization
+  warnings from Git on existing Markdown files.
+
+### Next Recommended Task
+
+- Task 75 - Visit Completion Performed Services UI Slice.
+
+---
+
+### Completed (Task 75 - Visit Completion Performed Services UI Slice Planning / Finalization Review)
+
+- Reviewed the performed-services planning/schema/service foundation from Tasks
+  72-74.
+- Reviewed the Task 73 migration and performed-services RLS smoke coverage.
+- Reviewed the current Visit Completion UI and persistence service.
+- Reviewed completed visit detail, patient timeline, and browser smoke coverage
+  structure.
+- Confirmed the Task 74 service layer is usable for UI integration and found no
+  concrete service-layer defect requiring a runtime patch before UI work.
+- Documented the Task 74 draft/finalization semantics:
+	- draft rows are created by explicit service calls,
+	- Save Draft should persist rows after a visit draft exists,
+	- reload should fetch rows by visit,
+	- draft replacement only archives/replaces non-archived draft rows,
+	- finalization should happen after clinical completion,
+	- finalized rows are protected from silent mutation.
+- Documented the main sequencing risk:
+	- clinical completion and performed-service finalization are separate client
+	  calls,
+	- the next UI task must explicitly handle finalization failure after
+	  clinical completion and provide a retry path.
+- Chose a separate `Services & Charges` Visit Completion step before Review to
+  avoid mixing clinical procedure documentation with chargeable service rows.
+- Defined the MVP entry fields:
+	- active catalog service selection,
+	- quantity,
+	- unit price,
+	- credited provider,
+	- optional tooth/region,
+	- calculated total.
+- Deferred discount entry, treatment-plan item linking, explicit
+  visit-procedure linking, payment, ledger, commission, materials, and
+  treatment-plan mutation.
+- Decided completion should remain allowed with no performed services.
+- Documented role behavior:
+	- owner/admin, doctor, and specialist can enter/finalize according to RLS,
+	- reception remains read-only/no Visit Completion entry controls,
+	- assistant sees no financial rows/prices and continues clinical workflow,
+	- inventory has no performed-services access.
+- Recommended deferring completed visit detail, patient timeline, and patient
+  overview performed-service display to a follow-up read-only display task.
+- Created
+  `docs/design/task-75-visit-completion-performed-services-ui-slice-planning.md`.
+
+### Verification (Task 75)
+
+- `git diff --check` passes with only expected line-ending normalization
+  warnings from Git on existing Markdown files.
+
+### Next Recommended Task
+
+- Task 76 - Visit Completion Performed Services UI Wiring.
+
+---
+
+### Completed (Task 76 - Performed Services Completion / Finalization Safety Foundation)
+
+- Added structured finalization state types and helpers to
+  `src/features/performed-services/performedServicesService.ts`.
+- Added `getPerformedServicesFinalizationStateForVisit` to make these states
+  explicit for future UI messaging:
+	- open visit with draft performed services,
+	- completed visit with finalized performed services,
+	- completed visit with draft rows requiring retry,
+	- completed visit with no performed services.
+- Added `finalizePerformedServicesForCompletedVisit` as a retry-safe wrapper:
+	- treats no performed services as valid,
+	- treats already finalized rows as idempotent success,
+	- refuses finalization before clinical visit completion,
+	- finalizes remaining draft rows after clinical completion,
+	- reloads state and returns structured retry information if drafts remain.
+- Preserved existing draft replacement boundaries so finalized rows are not
+  silently replaced or archived by draft-save paths.
+- Extended `supabase/snippets/testPerformedServicesRls.mjs` with
+  finalization-safety coverage for:
+	- valid no-service completed visits,
+	- rejected draft rows on already completed visits,
+	- rejected finalization while a visit is still open,
+	- successful draft-to-finalized transition after visit completion,
+	- idempotent finalization retry with no duplicate rows,
+	- blocked assistant finalization leaving draft rows unchanged,
+	- finalized rows not being touched by draft replacement filters,
+	- snapshot preservation after catalog changes,
+	- no mutation of appointment lifecycle status, appointment operational
+	  state, appointment assigned provider, or `visits.completed_by`.
+- Documented the task in
+  `docs/design/task-76-performed-services-finalization-safety.md`.
+- Added no React UI, service catalog UI, completed visit financial display,
+  ledger, payments, invoices, commissions, materials, inventory deduction, or
+  treatment-plan mutation.
+
+### Verification (Task 76)
+
+- `npx.cmd supabase migration up` reports the local database is up to date.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node supabase/snippets/testPerformedServicesRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testAppointmentOperationalStateRls.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testAppointmentProviderAssignmentRls.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testVisitCompletionRls.mjs` passes with local `.env`
+  loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `git diff --check` passes with only expected line-ending normalization
+  warnings from Git on existing Markdown/test files.
+
+### Next Recommended Task
+
+- Task 77 - Visit Completion Services & Charges Draft UI.
+
+---
+
+### Completed (Task 77 - Visit Completion Services & Charges Draft UI)
+
+- Added a separate `Services & Charges` step before `Review` in the existing
+  Visit Completion workflow.
+- Added a contained performed-services draft editor for authorized financial
+  clinical roles:
+	- active service catalog selection,
+	- derived service name/code/category snapshots,
+	- quantity,
+	- editable unit price snapshot,
+	- calculated line amount and draft total,
+	- credited provider,
+	- optional tooth/region context.
+- Kept blocked roles from loading service catalog pricing or credited-provider
+  options through the editor; they can continue clinical Visit Completion with
+  a permission notice.
+- Integrated performed-service draft persistence with the existing Save Draft
+  path:
+	- saves the clinical draft first to obtain the visit ID,
+	- replaces only eligible open-visit draft performed-service rows,
+	- reloads saved draft charge rows when reopening an open Visit Completion
+	  flow,
+	- preserves zero-service visits without creating fake rows.
+- Added a Review summary for draft services/charges with service snapshot,
+  quantity, credited provider, line amount, and draft total.
+- Corrected the performed-services service-layer UUID validator to accept the
+  full Postgres UUID text shape used by existing deterministic demo fixtures,
+  while leaving database/RLS integrity as the authority.
+- Preserved the boundary that this is not a payment, ledger, invoice, balance,
+  commission, treatment-plan mutation, or completed-visit display feature.
+- Did not finalize performed services from `Complete Visit`; finalization
+  remains deferred to Task 78. The flow only saves the latest draft charge rows
+  before completion when rows exist, because draft replacement is intentionally
+  blocked after completion.
+- Expanded `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` to seed a
+  deterministic catalog service and verify the authorized service-entry draft
+  flow, Save Draft reload, Review summary, zero-service path, and responsive
+  overflow coverage for the new step.
+- Documented the task in
+  `docs/design/task-77-visit-completion-services-charges-draft-ui.md`.
+
+### Verification (Task 77)
+
+- `npx.cmd supabase migration up` reports the local database is up to date.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node supabase/snippets/testPerformedServicesRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testAppointmentOperationalStateRls.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testAppointmentProviderAssignmentRls.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` passes with
+  local `.env` loaded, `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`, and `DENTAPP_APP_URL=http://127.0.0.1:5174` against a
+  fresh Vite dev server.
+- `node supabase/snippets/testVisitCompletionRls.mjs` passes with local `.env`
+  loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `git diff --check` passes with only expected line-ending normalization
+  warnings from Git on existing files.
+
+### Next Recommended Task
+
+- Task 78 - Visit Completion Performed Services Finalization Wiring.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

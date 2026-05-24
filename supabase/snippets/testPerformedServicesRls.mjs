@@ -688,6 +688,283 @@ async function testDataSafeguards(fixture) {
   }
 }
 
+async function testFinalizationSafety(fixture) {
+  const session = await signIn('doctor.demo@example.test')
+  const client = getAuthedClient(session.access_token)
+  const assistantSession = await signIn('assistant.demo@example.test')
+  const assistantClient = getAuthedClient(assistantSession.access_token)
+  const serviceClient = getServiceClient()
+
+  const noServiceVisit = await insertRow('visits', {
+    clinic_id: DEMO_CLINIC_ID,
+    patient_id: DEMO_PATIENT_ID,
+    status: 'completed',
+    completed_at: new Date().toISOString(),
+    completed_by: fixture.doctorId,
+    recommendation: 'No performed services finalization fixture.',
+    next_step: 'no_follow_up',
+    created_by: fixture.doctorId,
+    updated_by: fixture.doctorId,
+  })
+  fixture.visitIds.push(noServiceVisit.id)
+
+  const noServiceCount = await countRowsAs(client, 'performed_services', {
+    visit_id: noServiceVisit.id,
+  })
+
+  const retryVisit = await insertRow('visits', {
+    clinic_id: DEMO_CLINIC_ID,
+    patient_id: DEMO_PATIENT_ID,
+    status: 'draft',
+    recommendation: 'Performed service finalization retry fixture.',
+    next_step: 'continue_treatment_plan',
+    created_by: fixture.doctorId,
+    updated_by: fixture.doctorId,
+  })
+  fixture.visitIds.push(retryVisit.id)
+
+  const blockedRoleVisit = await insertRow('visits', {
+    clinic_id: DEMO_CLINIC_ID,
+    patient_id: DEMO_PATIENT_ID,
+    status: 'draft',
+    recommendation: 'Performed service blocked role finalization fixture.',
+    next_step: 'continue_treatment_plan',
+    created_by: fixture.doctorId,
+    updated_by: fixture.doctorId,
+  })
+  fixture.visitIds.push(blockedRoleVisit.id)
+
+  const draftService = await insertRow('performed_services', {
+    clinic_id: DEMO_CLINIC_ID,
+    patient_id: DEMO_PATIENT_ID,
+    visit_id: retryVisit.id,
+    service_id: fixture.serviceId,
+    service_name_snapshot: 'Finalization Safety Snapshot',
+    service_code_snapshot: 'FIN-SAFE',
+    service_category_name_snapshot: 'Finalization Safety Category',
+    tooth_or_region: '14',
+    quantity: 1,
+    unit_price_amount: 3200,
+    discount_amount: 0,
+    final_amount: 3200,
+    currency: 'RSD',
+    credited_provider_id: fixture.doctorId,
+    status: 'draft',
+    created_by: fixture.doctorId,
+    updated_by: fixture.doctorId,
+  })
+  fixture.createdPerformedServiceIds.push(draftService.id)
+
+  const blockedRoleDraftService = await insertRow('performed_services', {
+    clinic_id: DEMO_CLINIC_ID,
+    patient_id: DEMO_PATIENT_ID,
+    visit_id: blockedRoleVisit.id,
+    service_id: fixture.serviceId,
+    service_name_snapshot: 'Blocked Role Finalization Snapshot',
+    service_code_snapshot: 'BLOCK-FIN',
+    service_category_name_snapshot: 'Finalization Safety Category',
+    quantity: 1,
+    unit_price_amount: 2100,
+    discount_amount: 0,
+    final_amount: 2100,
+    currency: 'RSD',
+    credited_provider_id: fixture.doctorId,
+    status: 'draft',
+    created_by: fixture.doctorId,
+    updated_by: fixture.doctorId,
+  })
+  fixture.createdPerformedServiceIds.push(blockedRoleDraftService.id)
+
+  const finalizedWhileOpen = await client
+    .from('performed_services')
+    .update({
+      status: 'finalized',
+      performed_at: new Date().toISOString(),
+      updated_by: fixture.doctorId,
+    })
+    .eq('id', draftService.id)
+    .select('id')
+    .single()
+
+  await serviceClient
+    .from('visits')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      completed_by: fixture.doctorId,
+      updated_by: fixture.doctorId,
+    })
+    .eq('id', retryVisit.id)
+
+  await serviceClient
+    .from('visits')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      completed_by: fixture.doctorId,
+      updated_by: fixture.doctorId,
+    })
+    .eq('id', blockedRoleVisit.id)
+
+  const beforeAppointment = await serviceClient
+    .from('appointments')
+    .select('status, operational_state, assigned_provider_id')
+    .eq('id', fixture.appointmentId)
+    .single()
+  const beforeVisit = await serviceClient
+    .from('visits')
+    .select('completed_by')
+    .eq('id', retryVisit.id)
+    .single()
+
+  const finalizedAfterCompletion = await client
+    .from('performed_services')
+    .update({
+      status: 'finalized',
+      performed_at: new Date().toISOString(),
+      updated_by: fixture.doctorId,
+    })
+    .eq('visit_id', retryVisit.id)
+    .eq('status', 'draft')
+    .is('deleted_at', null)
+    .select('id, status, service_name_snapshot, unit_price_amount, final_amount')
+
+  const firstFinalizedIds = (finalizedAfterCompletion.data ?? []).map(
+    (row) => row.id,
+  )
+
+  const retryFinalization = await client
+    .from('performed_services')
+    .update({
+      status: 'finalized',
+      performed_at: new Date().toISOString(),
+      updated_by: fixture.doctorId,
+    })
+    .eq('visit_id', retryVisit.id)
+    .eq('status', 'draft')
+    .is('deleted_at', null)
+    .select('id, status')
+
+  const finalRows = await serviceClient
+    .from('performed_services')
+    .select('id, status, service_name_snapshot, unit_price_amount, final_amount')
+    .eq('visit_id', retryVisit.id)
+    .is('deleted_at', null)
+
+  const assistantRetry = await assistantClient
+    .from('performed_services')
+    .update({
+      status: 'finalized',
+      performed_at: new Date().toISOString(),
+      updated_by: fixture.assistantId,
+    })
+    .eq('visit_id', blockedRoleVisit.id)
+    .eq('status', 'draft')
+    .is('deleted_at', null)
+    .select('id')
+
+  const blockedRoleDraftAfterAssistant = await serviceClient
+    .from('performed_services')
+    .select('id, status')
+    .eq('id', blockedRoleDraftService.id)
+    .single()
+
+  const replaceFinalizedAttempt = await client
+    .from('performed_services')
+    .update({
+      deleted_at: new Date().toISOString(),
+      updated_by: fixture.doctorId,
+    })
+    .eq('visit_id', retryVisit.id)
+    .eq('status', 'draft')
+    .is('deleted_at', null)
+    .select('id')
+
+  await serviceClient
+    .from('services')
+    .update({
+      name: 'Finalization Safety Catalog Changed',
+      default_price: 99999,
+    })
+    .eq('id', fixture.serviceId)
+
+  const snapshotAfterCatalogChange = await serviceClient
+    .from('performed_services')
+    .select('service_name_snapshot, unit_price_amount, final_amount')
+    .eq('id', draftService.id)
+    .single()
+
+  const afterAppointment = await serviceClient
+    .from('appointments')
+    .select('status, operational_state, assigned_provider_id')
+    .eq('id', fixture.appointmentId)
+    .single()
+  const afterVisit = await serviceClient
+    .from('visits')
+    .select('completed_by')
+    .eq('id', retryVisit.id)
+    .single()
+
+  const completedDraftInsert = await insertPerformedServiceAs(client, fixture, {
+    visit_id: noServiceVisit.id,
+    visit_procedure_id: null,
+    appointment_id: null,
+    treatment_plan_item_id: null,
+    status: 'draft',
+  })
+
+  return {
+    noServiceCompletionValid:
+      noServiceCount.count === 0 && noServiceCount.error === null,
+    noServiceCompletionError: noServiceCount.error,
+    completedDraftRejected: !completedDraftInsert.allowed,
+    completedDraftError: completedDraftInsert.error,
+    finalizedWhileOpenRejected: Boolean(finalizedWhileOpen.error),
+    finalizedWhileOpenError: finalizedWhileOpen.error?.message ?? null,
+    finalizedAfterCompletionAllowed:
+      !finalizedAfterCompletion.error &&
+      firstFinalizedIds.length === 1 &&
+      finalizedAfterCompletion.data.every((row) => row.status === 'finalized'),
+    finalizedAfterCompletionError:
+      finalizedAfterCompletion.error?.message ?? null,
+    retryIdempotent:
+      !retryFinalization.error &&
+      (retryFinalization.data ?? []).length === 0 &&
+      (finalRows.data ?? []).length === 1 &&
+      (finalRows.data ?? []).every((row) => row.status === 'finalized'),
+    retryError: retryFinalization.error?.message ?? finalRows.error?.message ?? null,
+    assistantRetryBlocked:
+      !assistantRetry.error &&
+      (assistantRetry.data ?? []).length === 0 &&
+      blockedRoleDraftAfterAssistant.data?.status === 'draft',
+    assistantRetryError:
+      assistantRetry.error?.message ??
+      blockedRoleDraftAfterAssistant.error?.message ??
+      null,
+    finalizedNotReplacedByDraftPath:
+      !replaceFinalizedAttempt.error &&
+      (replaceFinalizedAttempt.data ?? []).length === 0 &&
+      (finalRows.data ?? []).length === 1,
+    replaceFinalizedError: replaceFinalizedAttempt.error?.message ?? null,
+    snapshotPreservedAfterFinalization:
+      !snapshotAfterCatalogChange.error &&
+      snapshotAfterCatalogChange.data?.service_name_snapshot ===
+        'Finalization Safety Snapshot' &&
+      Number(snapshotAfterCatalogChange.data?.unit_price_amount) === 3200 &&
+      Number(snapshotAfterCatalogChange.data?.final_amount) === 3200,
+    snapshotAfterFinalizationError:
+      snapshotAfterCatalogChange.error?.message ?? null,
+    appointmentUnchanged:
+      JSON.stringify(beforeAppointment.data) === JSON.stringify(afterAppointment.data),
+    appointmentError:
+      beforeAppointment.error?.message ?? afterAppointment.error?.message ?? null,
+    visitCompletedByUnchanged:
+      beforeVisit.data?.completed_by === afterVisit.data?.completed_by,
+    visitCompletedByError:
+      beforeVisit.error?.message ?? afterVisit.error?.message ?? null,
+  }
+}
+
 async function testNoUnrelatedMutation(fixture) {
   const serviceClient = getServiceClient()
   const beforeAppointment = await serviceClient
@@ -904,6 +1181,13 @@ async function main() {
     }
     if (!unrelatedMutation.procedureUnchanged) {
       failures.push('performed-service operation mutated visit_procedures')
+    }
+
+    const finalizationSafety = await testFinalizationSafety(fixture)
+    results.finalizationSafety = finalizationSafety
+    for (const [key, value] of Object.entries(finalizationSafety)) {
+      if (key.endsWith('Error')) continue
+      if (!value) failures.push(`finalization safety failed: ${key}`)
     }
   } finally {
     await cleanupFixture(fixture)

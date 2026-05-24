@@ -35,6 +35,22 @@ import {
   patientStatusLabels,
 } from '../patients/patientDisplay'
 import type { DemoPatient } from '../patients/types'
+import {
+  PerformedServicesDraftEditor,
+} from '../performed-services/PerformedServicesDraftEditor'
+import {
+  buildPerformedServiceInputs,
+  formatPerformedServiceAmount,
+  getPerformedServiceDraftLineAmount,
+  getPerformedServicesDraftTotal,
+  mapPerformedServiceRecordToDraftRow,
+  validatePerformedServiceDraftRows,
+  type PerformedServiceDraftRow,
+} from '../performed-services/performedServicesDraftModel'
+import {
+  fetchPerformedServicesForVisit,
+  replaceDraftPerformedServicesForVisit,
+} from '../performed-services/performedServicesService'
 import { VisitCompletionSummary } from './VisitCompletionSummary'
 import {
   completeVisit,
@@ -83,6 +99,12 @@ const workflowSteps: WorkflowStep[] = [
     label: 'Done',
     title: 'What was done?',
     description: 'Enter the performed work only if there was a procedure.',
+  },
+  {
+    id: 'services',
+    label: 'Services',
+    title: 'Services & Charges',
+    description: 'Record chargeable services rendered during this visit.',
   },
   {
     id: 'notes',
@@ -184,6 +206,9 @@ export function VisitCompletionFlow({
   const [procedures, setProcedures] = useState<ProcedureRow[]>([
     createProcedureRow(),
   ])
+  const [performedServices, setPerformedServices] = useState<
+    PerformedServiceDraftRow[]
+  >([])
   const [clinicalNote, setClinicalNote] = useState('')
   const [recommendation, setRecommendation] = useState('')
   const [nextStep, setNextStep] = useState('')
@@ -191,6 +216,8 @@ export function VisitCompletionFlow({
     useState<CompletionState>('editing')
   const [attemptedCompletion, setAttemptedCompletion] = useState(false)
   const [isLoadingDraft, setIsLoadingDraft] = useState(true)
+  const [isLoadingPerformedServices, setIsLoadingPerformedServices] =
+    useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
@@ -212,11 +239,19 @@ export function VisitCompletionFlow({
   const hasNextStep = Boolean(nextStep)
   const isReady = procedureCount > 0 || hasClinicalNote || hasNextStep
   const hasMeaningfulDraftData =
-    procedureCount > 0 || hasClinicalNote || hasRecommendation || hasNextStep
+    procedureCount > 0 ||
+    hasClinicalNote ||
+    hasRecommendation ||
+    hasNextStep ||
+    performedServices.length > 0
   const nextStepLabel = getNextStepLabel(nextStep)
   const age = getPatientAge(patient.dateOfBirth)
   const activeStep = workflowSteps[activeStepIndex]
-  const isBusy = isLoadingDraft || isSavingDraft || isCompleting
+  const isBusy =
+    isLoadingDraft ||
+    isLoadingPerformedServices ||
+    isSavingDraft ||
+    isCompleting
   const plannedWork =
     patient.activeTreatmentPlanSummary.trim() ||
     'No planned treatment is recorded in the current patient context.'
@@ -249,6 +284,31 @@ export function VisitCompletionFlow({
     [appointmentId],
   )
 
+  const loadPerformedServiceDraftRows = useCallback(
+    async (draftVisitId: string) => {
+      setIsLoadingPerformedServices(true)
+
+      try {
+        const records = await fetchPerformedServicesForVisit(draftVisitId)
+        setPerformedServices(
+          records
+            .filter((record) => record.status === 'draft')
+            .map(mapPerformedServiceRecordToDraftRow),
+        )
+      } catch (error) {
+        setServiceError(
+          getUserFriendlyServiceError(
+            error instanceof Error ? error.message : null,
+            'Saved services and charges could not be loaded. Clinical draft data is still available.',
+          ),
+        )
+      } finally {
+        setIsLoadingPerformedServices(false)
+      }
+    },
+    [],
+  )
+
   useEffect(() => {
     if (appointmentId) {
       const timeoutId = window.setTimeout(() => {
@@ -278,6 +338,7 @@ export function VisitCompletionFlow({
 
         if (draft) {
           applyDraft(draft)
+          void loadPerformedServiceDraftRows(draft.id)
           setServiceWarnings(draft.warnings)
           setLastSavedAt(draft.updatedAt)
           setDraftReloadMessage(
@@ -291,6 +352,7 @@ export function VisitCompletionFlow({
           )
           setServiceMessage(null)
         } else {
+          setPerformedServices([])
           setServiceWarnings([])
           setLastSavedAt(null)
           setDraftReloadMessage(
@@ -321,7 +383,13 @@ export function VisitCompletionFlow({
     return () => {
       isCurrent = false
     }
-  }, [appointmentContext, appointmentId, applyDraft, patient.id])
+  }, [
+    appointmentContext,
+    appointmentId,
+    applyDraft,
+    loadPerformedServiceDraftRows,
+    patient.id,
+  ])
 
   function updateProcedure(
     procedureId: string,
@@ -375,6 +443,46 @@ export function VisitCompletionFlow({
     }
   }
 
+  async function savePerformedServicesDraft(draft: VisitCompletionDraft) {
+    const validationError = validatePerformedServiceDraftRows(performedServices)
+
+    if (validationError) {
+      return {
+        ok: false,
+        error: validationError,
+      }
+    }
+
+    const result = await replaceDraftPerformedServicesForVisit({
+      patientId: draft.patientId,
+      visitId: draft.id,
+      performedServices: buildPerformedServiceInputs(performedServices, {
+        appointmentId: draft.appointmentId ?? linkedAppointmentId,
+        patientId: draft.patientId,
+        visitId: draft.id,
+      }),
+    })
+
+    if (!result.ok) {
+      return {
+        ok: false,
+        error:
+          result.error ??
+          result.message ??
+          'Services and charges draft rows could not be saved.',
+      }
+    }
+
+    setPerformedServices(
+      (result.performedServices ?? []).map(mapPerformedServiceRecordToDraftRow),
+    )
+
+    return {
+      ok: true,
+      error: null,
+    }
+  }
+
   async function handleSaveDraft() {
     if (!hasMeaningfulDraftData || isSavingDraft || isCompleting) {
       return
@@ -386,11 +494,33 @@ export function VisitCompletionFlow({
     setDraftReloadMessage(null)
 
     try {
+      const validationError = validatePerformedServiceDraftRows(performedServices)
+
+      if (validationError) {
+        setServiceError(validationError)
+        return
+      }
+
       const result = await saveVisitCompletionDraft(buildDraftInput())
 
       setServiceWarnings(result.warnings ?? [])
 
       if (result.ok && result.draft) {
+        const performedServiceSave = await savePerformedServicesDraft(
+          result.draft,
+        )
+
+        if (!performedServiceSave.ok) {
+          setVisitId(result.draft.id)
+          setLastSavedAt(result.draft.updatedAt)
+          applyDraft(result.draft)
+          setServiceError(
+            performedServiceSave.error ??
+              'Visit draft was saved, but services and charges were not saved.',
+          )
+          return
+        }
+
         setVisitId(result.draft.id)
         setLastSavedAt(result.draft.updatedAt)
         setServiceMessage(
@@ -445,7 +575,59 @@ export function VisitCompletionFlow({
     setDraftReloadMessage(null)
 
     try {
-      const result = await completeVisit(buildDraftInput())
+      let completionInput = buildDraftInput()
+
+      if (performedServices.length > 0) {
+        const validationError =
+          validatePerformedServiceDraftRows(performedServices)
+
+        if (validationError) {
+          setServiceError(validationError)
+          setCompletionState('editing')
+          setActiveStepIndex(workflowSteps.length - 1)
+          return
+        }
+
+        const draftResult = await saveVisitCompletionDraft(completionInput)
+
+        setServiceWarnings(draftResult.warnings ?? [])
+
+        if (!draftResult.ok || !draftResult.draft) {
+          setServiceError(
+            getUserFriendlyServiceError(
+              draftResult.error ?? draftResult.message,
+              'Visit was not completed. Your entered data is still visible.',
+            ),
+          )
+          setCompletionState('editing')
+          setActiveStepIndex(workflowSteps.length - 1)
+          return
+        }
+
+        const performedServiceSave = await savePerformedServicesDraft(
+          draftResult.draft,
+        )
+
+        if (!performedServiceSave.ok) {
+          setVisitId(draftResult.draft.id)
+          setLastSavedAt(draftResult.draft.updatedAt)
+          applyDraft(draftResult.draft)
+          setServiceError(
+            performedServiceSave.error ??
+              'Visit was not completed because services and charges could not be saved.',
+          )
+          setCompletionState('editing')
+          setActiveStepIndex(workflowSteps.length - 1)
+          return
+        }
+
+        completionInput = {
+          ...completionInput,
+          visitId: draftResult.draft.id,
+        }
+      }
+
+      const result = await completeVisit(completionInput)
 
       setServiceWarnings(result.warnings ?? [])
 
@@ -633,6 +815,15 @@ export function VisitCompletionFlow({
             />
           ) : null}
 
+          {activeStep.id === 'services' ? (
+            <PerformedServicesDraftEditor
+              appointmentContext={appointmentContext}
+              disabled={isBusy}
+              rows={performedServices}
+              onRowsChange={setPerformedServices}
+            />
+          ) : null}
+
           {activeStep.id === 'next-step' ? (
             <NextStep
               disabled={isBusy}
@@ -652,6 +843,7 @@ export function VisitCompletionFlow({
               isReady={isReady}
               nextStepLabel={nextStepLabel}
               procedureCount={procedureCount}
+              performedServices={performedServices}
               recommendation={recommendation}
               warnings={warnings}
             />
@@ -1084,7 +1276,7 @@ function CompactVisitContext({
 function Stepper({ activeStepIndex }: { activeStepIndex: number }) {
   return (
     <div className="hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:block">
-      <ol className="grid gap-2 sm:grid-cols-5">
+      <ol className="grid gap-2 sm:grid-cols-6">
         {workflowSteps.map((step, index) => {
           const isActive = index === activeStepIndex
           const isComplete = index < activeStepIndex
@@ -1398,6 +1590,7 @@ function ReviewStep({
   hasRecommendation,
   isReady,
   nextStepLabel,
+  performedServices,
   procedureCount,
   recommendation,
   warnings,
@@ -1410,10 +1603,13 @@ function ReviewStep({
   hasRecommendation: boolean
   isReady: boolean
   nextStepLabel: string
+  performedServices: PerformedServiceDraftRow[]
   procedureCount: number
   recommendation: string
   warnings: string[]
 }) {
+  const serviceTotal = getPerformedServicesDraftTotal(performedServices)
+
   return (
     <div className="space-y-4">
       <VisitCompletionSummary
@@ -1436,6 +1632,80 @@ function ReviewStep({
           value={hasRecommendation ? recommendation : 'No instruction entered'}
           description="Saved with the visit draft and completion record."
         />
+      </div>
+
+      <div
+        className="rounded-md border border-teal-100 bg-teal-50/40 p-4"
+        data-testid="visit-services-review-summary"
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="text-sm font-semibold text-slate-950">
+              Services & Charges
+            </div>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Draft chargeable services recorded for this visit. No payment,
+              invoice, balance, or commission is created here.
+            </p>
+          </div>
+          <Badge variant={performedServices.length > 0 ? 'info' : 'neutral'}>
+            {performedServices.length}{' '}
+            {performedServices.length === 1 ? 'service' : 'services'}
+          </Badge>
+        </div>
+
+        {performedServices.length > 0 ? (
+          <div className="mt-4 space-y-3">
+            {performedServices.map((service) => (
+              <div
+                className="rounded-md border border-slate-200 bg-white p-3"
+                data-testid="visit-services-review-row"
+                key={service.id}
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="wrap-break-word text-sm font-semibold text-slate-950">
+                      {service.serviceNameSnapshot || 'Service not selected'}
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      Quantity {service.quantity || '0'}
+                      {service.toothOrRegion
+                        ? ` - ${service.toothOrRegion}`
+                        : ''}
+                      {service.creditedProviderName
+                        ? ` - ${service.creditedProviderName}`
+                        : ''}
+                    </p>
+                  </div>
+                  <div className="text-sm font-semibold text-teal-900">
+                    {formatPerformedServiceAmount(
+                      getPerformedServiceDraftLineAmount(service),
+                      service.currency,
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div
+              className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-teal-200 bg-white px-3 py-2"
+              data-testid="visit-services-review-total"
+            >
+              <span className="text-sm font-semibold text-slate-950">
+                Draft total
+              </span>
+              <span className="text-sm font-semibold text-teal-900">
+                {formatPerformedServiceAmount(
+                  serviceTotal,
+                  performedServices[0]?.currency ?? 'RSD',
+                )}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <InlineNotice className="mt-4" variant="neutral">
+            No chargeable services added for this visit.
+          </InlineNotice>
+        )}
       </div>
 
       {attemptedCompletion && !isReady ? (
@@ -1461,6 +1731,10 @@ function getStepPrompt(stepId: string) {
 
   if (stepId === 'procedures') {
     return 'Record only what was actually performed.'
+  }
+
+  if (stepId === 'services') {
+    return 'Record chargeable services without collecting payment.'
   }
 
   if (stepId === 'notes') {
