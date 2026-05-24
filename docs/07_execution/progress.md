@@ -3825,6 +3825,208 @@ Initial stack:
 
 ---
 
+### Completed (Checkpoint B - Product Roadmap Re-balance)
+
+- Rebalanced the next product direction after Tasks 66-71 completed the
+  appointment card/mobile overflow, provider assignment, lifecycle, and
+  operational-state foundations.
+- Confirmed the current strongest implemented workflow runs from patient
+  context through appointment scheduling, provider assignment, operational
+  state, Visit Completion, completed visit review, and patient timeline.
+- Decided the next major foundation should be performed services because it
+  connects clinical completion to:
+	- service catalog and prices,
+	- patient ledger charges,
+	- doctor commission calculation,
+	- optional treatment-plan item progress,
+	- future material usage.
+- Decided patient ledger work should follow performed services, rather than be
+  written directly from free-text Visit Completion notes.
+- Decided doctor commission work should follow performed services and ledger
+  rules because commission basis, discounts, lab costs, and visibility remain
+  sensitive pilot decisions.
+- Deferred deeper scheduling features for now:
+	- room/chair scheduling,
+	- availability/conflict enforcement,
+	- provider workload calendar,
+	- waiting-time analytics,
+	- operational event history.
+- Created `docs/design/checkpoint-b-product-roadmap-rebalance.md`.
+- Filled `docs/02_product/roadmap.md` with the rebalanced roadmap.
+- Filled `docs/02_product/feature_backlog.md` with the near-term backlog.
+- Updated `docs/02_product/mvp_scope.md` so appointment lifecycle status and
+  day-of-visit operational state match the implemented split.
+- Aligned the roadmap/backlog sequence with Task 72's service-layer step between
+  performed-services schema/RLS and Visit Completion UI wiring.
+- Updated `docs/07_execution/implementation_roadmap.md` current status and
+  open implementation questions.
+- Updated `docs/07_execution/todo.md` to mark Checkpoint B complete and add the
+  next performed-services and ledger task sequence.
+- No runtime behavior, schema, migration, RLS policy, service code, UI, or smoke
+  tests were changed.
+
+### Verification (Checkpoint B)
+
+- Documentation-only change; no build, lint, migration, RLS, or browser smoke
+  suite was required.
+
+### Next Recommended Task
+
+- Task 72 - Performed Services Foundation Planning.
+
+---
+
+### Completed (Task 72 - Performed Services Foundation Planning)
+
+- Reviewed current Visit Completion schema, service layer, UI, completed visit
+  detail, patient timeline, treatment-plan schema/service, visit/treatment-plan
+  RLS smoke coverage, and Checkpoint B roadmap docs.
+- Confirmed current completed visit persistence includes:
+	- `visits`,
+	- `visit_procedures`,
+	- linked `clinical_notes`,
+	- recommendation and next-step fields.
+- Confirmed current `visit_procedures` stores clinical procedure name,
+  tooth/region, free-text quantity/duration, note, and sort order only.
+- Confirmed no implemented service catalog, performed-service, patient ledger,
+  payment, or commission tables exist yet.
+- Confirmed current Visit Completion UI does not collect price, discount,
+  numeric quantity, material usage, payment, treatment-plan item link, or
+  credited doctor per procedure.
+- Evaluated both modeling options:
+	- extending `visit_procedures`,
+	- introducing separate `performed_services`.
+- Chose separate `performed_services` for MVP so clinical documentation remains
+  separate from chargeable/financial source-of-truth rows.
+- Recommended a minimal future data model:
+	- `service_categories`,
+	- `services`,
+	- `performed_services`.
+- Recommended `performed_services` include clinic/patient/visit scope, optional
+  procedure and treatment-plan-item links, service/catalog snapshots, numeric
+  quantity, unit price, discount amount, final amount, currency, credited
+  provider, status, correction link, and metadata.
+- Decided draft performed services should be recordable during Visit Completion
+  and finalized when the visit is completed.
+- Decided completed/finalized performed services should not be silently edited;
+  later corrections should use explicit correction/void behavior.
+- Decided treatment-plan links should be optional and treatment-plan mutation
+  should remain out of the first performed-services implementation stream.
+- Documented future ledger handoff:
+	- finalized performed services later create/support immutable ledger charge
+	  postings,
+	- balances should come from ledger entries,
+	- edits after posting require adjustment/reversal records.
+- Documented future commission handoff:
+	- capture `credited_provider_id` per performed service now,
+	- keep it separate from `appointments.assigned_provider_id` and
+	  `visits.completed_by`,
+	- defer commission rules and entries.
+- Documented role/RLS implications, UI impact map, future test plan, and phased
+  follow-up tasks.
+- Created
+  `docs/design/task-72-performed-services-foundation-planning.md`.
+- Updated `docs/07_execution/todo.md` to mark Task 72 complete and make Task 73
+  the next recommended task.
+- Updated Checkpoint B roadmap/backlog task numbering to include a dedicated
+  performed-services service-layer task before Visit Completion UI wiring.
+- No runtime behavior, schema, migration, RLS policy, service code, UI, or smoke
+  tests were changed.
+
+### Verification (Task 72)
+
+- `git diff --check` passes with only expected line-ending normalization
+  warnings from Git on existing Markdown files.
+
+### Next Recommended Task
+
+- Task 73 - Service Catalog and Performed Services Schema/RLS.
+
+---
+
+### Completed (Task 73 - Service Catalog and Performed Services Schema/RLS Foundation)
+
+- Added the minimal clinic-scoped service catalog foundation:
+	- `service_categories`,
+	- `services`.
+- Added `performed_services` as the chargeable/commercial source of truth for
+  rendered services while preserving `visit_procedures` as clinical-only
+  documentation.
+- Added service catalog safeguards:
+	- service categories are clinic scoped,
+	- services are clinic scoped,
+	- services may reference only same-clinic categories.
+- Added performed-service safeguards:
+	- performed service clinic/patient must match the linked visit,
+	- draft performed services require draft/in-progress visits,
+	- finalized/corrected/voided performed services require completed visits,
+	- optional visit procedure links must match the same visit/clinic/patient,
+	- optional treatment-plan item links must match the same clinic/patient and a
+	  non-archived parent plan,
+	- optional service catalog links must point to active non-archived same-clinic
+	  services when newly selected,
+	- optional appointment links must match same clinic/patient and not conflict
+	  with the linked visit appointment,
+	- credited provider must be an active same-clinic doctor/specialist,
+	- finalized/corrected/voided rows cannot be silently updated through ordinary
+	  update paths.
+- Kept service catalog price as a mutable default only; performed services store
+  immutable service and price snapshots.
+- Added conservative RLS:
+	- catalog read for owner/admin, doctor, specialist, assistant, and reception,
+	- catalog writes for owner/admin only,
+	- performed-service read for owner/admin, doctor, specialist, and reception,
+	- performed-service writes for owner/admin, doctor, and specialist,
+	- assistant and inventory are denied performed-service financial rows by
+	  default.
+- Added focused RLS/data smoke coverage in
+  `supabase/snippets/testPerformedServicesRls.mjs`.
+- Confirmed the new foundation does not modify:
+	- appointment lifecycle status,
+	- appointment operational state,
+	- appointment assigned provider,
+	- `visits.completed_by`,
+	- existing clinical `visit_procedures`.
+- Documented the implementation in
+  `docs/design/task-73-service-catalog-performed-services-schema-rls.md`.
+- No UI, Visit Completion service-layer wiring, patient ledger, payments,
+  commission calculation, material usage, inventory deduction, or treatment-plan
+  mutation was added.
+
+### Verification (Task 73)
+
+- `npx.cmd supabase migration up` applies
+  `20260524190000_create_service_catalog_and_performed_services.sql`.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node supabase/snippets/testPerformedServicesRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testAppointmentOperationalStateRls.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testAppointmentProviderAssignmentRls.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testPatientAppointmentBrowserSmoke.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node supabase/snippets/testVisitCompletionRls.mjs` passes with local `.env`
+  loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from `SUPABASE_SERVICE_KEY`.
+  A parallel first run returned a transient owner/admin visit-create upstream
+  response error; the isolated rerun passed.
+- `node supabase/snippets/testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `git diff --check` passes with only expected line-ending normalization
+  warnings from Git on existing Markdown files.
+
+### Next Recommended Task
+
+- Task 74 - Performed Services Service Layer.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

@@ -241,19 +241,27 @@ MVP requirements:
 - patient assignment,
 - appointment type,
 - duration,
-- status,
+- lifecycle status,
+- day-of-visit operational state,
 - notes,
 - link to treatment plan when applicable.
 
-Initial appointment statuses:
+Implemented lifecycle statuses:
 
 - scheduled,
-- confirmed,
-- arrived,
 - completed,
 - cancelled,
-- no-show,
-- rescheduled.
+- no-show.
+
+Implemented day-of-visit operational states:
+
+- not arrived,
+- arrived,
+- ready for doctor.
+
+Potential future scheduling states such as confirmed or rescheduled should be
+modeled deliberately in a later task instead of being mixed into the current
+lifecycle/operational split.
 
 Patient self-booking is not part of MVP.
 

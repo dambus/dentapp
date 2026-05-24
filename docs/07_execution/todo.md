@@ -52,8 +52,8 @@ Status legend:
 
 - [x] Define MVP scope
 - [ ] Define out-of-scope list
-- [ ] Define product roadmap
-- [ ] Define feature backlog
+- [x] Define product roadmap
+- [x] Define feature backlog
 - [x] Define user roles
 - [x] Define permissions matrix
 - [x] Define key user workflows
@@ -287,12 +287,17 @@ Status legend:
 - [x] Task 69 - Appointment Operational State Service/UI Wiring
 - [x] Task 70 - Appointment Operational State Context Visibility
 - [x] Task 71 - Appointment Operational State Correction
-- [ ] Checkpoint B - Product Roadmap Re-balance
-- [ ] Price/discount/debt workflow
+- [x] Checkpoint B - Product Roadmap Re-balance
+- [x] Task 72 - Performed Services Foundation Planning
+- [x] Task 73 - Service Catalog and Performed Services Schema/RLS
+- [ ] Task 74 - Performed Services Service Layer
+- [ ] Task 75 - Visit Completion Performed Services UI Slice
+- [ ] Task 76 - Patient Ledger Planning
+- [ ] Task 77 - Patient Ledger Schema/RLS Foundation
+- [ ] Task 78 - Patient Ledger UI Slice
+- [ ] Task 79 - Doctor Commission Planning
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
-- [ ] Plan performed services foundation
-- [ ] Plan payment/ledger foundation
 
 ### Completed Recommended Task
 
@@ -596,13 +601,14 @@ Completed direction:
 
 ### Next Recommended Task
 
-Checkpoint B - Product Roadmap Re-balance
+Task 74 - Performed Services Service Layer
 
 Suggested direction:
 
-- review the current product/design implementation phase,
-- rebalance upcoming work after D1-D6,
-- decide whether scheduling, patient detail IA, or visit workflow polish should come next.
+- add typed catalog and performed-service service functions,
+- support draft performed-service replacement/finalization around open visits,
+- keep UI, ledger, payment, commission, materials, and treatment-plan mutation
+  out of scope.
 
 ### Completed Recommended Task
 

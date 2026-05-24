@@ -386,30 +386,42 @@ A task is done when:
 
 Current status:
 
-- project structure created,
-- documentation structure created,
-- product foundation documents created,
-- Codex foundation documents created,
-- discovery documents created,
-- product definition documents created,
-- domain model documents created,
-- technical foundation documents created,
-- UX/UI foundation documents created.
+- Phase 1 app foundation is complete,
+- Phase 2 patient and record foundations are deep into implementation,
+- patient persistence, authentication, current profile loading, route guards,
+  RLS helpers, audit log foundation, and patient CRUD are implemented,
+- medical record, clinical notes, odontogram foundation, treatment-plan
+  read-only foundation, patient timeline, and completed visit review exist,
+- appointment scheduling, daily/weekly schedule, appointment detail, lifecycle
+  hardening, provider assignment, provider filtering, and responsive smoke
+  coverage exist,
+- Visit Completion supports draft/completed persistence and appointment
+  completion handoff,
+- appointment operational state exists separately from lifecycle status with
+  `not_arrived`, `arrived`, and `ready_for_doctor`,
+- Checkpoint B rebalanced the next roadmap around performed services before
+  ledger and commissions.
 
 Next step:
 
-- prepare Phase 1 checklist,
-- prepare first Codex implementation task,
-- start with app foundation implementation.
+- Task 72 - Performed Services Foundation Planning,
+- then service catalog/performed services schema and Visit Completion UI
+  integration,
+- then patient ledger planning/schema/UI,
+- then doctor commission foundation.
 
 ---
 
 ## 15. Open Implementation Questions
 
-- Should Tailwind be installed before any UI coding?
-- Should shadcn/ui be used or should we build custom components first?
-- Should routing be implemented with React Router?
-- Should placeholder pages be created before Supabase integration?
-- Should Supabase be configured in Phase 1 or Phase 2?
-- Should demo data be stored in local files first?
-- Should authentication be real in Phase 1 or placeholder first?
+- Should performed services be persisted during Visit Completion draft save,
+  completion only, or both?
+- Should the first performed-services slice require a service catalog row, or
+  allow a manual service-name snapshot?
+- Should one Visit Completion support multiple performed services in the first
+  slice?
+- Which roles can view patient financial balance in the pilot?
+- Who can apply discounts or corrections?
+- Is pilot commission performed-based, collected-based, or mixed?
+- Should treatment-plan items be updated from performed services automatically
+  or only by explicit user action?
