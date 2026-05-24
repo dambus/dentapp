@@ -42,6 +42,9 @@ const BRIDGE_NOTE = 'Task 44 bridge clinical note'
 const BRIDGE_RECOMMENDATION = 'Task 44 follow-up recommendation'
 const BRIDGE_NEXT_STEP = 'schedule_control_visit'
 const BRIDGE_NEXT_STEP_LABEL = 'Schedule control visit'
+const FINALIZATION_RETRY_REASON = 'Task 78 finalization retry check'
+const FINALIZATION_RETRY_PROCEDURE = 'Task 78 retry service procedure'
+const FINALIZATION_RETRY_NOTE = 'Task 78 finalization retry clinical note'
 const PERFORMED_SERVICE_CATEGORY = 'Task 77 services smoke category'
 const PERFORMED_SERVICE_NAME = 'Task 77 composite filling'
 const PERFORMED_SERVICE_CODE = 'TASK77-SVC'
@@ -159,6 +162,11 @@ async function prepareFixture() {
     .delete()
     .eq('patient_id', PATIENT_ID)
     .eq('reason', MENU_ANCHOR_REASON)
+  await serviceClient
+    .from('appointments')
+    .delete()
+    .eq('patient_id', PATIENT_ID)
+    .eq('reason', FINALIZATION_RETRY_REASON)
   await serviceClient
     .from('visits')
     .update({
@@ -395,6 +403,23 @@ async function verifyCompletedAppointmentLink(
   }
 
   return visit.data.id
+}
+
+async function getPerformedServicesSnapshotForVisit(visitId) {
+  const serviceClient = getServiceClient()
+  const { data, error } = await serviceClient
+    .from('performed_services')
+    .select('id, status, final_amount, service_name_snapshot, deleted_at')
+    .eq('visit_id', visitId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
 }
 
 async function connectToChrome(port) {
@@ -1195,6 +1220,18 @@ async function completeVisibleVisit(cdp, procedureName, clinicalNote) {
     () => textIncludes(cdp, 'Visit was completed successfully.'),
     'visit completion success message',
   )
+  await waitFor(
+    () => textIncludes(cdp, 'No performed services were recorded for this visit.'),
+    'zero-services finalization state',
+  )
+  const retryVisible = await evaluate(
+    cdp,
+    `document.querySelector('[data-testid="visit-services-finalization-retry"]') !== null`,
+  )
+
+  if (retryVisible) {
+    throw new Error('Zero-service completion should not show finalization retry.')
+  }
 }
 
 async function addPerformedServiceDraftRow(cdp) {
@@ -1367,6 +1404,57 @@ async function waitForDraftSaveSuccess(cdp, label) {
 
   if (!result.ok) {
     throw new Error(`${label} failed:\n${result.bodyText}`)
+  }
+}
+
+async function installOneTimePerformedServiceFinalizationFailure(cdp) {
+  let failed = false
+
+  await cdp.command('Fetch.enable', {
+    patterns: [
+      {
+        requestStage: 'Request',
+        urlPattern: '*performed_services*',
+      },
+    ],
+  })
+
+  const unsubscribe = cdp.on('Fetch.requestPaused', (params) => {
+    const postData = params.request?.postData ?? ''
+    const isFinalizationPatch =
+      params.request?.method === 'PATCH' &&
+      postData.includes('"status":"finalized"')
+
+    if (!failed && isFinalizationPatch) {
+      failed = true
+      void cdp
+        .command('Fetch.fulfillRequest', {
+          requestId: params.requestId,
+          responseCode: 503,
+          responseHeaders: [
+            { name: 'content-type', value: 'application/json' },
+          ],
+          body: Buffer.from(
+            JSON.stringify({
+              message: 'Browser smoke forced finalization retry.',
+            }),
+          ).toString('base64'),
+        })
+        .catch(() => undefined)
+      return
+    }
+
+    void cdp
+      .command('Fetch.continueRequest', {
+        requestId: params.requestId,
+      })
+      .catch(() => undefined)
+  })
+
+  return async () => {
+    unsubscribe()
+    await cdp.command('Fetch.disable').catch(() => undefined)
+    return failed
   }
 }
 
@@ -2791,6 +2879,10 @@ async function main() {
       'visit completion success message',
     )
     await waitFor(
+      () => textIncludes(cdp, 'Services & charges finalized.'),
+      'performed services finalization success',
+    )
+    await waitFor(
       () => textIncludes(cdp, 'View patient timeline'),
       'post-completion patient timeline action',
     )
@@ -2804,6 +2896,18 @@ async function main() {
     )
 
     const linkedVisitId = await verifyCompletedAppointmentLink(appointmentId)
+    const linkedPerformedServices =
+      await getPerformedServicesSnapshotForVisit(linkedVisitId)
+
+    if (
+      linkedPerformedServices.length !== 1 ||
+      linkedPerformedServices[0].status !== 'finalized' ||
+      linkedPerformedServices[0].service_name_snapshot !== PERFORMED_SERVICE_NAME
+    ) {
+      throw new Error(
+        `Expected one finalized performed service, got ${JSON.stringify(linkedPerformedServices)}`,
+      )
+    }
 
     await clickByText(cdp, 'View patient timeline')
     await waitFor(
@@ -3105,6 +3209,106 @@ async function main() {
       throw new Error('Completed appointment card should not expose lifecycle status actions.')
     }
 
+    const retryAppointmentId = await createServiceAppointment(
+      FINALIZATION_RETRY_REASON,
+    )
+    await navigate(cdp, `${APPOINTMENTS_URL}/${retryAppointmentId}`)
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment Detail'),
+      'retry appointment detail page',
+    )
+    await clickByText(cdp, 'Start visit')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `location.pathname.endsWith('/visit-completion') && location.search.includes(${JSON.stringify(retryAppointmentId)})`,
+        ),
+      'retry appointment visit completion route',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'No open draft found for this appointment.'),
+      'retry appointment new visit completion ready',
+    )
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'What was done?'), 'retry procedures step')
+    await typeInto(
+      cdp,
+      '[data-testid="visit-procedure-name"]',
+      FINALIZATION_RETRY_PROCEDURE,
+    )
+    await clickByText(cdp, 'Next')
+    await addPerformedServiceDraftRow(cdp)
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'retry notes step')
+    await typeInto(
+      cdp,
+      '[data-testid="visit-clinical-note"]',
+      FINALIZATION_RETRY_NOTE,
+    )
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'What happens next?'), 'retry next step')
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'Review and complete'), 'retry review step')
+    await assertPerformedServicesReviewSummary(cdp)
+
+    const stopForcedFinalizationFailure =
+      await installOneTimePerformedServiceFinalizationFailure(cdp)
+
+    await clickByText(cdp, 'Complete Visit')
+    await waitFor(
+      () => textIncludes(cdp, 'Confirm Visit Completion'),
+      'retry completion confirmation',
+    )
+    await clickByText(cdp, 'Confirm completion')
+    await waitFor(() => textIncludes(cdp, 'Visit Completed'), 'retry visit completed')
+    await waitFor(
+      () => textIncludes(cdp, 'Visit was completed successfully.'),
+      'retry visit clinical completion success',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="visit-services-finalization-retry"]') instanceof HTMLButtonElement`,
+        ),
+      'retry finalization action visible',
+    )
+    const forcedFailureTriggered = await stopForcedFinalizationFailure()
+
+    if (!forcedFailureTriggered) {
+      throw new Error('Forced performed-service finalization failure was not triggered.')
+    }
+
+    const retryVisitId = await verifyCompletedAppointmentLink(retryAppointmentId)
+    const retryBefore = await getPerformedServicesSnapshotForVisit(retryVisitId)
+
+    if (
+      retryBefore.length !== 1 ||
+      retryBefore[0].status !== 'draft'
+    ) {
+      throw new Error(
+        `Expected one draft service before retry, got ${JSON.stringify(retryBefore)}`,
+      )
+    }
+
+    await clickSelector(cdp, '[data-testid="visit-services-finalization-retry"]')
+    await waitFor(
+      () => textIncludes(cdp, 'Services & charges finalized.'),
+      'retry finalization success',
+    )
+    const retryAfter = await getPerformedServicesSnapshotForVisit(retryVisitId)
+
+    if (
+      retryAfter.length !== 1 ||
+      retryAfter[0].status !== 'finalized' ||
+      retryAfter[0].id !== retryBefore[0].id
+    ) {
+      throw new Error(
+        `Expected retry to finalize one existing service, got ${JSON.stringify(retryAfter)}`,
+      )
+    }
+
     await createServiceAppointment(MENU_ANCHOR_REASON)
 
     await runResponsiveOverflowSmoke(cdp, [
@@ -3247,7 +3451,11 @@ async function main() {
           servicesChargesStepVerified: true,
           servicesDraftSaveReloadVerified: true,
           servicesReviewSummaryVerified: true,
+          servicesCompletionFinalizationVerified: true,
           zeroServiceFlowVerified: true,
+          zeroServiceFinalizationStateVerified: true,
+          servicesFinalizationRetryVerified: true,
+          servicesFinalizationRetryNoDuplicateVerified: true,
           dailyScheduleInProgressLifecycleVerified: true,
           appointmentDetailReadyLifecycleVerified: true,
           appointmentDetailInProgressLifecycleVerified: true,

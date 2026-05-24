@@ -49,7 +49,9 @@ import {
 } from '../performed-services/performedServicesDraftModel'
 import {
   fetchPerformedServicesForVisit,
+  finalizePerformedServicesForCompletedVisit,
   replaceDraftPerformedServicesForVisit,
+  type PerformedServicesFinalizationState,
 } from '../performed-services/performedServicesService'
 import { VisitCompletionSummary } from './VisitCompletionSummary'
 import {
@@ -190,6 +192,28 @@ function getUserFriendlyServiceError(
   return message
 }
 
+function getUserFriendlyFinalizationError(
+  message: string | null | undefined,
+) {
+  if (!message?.trim()) {
+    return 'Services & charges still need finalization. Retry is required.'
+  }
+
+  if (
+    message.includes('Failed to fetch') ||
+    message.includes('NetworkError') ||
+    message.includes('network')
+  ) {
+    return 'The visit is completed, but services & charges could not be finalized because the connection failed. Retry finalization when the local Supabase service is reachable.'
+  }
+
+  if (message.includes('Active profile context')) {
+    return 'The visit is completed, but services & charges could not be finalized because no active clinical profile is available. Sign in again or switch to an active clinical user, then retry finalization.'
+  }
+
+  return message
+}
+
 export function VisitCompletionFlow({
   appointmentContext,
   appointmentId,
@@ -220,6 +244,7 @@ export function VisitCompletionFlow({
     useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
+  const [isFinalizingServices, setIsFinalizingServices] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [draftReloadMessage, setDraftReloadMessage] = useState<string | null>(
     null,
@@ -229,6 +254,11 @@ export function VisitCompletionFlow({
   >([])
   const [serviceError, setServiceError] = useState<string | null>(null)
   const [serviceMessage, setServiceMessage] = useState<string | null>(null)
+  const [servicesFinalizationState, setServicesFinalizationState] =
+    useState<PerformedServicesFinalizationState | null>(null)
+  const [servicesFinalizationError, setServicesFinalizationError] = useState<
+    string | null
+  >(null)
 
   const patientName = getPatientFullName(patient)
   const procedureCount = getCompletedProcedureCount(procedures)
@@ -251,7 +281,8 @@ export function VisitCompletionFlow({
     isLoadingDraft ||
     isLoadingPerformedServices ||
     isSavingDraft ||
-    isCompleting
+    isCompleting ||
+    isFinalizingServices
   const plannedWork =
     patient.activeTreatmentPlanSummary.trim() ||
     'No planned treatment is recorded in the current patient context.'
@@ -351,6 +382,8 @@ export function VisitCompletionFlow({
             )}.`,
           )
           setServiceMessage(null)
+          setServicesFinalizationState(null)
+          setServicesFinalizationError(null)
         } else {
           setPerformedServices([])
           setServiceWarnings([])
@@ -361,6 +394,8 @@ export function VisitCompletionFlow({
               : 'No open draft found. New visit completion ready. Use Save Draft before leaving or refreshing.',
           )
           setServiceMessage(null)
+          setServicesFinalizationState(null)
+          setServicesFinalizationError(null)
         }
       } catch (error) {
         if (isCurrent) {
@@ -491,6 +526,8 @@ export function VisitCompletionFlow({
     setIsSavingDraft(true)
     setServiceError(null)
     setServiceMessage(null)
+    setServicesFinalizationState(null)
+    setServicesFinalizationError(null)
     setDraftReloadMessage(null)
 
     try {
@@ -555,6 +592,7 @@ export function VisitCompletionFlow({
 
     setAttemptedCompletion(true)
     setServiceError(null)
+    setServicesFinalizationError(null)
 
     if (!isReady) {
       setCompletionState('editing')
@@ -572,6 +610,8 @@ export function VisitCompletionFlow({
     setIsCompleting(true)
     setServiceError(null)
     setServiceMessage(null)
+    setServicesFinalizationState(null)
+    setServicesFinalizationError(null)
     setDraftReloadMessage(null)
 
     try {
@@ -634,9 +674,28 @@ export function VisitCompletionFlow({
       if (result.ok && result.draft) {
         setVisitId(result.draft.id)
         setLastSavedAt(result.draft.updatedAt)
-        setServiceMessage(result.message ?? 'Visit completed.')
         applyDraft(result.draft)
         setCompletionState('completed')
+
+        const finalizationResult =
+          await finalizePerformedServicesForCompletedVisit({
+            patientId: result.draft.patientId,
+            visitId: result.draft.id,
+          })
+
+        setServicesFinalizationState(finalizationResult.state)
+
+        if (finalizationResult.ok) {
+          setServicesFinalizationError(null)
+        } else {
+          setServicesFinalizationError(
+            getUserFriendlyFinalizationError(
+              finalizationResult.error ?? finalizationResult.message,
+            ),
+          )
+        }
+
+        setServiceMessage(result.message ?? 'Visit completed.')
       } else {
         setServiceError(
           getUserFriendlyServiceError(
@@ -661,6 +720,43 @@ export function VisitCompletionFlow({
     }
   }
 
+  async function retryServicesFinalization() {
+    if (!visitId || isFinalizingServices || isCompleting) {
+      return
+    }
+
+    setIsFinalizingServices(true)
+    setServicesFinalizationError(null)
+
+    try {
+      const finalizationResult =
+        await finalizePerformedServicesForCompletedVisit({
+          patientId: patient.id,
+          visitId,
+        })
+
+      setServicesFinalizationState(finalizationResult.state)
+
+      if (finalizationResult.ok) {
+        setServicesFinalizationError(null)
+      } else {
+        setServicesFinalizationError(
+          getUserFriendlyFinalizationError(
+            finalizationResult.error ?? finalizationResult.message,
+          ),
+        )
+      }
+    } catch (error) {
+      setServicesFinalizationError(
+        getUserFriendlyFinalizationError(
+          error instanceof Error ? error.message : null,
+        ),
+      )
+    } finally {
+      setIsFinalizingServices(false)
+    }
+  }
+
   if (completionState === 'completed') {
     return (
       <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm">
@@ -670,7 +766,7 @@ export function VisitCompletionFlow({
             <Badge variant="success">Completed</Badge>
           </div>
           <CardDescription>
-            The completion service accepted this visit. Billing, files,
+            The completion service accepted this visit. Payments, files,
             treatment plan changes, and odontogram changes were not created.
           </CardDescription>
         </CardHeader>
@@ -683,6 +779,12 @@ export function VisitCompletionFlow({
             serviceError={serviceError}
             serviceMessage={serviceMessage}
             serviceWarnings={serviceWarnings}
+          />
+          <ServicesFinalizationFeedback
+            error={servicesFinalizationError}
+            isRetrying={isFinalizingServices}
+            state={servicesFinalizationState}
+            onRetry={retryServicesFinalization}
           />
           <VisitCompletionSummary
             procedureCount={procedureCount}
@@ -963,6 +1065,86 @@ function ServiceFeedback({
               )}. Refresh will reload this saved draft until completion.`
             : ''}
         </InlineNotice>
+      ) : null}
+    </div>
+  )
+}
+
+function ServicesFinalizationFeedback({
+  error,
+  isRetrying,
+  state,
+  onRetry,
+}: {
+  error: string | null
+  isRetrying: boolean
+  state: PerformedServicesFinalizationState | null
+  onRetry: () => void
+}) {
+  const canRetry =
+    !state ||
+    state.needsRetry ||
+    state.status === 'finalization_required'
+
+  if (!state && !error) {
+    return null
+  }
+
+  if (state?.status === 'finalized') {
+    return (
+      <InlineNotice
+        data-testid="visit-services-finalization-success"
+        variant="success"
+      >
+        Services & charges finalized.
+      </InlineNotice>
+    )
+  }
+
+  if (state?.status === 'no_services') {
+    return (
+      <InlineNotice
+        data-testid="visit-services-finalization-empty"
+        variant="neutral"
+      >
+        No performed services were recorded for this visit.
+      </InlineNotice>
+    )
+  }
+
+  if (state?.status === 'blocked') {
+    return (
+      <InlineNotice
+        data-testid="visit-services-finalization-blocked"
+        variant="warning"
+      >
+        Visit completed. Services & charges could not be finalized: {error ?? state.message}
+      </InlineNotice>
+    )
+  }
+
+  if (!error && !canRetry) {
+    return null
+  }
+
+  return (
+    <div
+      className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-4"
+      data-testid="visit-services-finalization-retry-state"
+    >
+      <InlineNotice variant="warning">
+        Visit completed. Services & charges still need finalization.
+        {error ? ` ${error}` : ''}
+      </InlineNotice>
+      {canRetry ? (
+        <Button
+          data-testid="visit-services-finalization-retry"
+          disabled={isRetrying}
+          onClick={onRetry}
+          variant="secondary"
+        >
+          {isRetrying ? 'Retrying finalization...' : 'Retry finalization'}
+        </Button>
       ) : null}
     </div>
   )

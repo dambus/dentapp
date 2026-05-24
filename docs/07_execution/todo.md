@@ -294,12 +294,14 @@ Status legend:
 - [x] Task 75 - Visit Completion Performed Services UI Slice Planning / Finalization Review
 - [x] Task 76 - Performed Services Completion / Finalization Safety Foundation
 - [x] Task 77 - Visit Completion Services & Charges Draft UI
-- [ ] Task 78 - Visit Completion Performed Services Finalization Wiring
-- [ ] Task 79 - Completed Visit Performed Services Read-only Display
-- [ ] Task 80 - Patient Ledger Planning
-- [ ] Task 81 - Patient Ledger Schema/RLS Foundation
-- [ ] Task 82 - Patient Ledger UI Slice
-- [ ] Task 83 - Doctor Commission Planning
+- [x] Task 78 - Visit Completion Performed Services Finalization Wiring
+- [x] Task 79 - Patient Ledger Foundation Planning / Data Model Decision
+- [x] Task 80 - Patient Ledger Schema/RLS Foundation
+- [ ] Task 81 - Patient Ledger Service Layer / Idempotent Charge Posting from Finalized Performed Services
+- [ ] Task 82 - Completed Visit Financial Read-only Display / Posting Visibility
+- [ ] Task 83 - Patient Account Read-only Ledger / Balance Summary
+- [ ] Task 84 - Payment Recording Foundation
+- [ ] Task 85 - Doctor Commission Planning
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
 
@@ -677,15 +679,76 @@ Completed direction:
 
 Task 78 - Visit Completion Performed Services Finalization Wiring
 
-Suggested direction:
+Completed direction:
 
-- call retry-safe finalization after successful clinical completion,
-- surface `finalization_required` with a clear retry path,
-- keep no-service visits valid,
-- avoid duplicate finalized rows,
-- keep completed visit detail, patient timeline, patient overview, ledger,
+- called retry-safe performed-service finalization after successful clinical
+  Visit Completion,
+- preserved the clinical completion success state when later services/charges
+  finalization fails,
+- surfaced finalized, no-services, retry-required, and blocked finalization
+  states in the completed success screen,
+- added a retry action that finalizes performed services without re-running
+  clinical completion,
+- kept no-service visits valid without fake performed-service rows,
+- verified retry does not duplicate service rows,
+- kept completed visit detail, patient timeline, patient overview, ledger,
   payments, invoices, commissions, materials, and treatment-plan mutation out of
   scope.
+
+### Next Recommended Task
+
+Task 79 - Patient Ledger Foundation Planning / Data Model Decision
+
+Completed direction:
+
+- audited the existing performed-services, completed-visit, treatment-plan,
+  appointment, provider attribution, and RLS boundaries,
+- confirmed no patient ledger, payment, invoice, receipt, refund, write-off, or
+  balance schema/runtime exists yet,
+- compared direct performed-service-as-ledger charges against a dedicated
+  ledger transaction model,
+- selected a separate patient-ledger layer as the future accounting source of
+  truth,
+- kept finalized `performed_services` as the visit-linked source for rendered
+  chargeable work,
+- recommended patient-scoped ledger entries first, deferring separate
+  `patient_accounts` until family/shared-payer complexity is real,
+- recommended idempotent charge posting from finalized performed services,
+- documented payment, adjustment, reversal, balance, RLS, and future UI
+  principles,
+- made no runtime, schema, RLS, service, UI, browser smoke, or RLS test changes.
+
+### Next Recommended Task
+
+Task 80 - Patient Ledger Schema/RLS Foundation
+
+Completed direction:
+
+- added `patient_ledger_entries` as the first patient-scoped accounting entry
+  table,
+- used positive `amount` plus explicit `direction` where debit increases
+  patient balance and credit reduces it,
+- constrained future-ready entry types for charges, payments, discounts,
+  write-offs, refunds, adjustments, and reversals,
+- kept `performed_services` separate as the rendered-service source and allowed
+  future charge entries to reference finalized performed services,
+- added integrity validation for same-clinic patient, visit, appointment,
+  performed-service, reversal reference, and recorded/created-by profile
+  context,
+- prevented duplicate posted charge entries for the same performed service,
+- enabled conservative ledger RLS with same-clinic read access for
+  `owner_admin`, `doctor`, `specialist`, and `reception_admin`,
+- kept `assistant` and `inventory_responsible` blocked from ledger rows,
+- added no authenticated direct insert/update/delete ledger policies,
+- added focused patient-ledger RLS/data smoke coverage,
+- kept posting, Visit Completion wiring, ledger UI, payments, balances,
+  invoices/receipts, commissions, materials, and treatment-plan conversion out
+  of scope.
+
+### Next Recommended Task
+
+Task 81 - Patient Ledger Service Layer / Idempotent Charge Posting from
+Finalized Performed Services.
 
 ### Completed Recommended Task
 

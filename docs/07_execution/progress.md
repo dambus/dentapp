@@ -4280,6 +4280,182 @@ Initial stack:
 
 ---
 
+### Completed (Task 78 - Visit Completion Performed Services Finalization Wiring)
+
+- Wired `finalizePerformedServicesForCompletedVisit(...)` into the Visit
+  Completion confirmation path after `completeVisit(...)` succeeds.
+- Preserved the clinical completion success boundary:
+	- clinical completion failure still returns to editable Review,
+	- performed-service finalization failure after clinical completion keeps the
+	  visit in the completed success state,
+	- the UI does not attempt to roll back a completed visit.
+- Added completed-state services/charges finalization feedback:
+	- finalized services show a concise success notice,
+	- no-service visits show a neutral no-services notice,
+	- retry-required states show a warning and `Retry finalization`,
+	- blocked states show a warning without unsafe mutation.
+- Added retry from the completed success screen. Retry calls the existing
+  retry-safe finalization helper and does not repeat clinical completion.
+- Preserved zero-services completion without fake performed-service rows.
+- Expanded authenticated browser smoke coverage for:
+	- performed-service finalization success after Visit Completion,
+	- zero-service completion without retry UI,
+	- forced finalization failure after clinical completion,
+	- retry success without duplicate performed-service rows.
+- No schema, RLS, ledger, payment, invoice, receipt, balance, commission,
+  material, treatment-plan, provider assignment, or appointment lifecycle
+  changes were added.
+- Documented the task in
+  `docs/design/task-78-visit-completion-performed-services-finalization-wiring.md`.
+
+### Verification (Task 78)
+
+- `npx.cmd supabase migration up` reports the local database is up to date.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- Initial RLS script attempts without shell Supabase env vars failed with the
+  expected missing-env message; the scripts passed after loading local `.env`
+  and mapping `SUPABASE_SERVICE_KEY` to `SUPABASE_SERVICE_ROLE_KEY`.
+- `node .\supabase\snippets\testPerformedServicesRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `http://127.0.0.1:5173`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+- `git diff --check` passes with only expected line-ending normalization
+  warnings from Git on edited files.
+
+### Next Recommended Task
+
+- Task 79 - Patient Ledger Foundation Planning / Data Model Decision.
+
+---
+
+### Completed (Task 79 - Patient Ledger Foundation Planning / Data Model Decision)
+
+- Completed a documentation-only architecture decision for the future Patient
+  Ledger / Patient Account foundation.
+- Audited current schema, service, Visit Completion, performed-services,
+  treatment-plan, appointment/provider, docs, and RLS/test context relevant to
+  financial boundaries.
+- Confirmed the current state after Task 78:
+	- finalized `performed_services` represent rendered chargeable work,
+	- Visit Completion finalizes performed services after clinical completion,
+	- no ledger posting, payment, invoice, receipt, refund, write-off,
+	  adjustment, balance, or commission model exists yet.
+- Compared model options:
+	- querying finalized `performed_services` directly as charge rows,
+	- creating dedicated patient-ledger transactions derived from finalized
+	  performed services,
+	- invoice-centric accounting as a later, non-MVP option.
+- Chose a dedicated patient-ledger layer as the future accounting source of
+  truth:
+	- `performed_services` remains the visit-linked source for rendered
+	  chargeable work,
+	- ledger charge entries reference finalized performed services,
+	- payments/refunds/discounts/write-offs/reversals are ledger/payment events,
+	- balance is derived from ledger entries, not an editable patient field,
+	- duplicate charge posting is prevented through unique linkage and
+	  idempotent posting rules.
+- Recommended patient-scoped `patient_ledger_entries` as the first schema
+  foundation and deferred separate `patient_accounts` until family/shared payer
+  complexity is needed.
+- Defined future posting, retry/reconciliation, payment, adjustment, reversal,
+  RLS, role access, and UI principles.
+- Recommended the next implementation task as Task 80 - Patient Ledger
+  Schema/RLS Foundation.
+- Made no runtime, schema, RLS, service, UI, browser smoke, or RLS test changes.
+- Documented the task in
+  `docs/design/task-79-patient-ledger-foundation-planning.md`.
+
+### Verification (Task 79)
+
+- Docs-only task. Build, lint, migrations, browser smoke, and RLS tests were not
+  run.
+- `git diff --check` passes with only expected line-ending normalization
+  warnings from Git on edited/pre-existing uncommitted files.
+- `git diff --name-only` was reviewed. Runtime/test changes in
+  `src/features/visits/VisitCompletionFlow.tsx` and
+  `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs`, plus the Task 78
+  design doc, were pre-existing Task 78 work and were not modified for Task 79.
+
+### Next Recommended Task
+
+- Task 80 - Patient Ledger Schema/RLS Foundation.
+
+---
+
+### Completed (Task 80 - Patient Ledger Schema/RLS Foundation)
+
+- Added `patient_ledger_entries` as the first patient-scoped accounting entry
+  table.
+- Kept `performed_services` separate as the source for finalized rendered
+  services; no Visit Completion posting or runtime ledger wiring was added.
+- Chose positive `amount` plus explicit `direction` semantics:
+	- `debit` increases patient amount owed,
+	- `credit` reduces patient amount owed.
+- Added constrained entry types for future `charge`, `payment`, `discount`,
+  `write_off`, `refund`, `adjustment`, and `reversal` movements.
+- Added foundational fields for performed-service, visit, appointment, reversal,
+  source, metadata, posted timestamp, recorded-by profile, and created-by
+  profile context.
+- Added integrity enforcement through
+  `enforce_patient_ledger_entry_context()`:
+	- patient must match the ledger clinic,
+	- visit and appointment links must match clinic/patient context,
+	- service charges require finalized same-clinic/same-patient performed
+	  services,
+	- service-charge amount/currency must match the finalized performed service,
+	- reversal references must stay within the same clinic and patient,
+	- recorded/created profiles must be active same-clinic profiles.
+- Added duplicate-charge prevention with a unique partial index allowing only
+  one posted charge ledger entry per performed service.
+- Enabled conservative RLS:
+	- same-clinic read access for `owner_admin`, `doctor`, `specialist`, and
+	  `reception_admin`,
+	- `assistant` and `inventory_responsible` blocked,
+	- no authenticated insert/update/delete table policies.
+- Added focused RLS/data smoke coverage in
+  `supabase/snippets/testPatientLedgerRls.mjs`.
+- Documented the task in
+  `docs/design/task-80-patient-ledger-schema-rls-foundation.md`.
+- No runtime React/service changes, payments, balance UI, invoices/receipts,
+  commissions, materials, treatment-plan conversion, or appointment lifecycle
+  changes were added.
+
+### Verification (Task 80)
+
+- `npx.cmd supabase migration up` applies
+  `20260524210000_create_patient_ledger_foundation.sql`; a later rerun reports
+  the local database is up to date.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientLedgerRls.mjs` passes with local `.env`
+  loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testPerformedServicesRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes with
+  local `.env` loaded.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes with
+  local `.env` loaded after clearing deterministic leftover smoke fixtures from
+  earlier failed browser-smoke attempts.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded.
+- `git diff --check` passes with only expected line-ending normalization
+  warnings from Git on edited/pre-existing uncommitted files.
+
+### Next Recommended Task
+
+- Task 81 - Patient Ledger Service Layer / Idempotent Charge Posting from
+  Finalized Performed Services.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:
