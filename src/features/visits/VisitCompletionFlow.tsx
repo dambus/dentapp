@@ -22,7 +22,10 @@ import {
   formatAppointmentTimeRange,
 } from '../appointments/appointmentDisplay'
 import type { Appointment } from '../appointments/appointmentService'
-import { getAssignedProviderDisplayName } from '../appointments/appointmentService'
+import {
+  appointmentOperationalStateLabels,
+  getAssignedProviderDisplayName,
+} from '../appointments/appointmentService'
 import {
   formatPatientDate,
   formatPatientDateTime,
@@ -781,6 +784,8 @@ function AppointmentContextNotice({
   patientName: string
 }) {
   const providerLabel = getAssignedProviderDisplayName(appointment)
+  const operationalLabel =
+    appointmentOperationalStateLabels[appointment.operational_state]
 
   return (
     <Card
@@ -796,7 +801,7 @@ function AppointmentContextNotice({
             </Badge>
           </div>
         </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div>
             <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
               Scheduled
@@ -836,6 +841,22 @@ function AppointmentContextNotice({
               <span className="truncate whitespace-nowrap">{providerLabel}</span>
             </p>
           </div>
+          {appointment.status === 'scheduled' ? (
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
+                Operational state
+              </div>
+              <p
+                className="mt-1 inline-flex max-w-full items-center rounded-md bg-white px-2 py-1 text-sm font-semibold leading-5 text-slate-950"
+                data-testid="visit-appointment-operational-state"
+                title={operationalLabel}
+              >
+                <span className="truncate whitespace-nowrap">
+                  {operationalLabel}
+                </span>
+              </p>
+            </div>
+          ) : null}
         </div>
         <InlineNotice className="mt-3" variant="info">
           Completing this visit saves the latest draft first and marks the linked

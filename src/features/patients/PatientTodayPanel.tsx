@@ -12,6 +12,7 @@ import {
   MetricTile,
 } from '../../components/ui'
 import {
+  appointmentOperationalStateLabels,
   fetchAppointmentsForPatient,
   type Appointment,
 } from '../appointments/appointmentService'
@@ -309,6 +310,22 @@ export function PatientTodayPanel({
                   }
                 >
                   {todayAppointment.status.replaceAll('_', ' ')}
+                </Badge>
+              ) : null}
+              {todayAppointment?.status === 'scheduled' ? (
+                <Badge
+                  data-testid="patient-today-operational-state"
+                  variant={
+                    todayAppointment.operational_state === 'ready_for_doctor'
+                      ? 'success'
+                      : todayAppointment.operational_state === 'arrived'
+                        ? 'warning'
+                        : 'neutral'
+                  }
+                >
+                  {appointmentOperationalStateLabels[
+                    todayAppointment.operational_state
+                  ]}
                 </Badge>
               ) : null}
               <Badge variant={patient.activeTreatmentPlan ? 'info' : 'neutral'}>

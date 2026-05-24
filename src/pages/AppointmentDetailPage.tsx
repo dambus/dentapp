@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { CalendarX, UserX } from 'lucide-react'
+import { CalendarX, RotateCcw, UserX } from 'lucide-react'
 
 import { Page } from '../components/layout/Page'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -26,14 +26,23 @@ import {
 } from '../features/appointments/appointmentDisplay'
 import {
   APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE,
+  appointmentOperationalStateLabels,
   canUpdateAppointmentLifecycle,
+  canUpdateAppointmentOperationalState,
   fetchAssignableAppointmentProviders,
   fetchAppointmentById,
   getAssignedProviderDisplayName,
   getAppointmentLifecycleSuccessMessage,
+  getAppointmentOperationalActionLabel,
+  getAppointmentOperationalCorrectionLabel,
+  getAppointmentOperationalSuccessMessage,
+  getNextAppointmentOperationalState,
+  getPreviousAppointmentOperationalState,
   updateAppointmentAssignedProvider,
+  updateAppointmentOperationalState,
   updateAppointmentStatus,
   type AppointmentDetail,
+  type AppointmentOperationalState,
   type AppointmentProviderSummary,
   type AppointmentStatus,
 } from '../features/appointments/appointmentService'
@@ -87,6 +96,8 @@ export function AppointmentDetailPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [statusSubmitting, setStatusSubmitting] =
     useState<AppointmentStatus | null>(null)
+  const [operationalSubmitting, setOperationalSubmitting] =
+    useState<AppointmentOperationalState | null>(null)
   const [actionFeedback, setActionFeedback] = useState<string | null>(null)
   const [providerOptions, setProviderOptions] = useState<
     AppointmentProviderSummary[]
@@ -95,6 +106,7 @@ export function AppointmentDetailPage() {
   const [isProviderSaving, setIsProviderSaving] = useState(false)
   const [providerLoadError, setProviderLoadError] = useState<string | null>(null)
   const statusSubmittingRef = useRef(false)
+  const operationalSubmittingRef = useRef(false)
 
   useEffect(() => {
     let isCurrent = true
@@ -220,6 +232,56 @@ export function AppointmentDetailPage() {
     }
   }
 
+  async function handleOperationalStateUpdate(state: AppointmentOperationalState) {
+    if (
+      !appointment ||
+      operationalSubmitting ||
+      operationalSubmittingRef.current ||
+      !canUpdateAppointmentOperationalState(appointment) ||
+      (getNextAppointmentOperationalState(appointment) !== state &&
+        getPreviousAppointmentOperationalState(appointment) !== state)
+    ) {
+      setActionFeedback('This appointment cannot be updated for day-of-visit state.')
+      return
+    }
+
+    setActionFeedback(null)
+    operationalSubmittingRef.current = true
+    setOperationalSubmitting(state)
+
+    try {
+      const result = await updateAppointmentOperationalState({
+        appointmentId: appointment.id,
+        operationalState: state,
+      })
+
+      if (!result.ok || !result.appointment) {
+        setActionFeedback(
+          result.error ??
+            'Could not update appointment day-of-visit state. Try again.',
+        )
+        return
+      }
+
+      setAppointment({
+        ...appointment,
+        ...result.appointment,
+      })
+      setActionFeedback(
+        result.message ??
+          getAppointmentOperationalSuccessMessage(state, {
+            correction:
+              getPreviousAppointmentOperationalState(appointment) === state,
+          }),
+      )
+    } catch {
+      setActionFeedback('Could not update appointment day-of-visit state. Try again.')
+    } finally {
+      operationalSubmittingRef.current = false
+      setOperationalSubmitting(null)
+    }
+  }
+
   async function handleProviderUpdate() {
     if (!appointment || isProviderSaving) {
       return
@@ -305,6 +367,14 @@ export function AppointmentDetailPage() {
   const hasCompletedVisit = Boolean(appointment.linkedVisit)
   const canStartVisit = appointment.status === 'scheduled' && !hasCompletedVisit
   const canUpdateLifecycle = canUpdateAppointmentLifecycle(appointment)
+  const nextOperationalState = getNextAppointmentOperationalState(appointment)
+  const previousOperationalState =
+    getPreviousAppointmentOperationalState(appointment)
+  const canUpdateOperationalState =
+    canUpdateAppointmentOperationalState(appointment) && Boolean(nextOperationalState)
+  const canCorrectOperationalState =
+    canUpdateAppointmentOperationalState(appointment) &&
+    Boolean(previousOperationalState)
   const primaryVisitActionLabel = hasOpenVisit ? 'Continue visit' : 'Start visit'
   const linkedVisitRecommendation =
     appointment.linkedVisit?.recommendation.trim() ?? ''
@@ -335,17 +405,51 @@ export function AppointmentDetailPage() {
             </Button>
             {canStartVisit ? (
               <Button
-                disabled={Boolean(statusSubmitting)}
+                disabled={Boolean(statusSubmitting) || Boolean(operationalSubmitting)}
                 onClick={startVisit}
               >
                 {primaryVisitActionLabel}
               </Button>
             ) : null}
-            {canUpdateLifecycle ? (
+            {canUpdateOperationalState && nextOperationalState ? (
+              <Button
+                data-testid="appointment-detail-operational-action"
+                disabled={Boolean(statusSubmitting) || Boolean(operationalSubmitting)}
+                onClick={() =>
+                  void handleOperationalStateUpdate(nextOperationalState)
+                }
+                variant="secondary"
+              >
+                {operationalSubmitting === nextOperationalState
+                  ? 'Updating...'
+                  : getAppointmentOperationalActionLabel(nextOperationalState)}
+              </Button>
+            ) : null}
+            {canUpdateLifecycle || canCorrectOperationalState ? (
               <>
                 <ActionMenu
-                  disabled={Boolean(statusSubmitting)}
+                  disabled={Boolean(statusSubmitting) || Boolean(operationalSubmitting)}
                   items={[
+                    ...(canCorrectOperationalState && previousOperationalState
+                      ? [
+                          {
+                            disabled: Boolean(operationalSubmitting),
+                            icon: RotateCcw,
+                            label:
+                              operationalSubmitting === previousOperationalState
+                                ? 'Updating...'
+                                : getAppointmentOperationalCorrectionLabel(
+                                    previousOperationalState,
+                                  ),
+                            onSelect: () =>
+                              void handleOperationalStateUpdate(
+                                previousOperationalState,
+                              ),
+                          },
+                        ]
+                      : []),
+                    ...(canUpdateLifecycle
+                      ? [
                     {
                       disabled: Boolean(statusSubmitting),
                       icon: CalendarX,
@@ -354,7 +458,7 @@ export function AppointmentDetailPage() {
                           ? 'Updating...'
                           : 'Cancel appointment',
                       onSelect: () => void handleStatusUpdate('cancelled'),
-                      tone: 'danger',
+                      tone: 'danger' as const,
                     },
                     {
                       disabled: Boolean(statusSubmitting),
@@ -364,8 +468,10 @@ export function AppointmentDetailPage() {
                           ? 'Updating...'
                           : 'Mark no-show',
                       onSelect: () => void handleStatusUpdate('no_show'),
-                      tone: 'danger',
+                      tone: 'danger' as const,
                     },
+                        ]
+                      : []),
                   ]}
                   label="Appointment status actions"
                 />
@@ -398,6 +504,18 @@ export function AppointmentDetailPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle>{patientName}</CardTitle>
                   <StatusBadge status={appointment.status} />
+                  <Badge
+                    data-testid="appointment-detail-operational-state"
+                    variant={
+                      appointment.operational_state === 'ready_for_doctor'
+                        ? 'success'
+                        : appointment.operational_state === 'arrived'
+                          ? 'warning'
+                          : 'neutral'
+                    }
+                  >
+                    {appointmentOperationalStateLabels[appointment.operational_state]}
+                  </Badge>
                 </div>
                 <CardDescription>
                   {formatAppointmentTimeRange(
@@ -646,7 +764,8 @@ export function AppointmentDetailPage() {
           <InlineNotice
             variant={
               actionFeedback.startsWith('Could not') ||
-              actionFeedback.startsWith('Choose')
+              actionFeedback.startsWith('Choose') ||
+              actionFeedback.startsWith('This appointment cannot')
                 ? 'danger'
                 : 'success'
             }

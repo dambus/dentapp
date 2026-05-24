@@ -278,6 +278,28 @@ async function testAllowedRoleTransitions(fixture) {
     'not_arrived',
     fixture.ownerId,
   )
+  const directCorrectionAppointment = await createServiceAppointment(
+    fixture,
+    'unsupported direct correction',
+  )
+  await updateOperationalStateAs(
+    ownerClient,
+    directCorrectionAppointment.id,
+    'arrived',
+    fixture.ownerId,
+  )
+  await updateOperationalStateAs(
+    ownerClient,
+    directCorrectionAppointment.id,
+    'ready_for_doctor',
+    fixture.ownerId,
+  )
+  const directReadyToNotArrived = await updateOperationalStateAs(
+    ownerClient,
+    directCorrectionAppointment.id,
+    'not_arrived',
+    fixture.ownerId,
+  )
 
   return {
     roleResults: results,
@@ -286,6 +308,7 @@ async function testAllowedRoleTransitions(fixture) {
       ready,
       backToArrived,
       backToNotArrived,
+      directReadyToNotArrived,
     },
   }
 }
@@ -371,6 +394,12 @@ async function testSeparationFromLifecycleProviderAndCompletedBy(fixture) {
     'arrived',
     fixture.ownerId,
   )
+  const correction = await updateOperationalStateAs(
+    ownerClient,
+    appointment.id,
+    'not_arrived',
+    fixture.ownerId,
+  )
   const refreshedAppointment = await serviceClient
     .from('appointments')
     .select('id, status, operational_state, assigned_provider_id')
@@ -396,6 +425,7 @@ async function testSeparationFromLifecycleProviderAndCompletedBy(fixture) {
 
   return {
     update,
+    correction,
     refreshedAppointmentError: refreshedAppointment.error?.message ?? null,
     lifecycleStatusUnchanged: refreshedAppointment.data?.status === 'scheduled',
     assignedProviderUnchanged:
@@ -403,6 +433,120 @@ async function testSeparationFromLifecycleProviderAndCompletedBy(fixture) {
     blockedLinkedUpdate,
     completedByUnchanged: refreshedVisit.data?.completed_by === fixture.ownerId,
     visitReadError: refreshedVisit.error?.message ?? null,
+  }
+}
+
+async function testCorrectionBlocks(fixture) {
+  const serviceClient = getServiceClient()
+  const ownerSession = await signIn('owner.demo@example.test')
+  const ownerClient = getAuthedClient(ownerSession.access_token)
+
+  async function makeArrivedAppointment(label, overrides = {}) {
+    const appointment = await createServiceAppointment(fixture, label, overrides)
+    const arrival = await updateOperationalStateAs(
+      ownerClient,
+      appointment.id,
+      'arrived',
+      fixture.ownerId,
+    )
+
+    if (!arrival.allowed) {
+      throw new Error(
+        `Could not prepare arrived correction fixture ${label}: ${arrival.error}`,
+      )
+    }
+
+    return appointment
+  }
+
+  const cancelled = await makeArrivedAppointment('cancelled correction block')
+  await serviceClient
+    .from('appointments')
+    .update({ status: 'cancelled', updated_by: fixture.ownerId })
+    .eq('id', cancelled.id)
+
+  const noShow = await makeArrivedAppointment('no-show correction block')
+  await serviceClient
+    .from('appointments')
+    .update({ status: 'no_show', updated_by: fixture.ownerId })
+    .eq('id', noShow.id)
+
+  const completed = await makeArrivedAppointment('completed correction block')
+  await serviceClient
+    .from('appointments')
+    .update({ status: 'completed', updated_by: fixture.ownerId })
+    .eq('id', completed.id)
+
+  const linkedDraft = await makeArrivedAppointment('linked draft correction block')
+  await createLinkedVisit(fixture, linkedDraft.id, 'draft')
+
+  const linkedInProgress = await makeArrivedAppointment(
+    'linked in-progress correction block',
+  )
+  await createLinkedVisit(fixture, linkedInProgress.id, 'in_progress')
+
+  const linkedCompleted = await makeArrivedAppointment(
+    'linked completed correction block',
+  )
+  await createLinkedVisit(fixture, linkedCompleted.id, 'completed')
+
+  const results = {
+    cancelled: await updateOperationalStateAs(
+      ownerClient,
+      cancelled.id,
+      'not_arrived',
+      fixture.ownerId,
+    ),
+    noShow: await updateOperationalStateAs(
+      ownerClient,
+      noShow.id,
+      'not_arrived',
+      fixture.ownerId,
+    ),
+    completed: await updateOperationalStateAs(
+      ownerClient,
+      completed.id,
+      'not_arrived',
+      fixture.ownerId,
+    ),
+    linkedDraft: await updateOperationalStateAs(
+      ownerClient,
+      linkedDraft.id,
+      'not_arrived',
+      fixture.ownerId,
+    ),
+    linkedInProgress: await updateOperationalStateAs(
+      ownerClient,
+      linkedInProgress.id,
+      'not_arrived',
+      fixture.ownerId,
+    ),
+    linkedCompleted: await updateOperationalStateAs(
+      ownerClient,
+      linkedCompleted.id,
+      'not_arrived',
+      fixture.ownerId,
+    ),
+  }
+
+  const refreshed = await serviceClient
+    .from('appointments')
+    .select('id, status, operational_state')
+    .in('id', [
+      cancelled.id,
+      noShow.id,
+      completed.id,
+      linkedDraft.id,
+      linkedInProgress.id,
+      linkedCompleted.id,
+    ])
+
+  return {
+    ...results,
+    refreshedError: refreshed.error?.message ?? null,
+    statesRemainArrived: (refreshed.data ?? []).every(
+      (row) => row.operational_state === 'arrived',
+    ),
   }
 }
 
@@ -514,6 +658,7 @@ async function main() {
     const separation = await testSeparationFromLifecycleProviderAndCompletedBy(
       fixture,
     )
+    const correctionBlocks = await testCorrectionBlocks(fixture)
     const terminalBlocks = await testTerminalLifecycleBlocks(fixture)
 
     if (!schema.operationalStateColumnReadable) {
@@ -565,6 +710,11 @@ async function main() {
       allowedTransitions.chain.backToNotArrived,
       'not_arrived',
     )
+    expectBlocked(
+      failures,
+      'owner unsupported direct correction ready_for_doctor -> not_arrived',
+      allowedTransitions.chain.directReadyToNotArrived,
+    )
 
     expectBlocked(failures, 'inventory operational update', deniedRole)
     expectBlocked(failures, 'cross-clinic operational update', crossClinic)
@@ -580,6 +730,12 @@ async function main() {
       'separation operational update',
       separation.update,
       'arrived',
+    )
+    expectAllowed(
+      failures,
+      'separation operational correction',
+      separation.correction,
+      'not_arrived',
     )
 
     if (!separation.lifecycleStatusUnchanged) {
@@ -610,6 +766,35 @@ async function main() {
       failures.push(`separation: visit refresh failed (${separation.visitReadError})`)
     }
 
+    expectBlocked(failures, 'cancelled appointment operational correction', correctionBlocks.cancelled)
+    expectBlocked(failures, 'no-show appointment operational correction', correctionBlocks.noShow)
+    expectBlocked(failures, 'completed appointment operational correction', correctionBlocks.completed)
+    expectBlocked(
+      failures,
+      'scheduled appointment with draft visit operational correction',
+      correctionBlocks.linkedDraft,
+    )
+    expectBlocked(
+      failures,
+      'scheduled appointment with in-progress visit operational correction',
+      correctionBlocks.linkedInProgress,
+    )
+    expectBlocked(
+      failures,
+      'scheduled appointment with completed visit operational correction',
+      correctionBlocks.linkedCompleted,
+    )
+
+    if (!correctionBlocks.statesRemainArrived) {
+      failures.push('correction blocks: blocked appointment states changed unexpectedly')
+    }
+
+    if (correctionBlocks.refreshedError) {
+      failures.push(
+        `correction blocks: refresh failed (${correctionBlocks.refreshedError})`,
+      )
+    }
+
     expectBlocked(failures, 'cancelled appointment operational update', terminalBlocks.cancelled)
     expectBlocked(failures, 'no-show appointment operational update', terminalBlocks.noShow)
     expectBlocked(failures, 'completed appointment operational update', terminalBlocks.completed)
@@ -638,6 +823,7 @@ async function main() {
           invalidState,
           progressedStateInsert,
           separation,
+          correctionBlocks,
           terminalBlocks,
         },
         null,

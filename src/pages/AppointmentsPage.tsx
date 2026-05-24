@@ -23,10 +23,16 @@ import { AppointmentCard } from '../features/appointments/AppointmentCard'
 import {
   APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE,
   canUpdateAppointmentLifecycle,
+  canUpdateAppointmentOperationalState,
   fetchAppointmentsForRange,
   fetchAssignableAppointmentProviders,
   getAppointmentLifecycleSuccessMessage,
+  getAppointmentOperationalSuccessMessage,
+  getNextAppointmentOperationalState,
+  getPreviousAppointmentOperationalState,
+  updateAppointmentOperationalState,
   updateAppointmentStatus,
+  type AppointmentOperationalState,
   type AppointmentRangeItem,
   type AppointmentProviderSummary,
   type AppointmentStatus,
@@ -42,6 +48,11 @@ import {
 type StatusUpdateState = {
   appointmentId: string
   status: AppointmentStatus
+} | null
+
+type OperationalUpdateState = {
+  appointmentId: string
+  state: AppointmentOperationalState
 } | null
 
 type ActionFeedback = {
@@ -194,8 +205,11 @@ export function AppointmentsPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [statusUpdateState, setStatusUpdateState] =
     useState<StatusUpdateState>(null)
+  const [operationalUpdateState, setOperationalUpdateState] =
+    useState<OperationalUpdateState>(null)
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback>(null)
   const statusUpdateRef = useRef(false)
+  const operationalUpdateRef = useRef(false)
   const todayDateValue = useMemo(() => getTodayDateInputValue(), [])
   const isTodaySelected = selectedDate === todayDateValue
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate])
@@ -388,6 +402,67 @@ export function AppointmentsPage() {
     }
   }
 
+  async function handleOperationalStateUpdate(
+    appointment: AppointmentRangeItem,
+    state: AppointmentOperationalState,
+  ) {
+    if (operationalUpdateState || operationalUpdateRef.current) {
+      return
+    }
+
+    if (
+      !canUpdateAppointmentOperationalState(appointment) ||
+      (getNextAppointmentOperationalState(appointment) !== state &&
+        getPreviousAppointmentOperationalState(appointment) !== state)
+    ) {
+      setActionFeedback({
+        message: 'This appointment cannot be updated for day-of-visit state.',
+        variant: 'warning',
+      })
+      return
+    }
+
+    setActionFeedback(null)
+    operationalUpdateRef.current = true
+    setOperationalUpdateState({ appointmentId: appointment.id, state })
+
+    try {
+      const result = await updateAppointmentOperationalState({
+        appointmentId: appointment.id,
+        operationalState: state,
+      })
+
+      if (!result.ok) {
+        setActionFeedback({
+          message:
+            result.error ??
+            'Could not update appointment day-of-visit state. Try again.',
+          variant: 'danger',
+        })
+        return
+      }
+
+      setActionFeedback({
+        message:
+          result.message ??
+          getAppointmentOperationalSuccessMessage(state, {
+            correction:
+              getPreviousAppointmentOperationalState(appointment) === state,
+          }),
+        variant: 'success',
+      })
+      await loadAppointments(false)
+    } catch {
+      setActionFeedback({
+        message: 'Could not update appointment day-of-visit state. Try again.',
+        variant: 'danger',
+      })
+    } finally {
+      operationalUpdateRef.current = false
+      setOperationalUpdateState(null)
+    }
+  }
+
   function navigateToPatient(appointment: AppointmentRangeItem) {
     navigate(getPatientDetailPath(appointment.patient?.routeId ?? appointment.patient_id))
   }
@@ -431,7 +506,10 @@ export function AppointmentsPage() {
     variant: 'default' | 'compact' = 'default',
   ) {
     const isStatusUpdating = statusUpdateState?.appointmentId === appointment.id
-    const isBusy = isLoading || Boolean(statusUpdateState)
+    const isOperationalUpdating =
+      operationalUpdateState?.appointmentId === appointment.id
+    const isBusy =
+      isLoading || Boolean(statusUpdateState) || Boolean(operationalUpdateState)
 
     return (
       <AppointmentCard
@@ -440,10 +518,16 @@ export function AppointmentsPage() {
         key={appointment.id}
         onOpenDetails={() => navigateToAppointment(appointment)}
         onOpenPatient={() => navigateToPatient(appointment)}
+        onOperationalStateChange={(state) =>
+          void handleOperationalStateUpdate(appointment, state)
+        }
         onStartVisit={() => startVisit(appointment)}
         onStatusChange={(status) => void handleStatusUpdate(appointment, status)}
         onViewVisit={
           appointment.linkedVisit ? () => viewCompletedVisit(appointment) : undefined
+        }
+        operationalStateUpdateStatus={
+          isOperationalUpdating ? operationalUpdateState?.state : null
         }
         statusUpdateStatus={isStatusUpdating ? statusUpdateState?.status : null}
         variant={variant}

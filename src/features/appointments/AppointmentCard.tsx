@@ -12,14 +12,21 @@ import {
 } from './appointmentDisplay'
 import { detectAppointmentTypeFromReason } from './appointmentTypes'
 import {
+  appointmentOperationalStateLabels,
   canUpdateAppointmentLifecycle,
+  canUpdateAppointmentOperationalState,
   getAssignedProviderDisplayName,
+  getAppointmentOperationalActionLabel,
+  getAppointmentOperationalCorrectionLabel,
+  getNextAppointmentOperationalState,
+  getPreviousAppointmentOperationalState,
 } from './appointmentService'
 import {
   CalendarClock,
   CalendarX,
   Clock3,
   FileText,
+  RotateCcw,
   Stethoscope,
   User,
   UserX,
@@ -27,6 +34,7 @@ import {
 import type {
   Appointment,
   AppointmentLinkedVisitSummary,
+  AppointmentOperationalState,
   AppointmentOpenVisitSummary,
   AppointmentPatientSummary,
   AppointmentStatus,
@@ -44,9 +52,11 @@ type AppointmentCardProps = {
   isBusy?: boolean
   onOpenDetails: () => void
   onOpenPatient?: () => void
+  onOperationalStateChange?: (state: AppointmentOperationalState) => void
   onStartVisit?: () => void
   onStatusChange?: (status: AppointmentStatus) => void
   onViewVisit?: () => void
+  operationalStateUpdateStatus?: AppointmentOperationalState | null
   patientName?: string
   statusUpdateStatus?: AppointmentStatus | null
   variant?: 'default' | 'compact'
@@ -90,9 +100,11 @@ export function AppointmentCard({
   isBusy = false,
   onOpenDetails,
   onOpenPatient,
+  onOperationalStateChange,
   onStartVisit,
   onStatusChange,
   onViewVisit,
+  operationalStateUpdateStatus,
   patientName,
   statusUpdateStatus,
   variant = 'default',
@@ -105,6 +117,19 @@ export function AppointmentCard({
   const canViewVisit = appointment.linkedVisit && onViewVisit
   const canUpdateLifecycle =
     canUpdateAppointmentLifecycle(appointment) && onStatusChange
+  const nextOperationalState = getNextAppointmentOperationalState(appointment)
+  const previousOperationalState =
+    getPreviousAppointmentOperationalState(appointment)
+  const canUpdateOperationalState =
+    variant === 'default' &&
+    canUpdateAppointmentOperationalState(appointment) &&
+    Boolean(nextOperationalState) &&
+    onOperationalStateChange
+  const canCorrectOperationalState =
+    variant === 'default' &&
+    canUpdateAppointmentOperationalState(appointment) &&
+    Boolean(previousOperationalState) &&
+    onOperationalStateChange
   const followUpLabel = getFollowUpLabel(appointment.linkedVisit)
   const durationLabel = getAppointmentDurationLabel(
     appointment.scheduled_start,
@@ -120,6 +145,14 @@ export function AppointmentCard({
           ? 'border-l-amber-500'
           : 'border-l-red-400 bg-slate-50'
   const providerLabel = getAssignedProviderDisplayName(appointment)
+  const operationalLabel =
+    appointmentOperationalStateLabels[appointment.operational_state]
+  const operationalBadgeVariant =
+    appointment.operational_state === 'ready_for_doctor'
+      ? 'success'
+      : appointment.operational_state === 'arrived'
+        ? 'warning'
+        : 'neutral'
 
   const menuItems = [
     onOpenPatient
@@ -128,6 +161,17 @@ export function AppointmentCard({
           icon: User,
           label: 'Open patient',
           onSelect: onOpenPatient,
+        }
+      : null,
+    canCorrectOperationalState && previousOperationalState
+      ? {
+          disabled: isBusy,
+          icon: RotateCcw,
+          label:
+            operationalStateUpdateStatus === previousOperationalState
+              ? 'Updating...'
+              : getAppointmentOperationalCorrectionLabel(previousOperationalState),
+          onSelect: () => onOperationalStateChange(previousOperationalState),
         }
       : null,
     canUpdateLifecycle
@@ -214,6 +258,12 @@ export function AppointmentCard({
 
           <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 md:justify-end md:pr-12">
             <StatusBadge status={appointment.status} />
+            <Badge
+              data-testid="appointment-operational-state"
+              variant={operationalBadgeVariant}
+            >
+              {operationalLabel}
+            </Badge>
             {hasOpenVisit ? (
               <Badge variant="warning">Visit in progress</Badge>
             ) : null}
@@ -289,6 +339,20 @@ export function AppointmentCard({
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+            {canUpdateOperationalState && nextOperationalState ? (
+              <Button
+                className="w-full min-h-10 sm:w-auto"
+                data-testid="appointment-operational-action"
+                disabled={isBusy}
+                onClick={() => onOperationalStateChange(nextOperationalState)}
+                size="sm"
+                variant="secondary"
+              >
+                {operationalStateUpdateStatus === nextOperationalState
+                  ? 'Updating...'
+                  : getAppointmentOperationalActionLabel(nextOperationalState)}
+              </Button>
+            ) : null}
             {canStartOrContinueVisit ? (
               <Button
                 className="w-full min-h-10 sm:w-auto"

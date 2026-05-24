@@ -211,6 +211,9 @@ Status legend:
   - [x] Task 66: Appointment Card Dropdown Anchoring / Mobile Menu Fix
   - [x] Task 67: Appointment Operational State Planning / Data Model Decision
   - [x] Task 68: Appointment Operational State Schema/RLS Foundation
+  - [x] Task 69: Appointment Operational State Service/UI Wiring
+  - [x] Task 70: Appointment Operational State Context Visibility
+  - [x] Task 71: Appointment Operational State Correction
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -281,7 +284,9 @@ Status legend:
 - [x] Task 66 - Appointment Card Dropdown Anchoring / Mobile Menu Fix
 - [x] Task 67 - Appointment Operational State Planning / Data Model Decision
 - [x] Task 68 - Appointment Operational State Schema/RLS Foundation
-- [ ] Task 69 - Appointment Operational State Service Wiring
+- [x] Task 69 - Appointment Operational State Service/UI Wiring
+- [x] Task 70 - Appointment Operational State Context Visibility
+- [x] Task 71 - Appointment Operational State Correction
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -921,6 +926,63 @@ Completed direction:
 - preserved existing appointment RLS role/clinic boundaries,
 - added focused operational state RLS/data smoke coverage,
 - added no visible UI controls or Start visit readiness requirement.
+
+### Completed Recommended Task
+
+Task 69 - Appointment Operational State Service/UI Wiring
+
+Completed direction:
+
+- hydrated `appointments.operational_state` in the appointment service,
+- added a focused operational state update method for forward UI transitions,
+- showed operational state badges on daily cards and Appointment Detail,
+- added daily-card and detail actions for `Mark arrived` and
+  `Ready for doctor`,
+- hid operational actions for cancelled, no-show, completed, and linked Visit
+  Completion appointments,
+- preserved Start visit, Continue visit, View visit, Cancel, Mark no-show,
+  provider assignment/filtering, Visit Completion persistence, and responsive
+  menu/overflow behavior,
+- expanded browser smoke coverage for the operational progression workflow.
+
+### Completed Recommended Task
+
+Task 70 - Appointment Operational State Context Visibility
+
+Completed direction:
+
+- reused the same operational labels across context surfaces,
+- showed operational state in the patient appointment summary as display-only
+  compact appointment card context,
+- showed scheduled appointment operational state in the Patient Today / Active
+  Workflow panel,
+- showed linked scheduled appointment operational state in Visit Completion
+  context,
+- kept assigned provider separate from operational state and `visits.completed_by`,
+- added no patient-summary, patient-overview, or Visit Completion operational
+  mutation controls,
+- preserved Start/Continue/View Visit and lifecycle behavior,
+- expanded browser smoke coverage for the new display-only visibility.
+
+### Completed Recommended Task
+
+Task 71 - Appointment Operational State Correction
+
+Completed direction:
+
+- exposed a safe one-step correction path for eligible active appointments,
+- kept correction secondary to the normal forward operational workflow,
+- added `Undo arrival` for `arrived` appointments,
+- added `Move back to arrived` for `ready_for_doctor` appointments,
+- did not add patient-summary, Patient Today, or Visit Completion mutation
+  controls,
+- preserved lifecycle status, provider assignment, Visit Completion state, and
+  `visits.completed_by` separation,
+- added RLS/data smoke coverage for allowed corrections and blocked direct,
+  terminal, Visit Completion-linked, inventory, and cross-clinic updates,
+- added browser smoke coverage for correction flow, restored forward
+  progression, hidden ineligible correction actions, and correction menu
+  overflow stability.
 
 ### Later Appointment Direction
 

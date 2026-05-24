@@ -3634,6 +3634,197 @@ Initial stack:
 
 ---
 
+### Completed (Task 69 - Appointment Operational State Service/UI Wiring)
+
+- Wired appointment operational state through the service layer:
+	- added `AppointmentOperationalState`,
+	- included `operational_state` in appointment select/mapping,
+	- added labels for `Not arrived`, `Arrived`, and `Ready for doctor`,
+	- added focused `updateAppointmentOperationalState()`,
+	- kept DB/RLS enforcement from Task 68 as the final guard.
+- Added daily schedule card operational display/actions:
+	- operational state badge,
+	- `Mark arrived` for eligible `not_arrived` appointments,
+	- `Ready for doctor` for eligible `arrived` appointments,
+	- no operational action after `ready_for_doctor`,
+	- no operational action on compact weekly/patient-summary cards.
+- Added Appointment Detail operational display/actions:
+	- operational state badge,
+	- next eligible operational action beside existing primary actions,
+	- page state update after successful transition.
+- Preserved separation from:
+	- appointment lifecycle `status`,
+	- provider assignment,
+	- `visits.completed_by`,
+	- Visit Completion draft/in-progress/completed persistence.
+- Preserved existing behavior:
+	- Start visit is still allowed before arrival/readiness,
+	- Continue visit and View visit remain unchanged,
+	- Cancel and Mark no-show remain in the secondary lifecycle menu,
+	- provider filtering and URL params remain unchanged.
+- Expanded browser smoke coverage for:
+	- `Not arrived` initial display,
+	- `Mark arrived` transition,
+	- `Ready for doctor` transition,
+	- Appointment Detail operational state display,
+	- hidden operational actions for cancelled/no-show/completed/linked visit
+	  appointments,
+	- existing responsive overflow and menu geometry coverage.
+- Documented the task in
+  `docs/design/task-69-appointment-operational-state-ui-wiring.md`.
+
+### Verification (Task 69)
+
+- `npx.cmd supabase migration up` reports the local database is up to date.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Task 70 - Appointment Operational State UX Polish / Daily Workflow QA, or
+  Checkpoint B - Product Roadmap Re-balance.
+
+---
+
+### Completed (Task 70 - Appointment Operational State Context Visibility)
+
+- Completed display-only operational state visibility across active appointment
+  context surfaces:
+	- patient appointment summary,
+	- Patient Today / Active Workflow panel,
+	- Visit Completion appointment context.
+- Reused the Task 69 operational display copy:
+	- `Not arrived`,
+	- `Arrived`,
+	- `Ready for doctor`.
+- Kept operational mutations limited to the daily schedule card and Appointment
+  Detail actions implemented in Task 69.
+- Patient appointment summary now shows operational state through the compact
+  shared `AppointmentCard` without exposing operational actions.
+- Patient Today / Active Workflow now shows a scheduled appointment's
+  operational state as concise display-only context.
+- Visit Completion appointment context now shows:
+	- assigned provider as planned provider context,
+	- operational state as separate day-of-visit context.
+- Preserved existing behavior:
+	- no Start visit readiness gate,
+	- no Visit Completion persistence changes,
+	- no lifecycle status changes,
+	- no provider assignment or `visits.completed_by` changes.
+- Expanded browser smoke coverage for:
+	- patient appointment summary operational visibility,
+	- Patient Today operational visibility,
+	- Visit Completion operational context,
+	- existing operational progression and hidden-action checks,
+	- responsive overflow and menu geometry coverage.
+- Documented the task in
+  `docs/design/task-70-appointment-operational-state-context-visibility.md`.
+
+### Verification (Task 70)
+
+- `npx.cmd supabase migration up` reports the local database is up to date.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance, or Task 71 - Appointment
+  Operational State UX QA if a focused visual pass is preferred first.
+
+---
+
+### Completed (Task 71 - Appointment Operational State Correction)
+
+- Added a narrow correction workflow for active eligible appointment
+  operational state:
+	- `Arrived` -> `Not arrived` through `Undo arrival`,
+	- `Ready for doctor` -> `Arrived` through `Move back to arrived`.
+- Confirmed the existing Task 68 database foundation already allowed only the
+  required one-step reverse transitions, so no migration was added.
+- Kept correction actions secondary:
+	- daily appointment card correction lives in the appointment action menu,
+	- Appointment Detail correction lives in the appointment action menu,
+	- the main day-of-visit progression button remains forward-only.
+- Preserved behavior separation:
+	- no appointment lifecycle status changes,
+	- no provider assignment changes,
+	- no Visit Completion persistence or `visits.completed_by` changes,
+	- no Start visit readiness gate.
+- Kept Patient Today, patient appointment summary, and Visit Completion
+  operational state display-only.
+- Expanded operational-state RLS/data smoke coverage for:
+	- allowed one-step corrections,
+	- blocked `ready_for_doctor` -> `not_arrived` direct correction,
+	- blocked correction for cancelled, no-show, completed, and linked Visit
+	  Completion appointments,
+	- inventory/cross-clinic denial and data-separation checks.
+- Expanded browser smoke coverage for:
+	- card correction from arrived back to not arrived,
+	- card correction from ready for doctor back to arrived,
+	- restored forward progression after each correction,
+	- correction menu horizontal overflow checks at a narrow viewport,
+	- hidden correction actions on ineligible appointments.
+- Documented the task in
+  `docs/design/task-71-appointment-operational-state-correction.md`.
+
+### Verification (Task 71)
+
+- `npx.cmd supabase migration up` reports the local database is up to date.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance, or Task 72 - Appointment
+  operational workflow visual QA if a dedicated pass is needed.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

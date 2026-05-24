@@ -9,6 +9,11 @@ export type AppointmentStatus =
   | 'cancelled'
   | 'no_show'
 
+export type AppointmentOperationalState =
+  | 'not_arrived'
+  | 'arrived'
+  | 'ready_for_doctor'
+
 export type Appointment = {
   id: string
   clinic_id: string
@@ -18,6 +23,7 @@ export type Appointment = {
   scheduled_start: string
   scheduled_end: string | null
   status: AppointmentStatus
+  operational_state: AppointmentOperationalState
   reason: string | null
   notes: string | null
   created_by: string | null
@@ -90,7 +96,20 @@ export type UpdateAppointmentProviderInput = {
   assignedProviderId: string | null
 }
 
+export type UpdateAppointmentOperationalStateInput = {
+  appointmentId: string
+  operationalState: AppointmentOperationalState
+}
+
 export type AppointmentLifecycleEligibility = Pick<Appointment, 'status'> & {
+  linkedVisit?: unknown
+  openVisit?: unknown
+}
+
+export type AppointmentOperationalEligibility = Pick<
+  Appointment,
+  'status' | 'operational_state'
+> & {
   linkedVisit?: unknown
   openVisit?: unknown
 }
@@ -153,6 +172,12 @@ const appointmentStatuses = new Set<AppointmentStatus>([
   'no_show',
 ])
 
+const appointmentOperationalStates = new Set<AppointmentOperationalState>([
+  'not_arrived',
+  'arrived',
+  'ready_for_doctor',
+])
+
 const secondaryLifecycleStatuses = new Set<AppointmentStatus>([
   'cancelled',
   'no_show',
@@ -164,7 +189,7 @@ export const APPOINTMENT_LIFECYCLE_UNAVAILABLE_MESSAGE =
 export const APPOINTMENT_REASON_MAX_LENGTH = 160
 export const APPOINTMENT_NOTES_MAX_LENGTH = 500
 const appointmentSelectFields =
-  'id, clinic_id, patient_id, assigned_provider_id, scheduled_start, scheduled_end, status, reason, notes, created_by, updated_by, created_at, updated_at'
+  'id, clinic_id, patient_id, assigned_provider_id, scheduled_start, scheduled_end, status, operational_state, reason, notes, created_by, updated_by, created_at, updated_at'
 
 function normalizeText(value: string | null | undefined) {
   return value?.trim() ?? ''
@@ -172,6 +197,12 @@ function normalizeText(value: string | null | undefined) {
 
 function isValidAppointmentStatus(value: string): value is AppointmentStatus {
   return appointmentStatuses.has(value as AppointmentStatus)
+}
+
+function isValidAppointmentOperationalState(
+  value: string,
+): value is AppointmentOperationalState {
+  return appointmentOperationalStates.has(value as AppointmentOperationalState)
 }
 
 function isSecondaryLifecycleStatus(value: AppointmentStatus) {
@@ -194,6 +225,83 @@ export function getAppointmentLifecycleSuccessMessage(status: AppointmentStatus)
     : 'Appointment was marked no-show.'
 }
 
+export const appointmentOperationalStateLabels: Record<
+  AppointmentOperationalState,
+  string
+> = {
+  not_arrived: 'Not arrived',
+  arrived: 'Arrived',
+  ready_for_doctor: 'Ready for doctor',
+}
+
+export function canUpdateAppointmentOperationalState(
+  appointment: AppointmentOperationalEligibility,
+) {
+  return (
+    appointment.status === 'scheduled' &&
+    !appointment.openVisit &&
+    !appointment.linkedVisit &&
+    (appointment.operational_state === 'not_arrived' ||
+      appointment.operational_state === 'arrived' ||
+      appointment.operational_state === 'ready_for_doctor')
+  )
+}
+
+export function getNextAppointmentOperationalState(
+  appointment: Pick<Appointment, 'operational_state'>,
+): AppointmentOperationalState | null {
+  if (appointment.operational_state === 'not_arrived') {
+    return 'arrived'
+  }
+
+  if (appointment.operational_state === 'arrived') {
+    return 'ready_for_doctor'
+  }
+
+  return null
+}
+
+export function getPreviousAppointmentOperationalState(
+  appointment: Pick<Appointment, 'operational_state'>,
+): AppointmentOperationalState | null {
+  if (appointment.operational_state === 'arrived') {
+    return 'not_arrived'
+  }
+
+  if (appointment.operational_state === 'ready_for_doctor') {
+    return 'arrived'
+  }
+
+  return null
+}
+
+export function getAppointmentOperationalCorrectionLabel(
+  state: AppointmentOperationalState,
+) {
+  return state === 'not_arrived' ? 'Undo arrival' : 'Move back to arrived'
+}
+
+export function getAppointmentOperationalActionLabel(
+  state: AppointmentOperationalState,
+) {
+  return state === 'arrived' ? 'Mark arrived' : 'Ready for doctor'
+}
+
+export function getAppointmentOperationalSuccessMessage(
+  state: AppointmentOperationalState,
+  options: { correction?: boolean } = {},
+) {
+  if (options.correction) {
+    return state === 'not_arrived'
+      ? 'Arrival status was corrected.'
+      : 'Appointment moved back to arrived.'
+  }
+
+  return state === 'arrived'
+    ? 'Patient marked as arrived.'
+    : 'Patient is ready for doctor.'
+}
+
 export function getAssignedProviderDisplayName(
   appointment: Pick<Appointment, 'assigned_provider_id' | 'assignedProvider'>,
 ) {
@@ -214,6 +322,9 @@ function mapRowToAppointment(row: SupabaseAppointmentRow): Appointment {
     scheduled_start: row.scheduled_start,
     scheduled_end: row.scheduled_end,
     status: isValidAppointmentStatus(row.status) ? row.status : 'scheduled',
+    operational_state: isValidAppointmentOperationalState(row.operational_state)
+      ? row.operational_state
+      : 'not_arrived',
     reason: row.reason,
     notes: row.notes,
     created_by: row.created_by,
@@ -1171,5 +1282,170 @@ export async function updateAppointmentAssignedProvider(
     ok: true,
     appointment,
     message: 'Assigned provider was updated.',
+  }
+}
+
+export async function updateAppointmentOperationalState(
+  input: UpdateAppointmentOperationalStateInput,
+): Promise<AppointmentWriteResult> {
+  if (!normalizeText(input.appointmentId)) {
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: 'Appointment ID is required to update operational state.',
+      reason: 'validation',
+    }
+  }
+
+  if (!isValidAppointmentOperationalState(input.operationalState)) {
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: 'Appointment operational state is invalid.',
+      reason: 'validation',
+    }
+  }
+
+  const supabase = await getSupabaseClientSafe()
+
+  if (!supabase) {
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: 'Supabase client is not available.',
+      reason: 'unknown',
+    }
+  }
+
+  const profileContext = await getCurrentSupabaseProfileContext()
+
+  if (!profileContext || profileContext.status !== 'active') {
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: 'Active profile context is required to update operational state.',
+      reason: 'permission',
+    }
+  }
+
+  const [
+    { data: appointmentData, error: appointmentError },
+    { data: linkedVisitData, error: linkedVisitError },
+  ] = await Promise.all([
+    supabase
+      .from('appointments')
+      .select(appointmentSelectFields)
+      .eq('id', input.appointmentId)
+      .eq('clinic_id', profileContext.clinic_id)
+      .maybeSingle(),
+    supabase
+      .from('visits')
+      .select('id, status')
+      .eq('appointment_id', input.appointmentId)
+      .in('status', ['draft', 'in_progress', 'completed'])
+      .is('deleted_at', null)
+      .limit(1),
+  ])
+
+  if (appointmentError) {
+    const errorMessage =
+      appointmentError.message ?? 'Appointment operational state could not be updated.'
+
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: errorMessage,
+      reason: classifyAppointmentError(errorMessage),
+    }
+  }
+
+  if (!appointmentData) {
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: 'Appointment not found or you do not have permission to update it.',
+      reason: 'not_found',
+    }
+  }
+
+  if (linkedVisitError) {
+    const errorMessage =
+      linkedVisitError.message ?? 'Appointment visit links could not be checked.'
+
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: errorMessage,
+      reason: classifyAppointmentError(errorMessage),
+    }
+  }
+
+  const currentAppointment = mapRowToAppointment(
+    appointmentData as unknown as SupabaseAppointmentRow,
+  )
+  const linkedVisits = (linkedVisitData as Array<{ id: string; status: string }> | null) ?? []
+  const nextState = getNextAppointmentOperationalState(currentAppointment)
+  const previousState = getPreviousAppointmentOperationalState(currentAppointment)
+  const isAllowedState =
+    nextState === input.operationalState ||
+    previousState === input.operationalState
+  const isCorrection = previousState === input.operationalState
+
+  if (
+    currentAppointment.status !== 'scheduled' ||
+    linkedVisits.length > 0 ||
+    !isAllowedState
+  ) {
+    return {
+      ok: false,
+      appointment: currentAppointment,
+      message: null,
+      error:
+        'This appointment is not eligible for the requested operational state update.',
+      reason: 'conflict',
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({
+      operational_state: input.operationalState,
+      updated_by: profileContext.id,
+    })
+    .eq('id', input.appointmentId)
+    .eq('clinic_id', profileContext.clinic_id)
+    .select(appointmentSelectFields)
+    .single()
+
+  if (error || !data) {
+    const errorMessage =
+      error?.message ?? 'Appointment operational state could not be updated.'
+
+    return {
+      ok: false,
+      appointment: null,
+      message: null,
+      error: errorMessage,
+      reason: classifyAppointmentError(errorMessage),
+    }
+  }
+
+  const [appointment] = await fetchProviderSummariesForAppointments([
+    mapRowToAppointment(data as unknown as SupabaseAppointmentRow),
+  ])
+
+  return {
+    ok: true,
+    appointment,
+    message: getAppointmentOperationalSuccessMessage(input.operationalState, {
+      correction: isCorrection,
+    }),
   }
 }
