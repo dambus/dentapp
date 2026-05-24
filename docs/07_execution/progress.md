@@ -4319,8 +4319,13 @@ Initial stack:
 - `node .\supabase\snippets\testPerformedServicesRls.mjs` passes.
 - `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
 - `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
-- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
-  against `http://127.0.0.1:5173`.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` was run
+  against `http://127.0.0.1:5173`; it reached existing appointment workflow
+  coverage but timed out waiting for `Task 44 appointment bridge
+  recommendation` on the appointments list after the backing appointment had
+  been created. Direct authenticated appointment insertion for the same demo
+  role/patient still succeeds, so this was left as an existing browser-smoke
+  fixture/navigation issue rather than a Task 87 payment-schema regression.
 - `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
 - `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
 - `git diff --check` passes with only expected line-ending normalization
@@ -4586,6 +4591,279 @@ Initial stack:
 
 - Task 83 - Completed Visit Financial Read-only Display / Posted Charge
   Visibility.
+
+---
+
+### Completed (Task 83 - Completed Visit Financial Read-only Display)
+
+- Added a read-only `Services & charges` section to completed visit detail.
+- Shows finalized performed-service snapshots for authorized financial readers:
+  service name, quantity, unit price, finalized line amount, currency, credited
+  provider, and tooth/region when recorded.
+- Shows visit-scoped posted ledger charge visibility:
+  - `Posted to patient account` when every finalized service has a posted charge,
+  - `Charge posting pending` when finalized services exist but posted charges are
+    incomplete,
+  - no fake total or pending state for visits with no performed services.
+- Shows a compact posted `Charge total` derived only from posted visit charge
+  ledger entries, not from patient balance, invoices, payments, or credits.
+- Added `getCompletedVisitFinancialSummary(patientId, visitId)` in
+  `patientLedgerService.ts` using existing RLS-protected table reads; no new RPC,
+  migration, or RLS change was required.
+- Preserved role boundaries:
+  - `owner_admin`, `doctor`, `specialist`, and `reception_admin` can see
+    read-only same-clinic financial visibility,
+  - blocked roles receive a neutral unavailable message without breaking the
+    completed clinical visit.
+- Kept completed visit detail read-only with no posting, payment, edit, invoice,
+  receipt, refund, balance, commission, materials, or treatment-plan actions.
+- Extended browser smoke coverage for posted, pending, and zero-service
+  completed visit financial states.
+- Documented the task in
+  `docs/design/task-83-completed-visit-financial-read-only-display.md`.
+
+### Verification (Task 83)
+
+- `npx.cmd supabase migration up` reports the local database is up to date; no
+  Task 83 migration was required.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientLedgerRls.mjs` passes with local `.env`
+  loaded.
+- `node .\supabase\snippets\testPatientLedgerPostingRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testPerformedServicesRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes with
+  local `.env` loaded.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `http://127.0.0.1:5173`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded.
+- `git diff --check` passes.
+
+### Next Recommended Task
+
+- Task 84 - Patient Account Read-only Ledger / Balance Summary Planning.
+
+---
+
+### Completed (Task 84 - Patient Account Read-only Ledger / Balance Summary Planning)
+
+- Completed a docs-only planning decision for patient-level financial visibility
+  after Task 83.
+- Confirmed the current financial boundary:
+  - `patient_ledger_entries` supports charge, payment, discount, write-off,
+    refund, adjustment, and reversal entry types,
+  - normal runtime behavior currently creates only posted `charge` debit entries
+    from finalized performed services,
+  - no payment, credit, refund, reversal, discount, write-off, adjustment,
+    invoice, receipt, allocation, or patient balance workflow exists.
+- Compared showing balance now, showing read-only posted charge activity without
+  balance, and deferring patient-level financial UI until payments exist.
+- Selected the conservative product direction:
+  - do not show patient `Balance`, `Amount due`, `Outstanding`, paid status,
+    invoice state, or receipt state yet,
+  - add a patient-level read-only `Charges` / `Posted charges` surface first,
+  - label any totals as posted charges recorded in DentApp and group them by
+    currency.
+- Recommended placing the first patient-level financial surface inside the
+  existing patient Full Record area, not as a prominent Patient Overview balance
+  metric.
+- Preserved the existing financial read role boundary:
+  - `owner_admin`, `doctor`, `specialist`, and `reception_admin` may read
+    same-clinic posted charge activity,
+  - `assistant` and `inventory_responsible` should not see the financial
+    section.
+- Documented pending/unposted charge visibility as read-only context; posting
+  retry remains outside the patient-level view for now.
+- Made no runtime, service, schema, migration, RPC, RLS, browser smoke, or RLS
+  test changes.
+- Documented the task in
+  `docs/design/task-84-patient-account-read-only-ledger-balance-summary-planning.md`.
+
+### Verification (Task 84)
+
+- `git diff --name-only` reviewed.
+- `git diff --check` passes.
+- Only Task 84 documentation files were changed by this task; pre-existing
+  Task 83 runtime/test changes were left untouched.
+
+### Next Recommended Task
+
+- Task 85 - Patient Posted Charges Read-only Section / Account Activity
+  Visibility.
+
+---
+
+### Completed (Task 85 - Patient Posted Charges Read-only Section)
+
+- Added a patient Full Record `Charges` section for authorized financial
+  readers.
+- Added `getPatientPostedChargesSummary(patientId)` in
+  `patientLedgerService.ts` using existing RLS-protected
+  `patient_ledger_entries` reads.
+- Shows posted patient ledger `charge` debit rows only:
+  - description snapshot,
+  - posted date/time,
+  - amount and currency,
+  - posted-charge status,
+  - completed visit navigation for roles that can open completed visit detail.
+- Shows grouped posted-charge totals by currency and labels them as posted
+  charges, not patient balance.
+- Omits the section for roles blocked from ledger financial rows.
+- Keeps the patient-level view read-only with no posting retry, payment,
+  balance, invoice, receipt, refund, reversal, discount, write-off, commission,
+  materials, or treatment-plan conversion behavior.
+- Added browser smoke coverage for the new section, terminology guard, posted
+  amount/currency visibility, grouped total visibility, and completed visit
+  navigation.
+- No migration, RPC, RLS, or schema change was required.
+- Documented the task in
+  `docs/design/task-85-patient-posted-charges-read-only-section.md`.
+
+### Verification (Task 85)
+
+- `npx.cmd supabase migration up` passes.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientLedgerRls.mjs` passes with local `.env`
+  loaded.
+- `node .\supabase\snippets\testPatientLedgerPostingRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testPerformedServicesRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes with
+  local `.env` loaded.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `http://127.0.0.1:5173`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded.
+- `git diff --check` passes.
+
+### Next Recommended Task
+
+- Task 86 - Payment Recording Foundation Planning / Data Model Decision.
+
+---
+
+### Completed (Task 86 - Payment Recording Foundation Planning)
+
+- Completed a docs-only payment recording architecture decision.
+- Confirmed the current payment boundary after Task 85:
+  - posted service charges are recorded as `patient_ledger_entries` debit rows,
+  - the patient Full Record `Charges` section displays read-only posted charge
+    activity,
+  - no payment table, payment service, payment UI, payment method, payment
+    allocation, reversal, refund, invoice, receipt, or balance workflow exists.
+- Compared payment model options:
+  - payment as only a ledger credit row,
+  - dedicated payment record plus linked ledger credit entry,
+  - invoice-first / receivable-first accounting.
+- Selected a dedicated future `patient_payments` entity plus a linked posted
+  ledger `payment` credit entry.
+- Defined initial payment method values: `cash`, `card`, `bank_transfer`, and
+  `other`.
+- Selected patient-scoped unallocated payments for the MVP; allocation to
+  charges, visits, receipts, or invoices remains deferred.
+- Defined correction as reversal-based:
+  - preserve the original payment,
+  - create a compensating debit reversal movement,
+  - avoid destructive edits/deletes of posted financial rows.
+- Recommended payment recording authority for `owner_admin` and
+  `reception_admin` through a controlled pathway; doctors/specialists remain
+  financial readers and clinical service-charge posters, not payment recorders
+  by default.
+- Reconfirmed no patient balance, amount due, outstanding, paid/unpaid,
+  invoice, or receipt display should be added merely because payment schema is
+  planned.
+- Made no runtime, service, schema, migration, RPC, RLS, browser smoke, or RLS
+  test changes.
+- Documented the task in
+  `docs/design/task-86-payment-recording-foundation-planning.md`.
+
+### Verification (Task 86)
+
+- `git diff --name-only` reviewed.
+- `git diff --check` passes.
+- Only Task 86 documentation files were changed by this task; pre-existing
+  Task 83/84/85 runtime/test/doc changes were left untouched.
+
+### Next Recommended Task
+
+- Task 87 - Payment Schema/RLS Foundation.
+
+---
+
+### Completed (Task 87 - Payment Schema/RLS Foundation)
+
+- Added `patient_payments` as the dedicated patient payment record table.
+- Added payment constraints:
+  - positive `amount`,
+  - three-letter uppercase `currency`,
+  - `payment_method` in `cash`, `card`, `bank_transfer`, `other`,
+  - `status` in `posted`, `reversed`,
+  - same-clinic patient scope.
+- Added payment-recorder integrity:
+  - `recorded_by`, `created_by`, and `reversed_by` where present must be active
+    same-clinic `owner_admin` or `reception_admin` profiles.
+- Added future ledger linkage:
+  - `patient_ledger_entries.patient_payment_id`,
+  - validation that linked payment ledger rows are posted `payment` credit rows
+    matching the payment clinic, patient, amount, and currency,
+  - uniqueness so one posted payment credit can exist per payment.
+- Added conservative payment RLS:
+  - same-clinic read access for `owner_admin`, `doctor`, `specialist`, and
+    `reception_admin`,
+  - `assistant` and `inventory_responsible` remain blocked,
+  - no authenticated direct insert/update/delete policies.
+- Added focused payment schema/RLS coverage in
+  `supabase/snippets/testPatientPaymentsRls.mjs`.
+- Preserved existing ledger charge posting, completed visit financial display,
+  and patient posted-charges behavior.
+- No runtime React, frontend service, payment UI, payment recording RPC,
+  balance, invoice, receipt, refund, allocation, commission, materials, or
+  treatment-plan conversion behavior was added.
+- Documented the task in
+  `docs/design/task-87-payment-schema-rls-foundation.md`.
+
+### Verification (Task 87)
+
+- `npx.cmd supabase migration up` applies
+  `20260524220000_create_patient_payments_foundation.sql`.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientPaymentsRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testPatientLedgerRls.mjs` passes with local `.env`
+  loaded.
+- `node .\supabase\snippets\testPatientLedgerPostingRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testPerformedServicesRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes with
+  local `.env` loaded.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `http://127.0.0.1:5173`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded.
+- `git diff --check` passes.
+
+### Next Recommended Task
+
+- Task 88 - Payment Service Layer / Controlled Recording and Reversal Boundary.
 
 ---
 

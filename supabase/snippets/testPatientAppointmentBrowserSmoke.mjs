@@ -474,6 +474,89 @@ async function getLedgerChargeCountForPatient(patientId) {
   return count ?? 0
 }
 
+async function createUnpostedCompletedFinancialVisit() {
+  const serviceClient = getServiceClient()
+  const profileResult = await serviceClient
+    .from('profiles')
+    .select('id')
+    .eq('role', 'doctor')
+    .eq('clinic_id', DEMO_CLINIC_ID)
+    .eq('status', 'active')
+    .limit(1)
+    .maybeSingle()
+
+  if (profileResult.error || !profileResult.data) {
+    throw new Error(profileResult.error?.message ?? 'Missing active doctor profile.')
+  }
+
+  const serviceResult = await serviceClient
+    .from('services')
+    .select('id')
+    .eq('clinic_id', DEMO_CLINIC_ID)
+    .eq('code', PERFORMED_SERVICE_CODE)
+    .maybeSingle()
+
+  if (serviceResult.error || !serviceResult.data) {
+    throw new Error(serviceResult.error?.message ?? 'Missing service catalog fixture.')
+  }
+
+  const visitResult = await serviceClient
+    .from('visits')
+    .insert({
+      clinic_id: DEMO_CLINIC_ID,
+      patient_id: PATIENT_ID,
+      status: 'completed',
+      visit_date: new Date().toISOString().slice(0, 10),
+      completed_at: new Date().toISOString(),
+      completed_by: profileResult.data.id,
+      clinical_note_id: null,
+      recommendation: 'Task 83 pending charge visibility fixture.',
+      next_step: 'no_follow_up',
+      created_by: profileResult.data.id,
+      updated_by: profileResult.data.id,
+    })
+    .select('id')
+    .single()
+
+  if (visitResult.error || !visitResult.data) {
+    throw new Error(visitResult.error?.message ?? 'Could not create pending financial visit.')
+  }
+
+  const performedServiceResult = await serviceClient
+    .from('performed_services')
+    .insert({
+      clinic_id: DEMO_CLINIC_ID,
+      patient_id: PATIENT_ID,
+      visit_id: visitResult.data.id,
+      service_id: serviceResult.data.id,
+      service_name_snapshot: PERFORMED_SERVICE_NAME,
+      service_code_snapshot: PERFORMED_SERVICE_CODE,
+      service_category_name_snapshot: PERFORMED_SERVICE_CATEGORY,
+      tooth_or_region: PERFORMED_SERVICE_TOOTH,
+      quantity: PERFORMED_SERVICE_QUANTITY,
+      unit_price_amount: PERFORMED_SERVICE_PRICE,
+      discount_amount: 0,
+      final_amount: Number(PERFORMED_SERVICE_PRICE) * Number(PERFORMED_SERVICE_QUANTITY),
+      currency: 'RSD',
+      credited_provider_id: profileResult.data.id,
+      status: 'finalized',
+      performed_at: new Date().toISOString(),
+      created_by: profileResult.data.id,
+      updated_by: profileResult.data.id,
+    })
+    .select('id')
+    .single()
+
+  if (performedServiceResult.error || !performedServiceResult.data) {
+    throw new Error(
+      performedServiceResult.error?.message ??
+        'Could not create pending finalized performed service.',
+    )
+  }
+
+  return visitResult.data.id
+}
+
 async function connectToChrome(port) {
   await waitFor(async () => {
     try {
@@ -3139,12 +3222,64 @@ async function main() {
       'linked appointment visible on detail page',
     )
     await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('[data-testid="completed-visit-detail-services-charges"]');
+            const text = section?.textContent ?? '';
+            const paymentActions = Array.from(section?.querySelectorAll('button, a') ?? [])
+              .map((element) => element.textContent?.trim())
+              .filter(Boolean);
+
+            return text.includes('Services & charges') &&
+              text.includes('Read-only') &&
+              text.includes(${JSON.stringify(PERFORMED_SERVICE_NAME)}) &&
+              text.includes('Posted to patient account') &&
+              text.includes('Charge total') &&
+              text.includes('8.400 RSD') &&
+              text.includes('Posted charge') &&
+              text.includes('Line amount') &&
+              paymentActions.length === 0;
+          })()`,
+        ),
+      'completed visit services and charges posted read-only section',
+    )
+    await waitFor(
       () => textIncludes(cdp, 'Print review'),
       'print review action visible on detail page',
     )
     await waitFor(
       () => textIncludes(cdp, 'Schedule follow-up'),
       'completed visit detail follow-up scheduling action',
+    )
+
+    await navigate(cdp, `${PATIENT_URL}/visits/${fixtureVisitId}`)
+    await waitFor(
+      () => textIncludes(cdp, 'Completed Visit Review'),
+      'zero-service completed visit detail page',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('[data-testid="completed-visit-detail-services-charges"]');
+            const text = section?.textContent ?? '';
+
+            return text.includes('Services & charges') &&
+              text.includes('No performed services were recorded for this visit.') &&
+              !text.includes('Charge total') &&
+              !text.includes('Charge posting pending');
+          })()`,
+        ),
+      'completed visit zero-service financial empty state',
+    )
+
+    await navigate(cdp, `${PATIENT_URL}/visits/${linkedVisitId}`)
+    await waitFor(
+      () => textIncludes(cdp, 'Completed Visit Review'),
+      'returned to posted completed visit detail',
     )
 
     const detailUrlBeforeFollowUpScheduling = await evaluate(cdp, 'location.href')
@@ -3271,6 +3406,83 @@ async function main() {
     await waitFor(
       () => textIncludes(cdp, 'No upcoming appointment scheduled'),
       'completed appointment removed from upcoming summary',
+    )
+
+    await navigate(cdp, `${PATIENT_URL}?section=charges`)
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('[data-testid="patient-posted-charges-section"]');
+            const text = section?.textContent ?? '';
+            const forbiddenTerms = [
+              'Balance',
+              'Amount due',
+              'Outstanding',
+              'Record payment',
+              'Pay',
+              'Invoice',
+              'Receipt',
+            ];
+            return location.search.includes('section=charges') &&
+              text.includes('Posted charges recorded in DentApp') &&
+              text.includes(${JSON.stringify(PERFORMED_SERVICE_NAME)}) &&
+              text.includes('8.400 RSD') &&
+              text.includes('Total posted charges') &&
+              text.includes('Posted charge') &&
+              text.includes('View completed visit') &&
+              forbiddenTerms.every((term) => !text.includes(term));
+          })()`,
+        ),
+      'patient posted charges read-only section',
+    )
+    await evaluate(
+      cdp,
+      `(() => {
+        const section = document.querySelector('[data-testid="patient-posted-charges-section"]');
+        const button = Array.from(section?.querySelectorAll('button, a') ?? [])
+          .find((element) => element.textContent?.trim() === 'View completed visit');
+        if (button instanceof HTMLElement) {
+          button.click();
+          return true;
+        }
+        return false;
+      })()`,
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Completed Visit Review'),
+      'patient posted charge completed visit link',
+    )
+    await navigate(cdp, PATIENT_URL)
+    await waitFor(() => textIncludes(cdp, 'Full Record'), 'patient detail after posted charges link')
+
+    const pendingFinancialVisitId = await createUnpostedCompletedFinancialVisit()
+    await navigate(cdp, `${PATIENT_URL}/visits/${pendingFinancialVisitId}`)
+    await waitFor(
+      () => textIncludes(cdp, 'Completed Visit Review'),
+      'pending financial completed visit detail page',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('[data-testid="completed-visit-detail-services-charges"]');
+            const text = section?.textContent ?? '';
+            const actions = Array.from(section?.querySelectorAll('button, a') ?? [])
+              .map((element) => element.textContent?.trim())
+              .filter(Boolean);
+
+            return text.includes(${JSON.stringify(PERFORMED_SERVICE_NAME)}) &&
+              text.includes('Charge posting pending') &&
+              text.includes('Posting pending') &&
+              text.includes('Charges have not been fully posted') &&
+              !text.includes('Charge total') &&
+              !actions.includes('Retry charge posting');
+          })()`,
+        ),
+      'completed visit pending charge posting read-only state',
     )
 
     await navigate(cdp, `${APPOINTMENTS_URL}/${appointmentId}`)
@@ -3794,12 +4006,16 @@ async function main() {
           completedAppointmentFollowUpVerified: true,
           completedVisitDetailVerified: true,
           completedVisitDetailClinicalSectionsVerified: true,
+          completedVisitFinancialPostedVisibilityVerified: true,
+          completedVisitFinancialPendingVisibilityVerified: true,
+          completedVisitFinancialZeroServiceVisibilityVerified: true,
           completedVisitDetailFollowUpVerified: true,
           dailyScheduleCompletedLifecycleVerified: true,
           patientOverviewClinicalSummaryVerified: true,
           patientOverviewFollowUpVerified: true,
           patientOverviewTreatmentPlanVerified: true,
           patientTreatmentPlanEntryPointVerified: true,
+          patientPostedChargesSectionVerified: true,
           followUpSchedulingActionVerified: true,
           followUpSchedulingPrefillVerified: true,
           printActionVerified: true,

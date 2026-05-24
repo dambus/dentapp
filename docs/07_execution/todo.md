@@ -299,10 +299,14 @@ Status legend:
 - [x] Task 80 - Patient Ledger Schema/RLS Foundation
 - [x] Task 81 - Patient Ledger Service Layer / Idempotent Charge Posting from Finalized Performed Services
 - [x] Task 82 - Visit Completion Ledger Posting Wiring / Post-completion Charge Posting Failure Handling
-- [ ] Task 83 - Completed Visit Financial Read-only Display / Posted Charge Visibility
-- [ ] Task 83B - Patient Account Read-only Ledger / Balance Summary
-- [ ] Task 84 - Payment Recording Foundation
-- [ ] Task 85 - Doctor Commission Planning
+- [x] Task 83 - Completed Visit Financial Read-only Display / Posted Charge Visibility
+- [x] Task 84 - Patient Account Read-only Ledger / Balance Summary Planning
+- [x] Task 85 - Patient Posted Charges Read-only Section / Account Activity Visibility
+- [x] Task 86 - Payment Recording Foundation Planning / Data Model Decision
+- [x] Task 87 - Payment Schema/RLS Foundation
+- [ ] Task 88 - Payment Service Layer / Controlled Recording and Reversal Boundary
+- [ ] Task 89 - Patient Account Charges + Payments Read-only Summary / Balance Decision
+- [ ] Task 90 - Doctor Commission Planning
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
 
@@ -789,13 +793,109 @@ Completed direction:
 
 Task 83 - Completed Visit Financial Read-only Display / Posted Charge Visibility
 
-Suggested direction:
+Completed direction:
 
 - show finalized performed-service and posted ledger-charge linkage on completed
   visit detail as read-only financial context,
 - keep amounts as snapshots and avoid editable balance/payment behavior,
 - surface whether charges are posted without adding patient-wide account UI yet,
+- show posted charge total only for the completed visit, not patient balance,
+- preserve blocked-role boundaries without breaking completed clinical detail,
 - keep payments, invoices/receipts, refunds/discounts/write-offs, commissions,
+  materials, and treatment-plan conversion out of scope.
+
+### Next Recommended Task
+
+Task 84 - Patient Account Read-only Ledger / Balance Summary Planning
+
+Completed direction:
+
+- confirmed that the schema can represent future payments and credits, but
+  normal runtime behavior currently creates only posted `charge` debit entries,
+- decided not to display patient `Balance`, `Amount due`, `Outstanding`, paid
+  status, invoices, or receipts before payment/credit recording exists,
+- selected a restrained patient Full Record `Charges` section as the first
+  patient-level financial surface,
+- defined the next MVP as read-only posted charge activity recorded in DentApp,
+  with optional per-currency posted-charge totals that are not balance,
+- preserved ledger read roles for `owner_admin`, `doctor`, `specialist`, and
+  `reception_admin`, while blocked roles should not see the financial section,
+- kept payment recording, invoices/receipts, refunds/discounts/write-offs,
+  commissions, materials, and treatment-plan conversion out of scope.
+
+### Next Recommended Task
+
+Task 85 - Patient Posted Charges Read-only Section / Account Activity Visibility
+
+Completed direction:
+
+- added a patient Full Record `Charges` section for authorized financial
+  readers,
+- shows posted `charge` ledger entries for the patient as read-only activity,
+- includes posted date, description snapshot, amount, currency, and completed
+  visit navigation where the role can open completed visit detail,
+- avoids patient balance, amount due, paid/unpaid, invoice, receipt, and payment
+  terminology in the section,
+- groups posted-charge totals by currency and labels them as posted charges,
+- omits the section for roles that cannot read ledger financial rows,
+- keeps posting retry, payments, corrections, and financial mutations out of
+  scope.
+
+### Next Recommended Task
+
+Task 86 - Payment Recording Foundation Planning / Data Model Decision
+
+Completed direction:
+
+- selected a dedicated future `patient_payments` entity plus linked
+  `patient_ledger_entries` payment credit rows,
+- defined payment methods as an initial constrained set: `cash`, `card`,
+  `bank_transfer`, and `other`,
+- selected patient-scoped unallocated payments for MVP; charge/payment
+  allocation remains deferred,
+- defined reversal-based correction principles rather than destructive payment
+  edits or ledger deletion,
+- recommended `owner_admin` and `reception_admin` as initial payment-recording
+  roles through a controlled pathway,
+- kept patient balance, amount due, paid/unpaid status, receipts, invoices,
+  refunds, discounts/write-offs, commissions, materials, and treatment-plan
+  conversion out of scope.
+
+### Next Recommended Task
+
+Task 87 - Payment Schema/RLS Foundation
+
+Completed direction:
+
+- added the future `patient_payments` table,
+- constrained positive amount, three-letter currency, payment method, status,
+  same-clinic patient scope, and payment-recorder profiles,
+- selected `cash`, `card`, `bank_transfer`, and `other` as the initial payment
+  methods,
+- added `posted` and `reversed` status foundation without adding reversal
+  workflow,
+- prepared `patient_ledger_entries.patient_payment_id` for future linked posted
+  payment credit entries,
+- added uniqueness to prevent duplicate posted payment credits for one payment,
+- added conservative same-clinic read policies and no authenticated direct
+  insert/update/delete policies,
+- preserved existing ledger charge and posted-charges behavior,
+- kept payment UI, balance, receipts, invoices, refunds, allocation,
+  commissions, materials, and treatment-plan conversion out of scope.
+
+### Next Recommended Task
+
+Task 88 - Payment Service Layer / Controlled Recording and Reversal Boundary
+
+Suggested direction:
+
+- add a controlled payment-recording RPC/service pathway for `owner_admin` and
+  `reception_admin`,
+- create `patient_payments` rows and linked ledger `payment` credit rows using
+  trusted server-side values,
+- make payment recording idempotent and retry-safe,
+- define the first safe reversal boundary or explicitly defer reversal workflow,
+- keep payment UI, balance, invoices/receipts, refunds, allocation, commissions,
   materials, and treatment-plan conversion out of scope.
 
 ### Completed Recommended Task

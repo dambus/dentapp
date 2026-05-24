@@ -12,6 +12,7 @@ import {
   Select,
 } from '../../components/ui'
 import { classNames } from '../../lib/classNames'
+import { PatientPostedChargesSection } from '../patient-ledger/PatientPostedChargesSection'
 import { ClinicalNotesSection } from './ClinicalNotesSection'
 import { OdontogramSection } from './OdontogramSection'
 import {
@@ -30,6 +31,7 @@ export type PatientFullRecordSection =
   | 'odontogram'
   | 'treatment-plans'
   | 'clinical-notes'
+  | 'charges'
   | 'documents'
   | 'timeline'
 
@@ -45,9 +47,12 @@ type PatientFullRecordProps = {
   canViewClinicalNotes: boolean
   canManageClinicalNotes: boolean
   canViewTreatmentPlans: boolean
+  canViewPostedCharges: boolean
+  canOpenCompletedChargeVisits: boolean
   highlightedVisitId?: string | null
   isPatientArchived: boolean
   onEditMedicalRecord: () => void
+  onOpenCompletedVisit: (visitId: string) => void
 }
 
 type DetailItemProps = {
@@ -90,6 +95,7 @@ function getPatientFullRecordSectionLabel(
     odontogram: 'Odontogram',
     'treatment-plans': 'Plans',
     'clinical-notes': 'Notes',
+    charges: 'Charges',
     documents: 'Documents',
     timeline: 'Timeline',
   }
@@ -109,9 +115,12 @@ export function PatientFullRecord({
   canViewClinicalNotes,
   canManageClinicalNotes,
   canViewTreatmentPlans,
+  canViewPostedCharges,
+  canOpenCompletedChargeVisits,
   highlightedVisitId,
   isPatientArchived,
   onEditMedicalRecord,
+  onOpenCompletedVisit,
 }: PatientFullRecordProps) {
   const hasMedicalWarnings = patient.medicalWarnings.length > 0
   const availableSections: PatientFullRecordSection[] = [
@@ -119,6 +128,7 @@ export function PatientFullRecord({
     ...(canViewOdontogram ? (['odontogram'] as const) : []),
     ...(canViewTreatmentPlans ? (['treatment-plans'] as const) : []),
     ...(canViewClinicalNotes ? (['clinical-notes'] as const) : []),
+    ...(canViewPostedCharges ? (['charges'] as const) : []),
     'documents',
     'timeline',
   ]
@@ -433,6 +443,26 @@ export function PatientFullRecord({
               canManageNotes={canManageClinicalNotes}
               isPatientArchived={isPatientArchived}
             />
+          </div>
+        ) : null}
+
+        {canViewPostedCharges ? (
+          <div
+            className={classNames(
+              selectedSection === 'charges' ? 'block' : 'hidden',
+            )}
+            id="patient-posted-charges-section"
+          >
+            <RecordSection
+              title="Posted charges"
+              description="Read-only service charges recorded in DentApp."
+            >
+              <PatientPostedChargesSection
+                canOpenCompletedVisits={canOpenCompletedChargeVisits}
+                onOpenCompletedVisit={onOpenCompletedVisit}
+                patientId={patient.id}
+              />
+            </RecordSection>
           </div>
         ) : null}
 

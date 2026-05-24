@@ -35,6 +35,12 @@ import {
   type VisitNextStep,
 } from '../features/visits/visitCompletionService'
 import {
+  getCompletedVisitFinancialSummary,
+  type CompletedVisitFinancialSummary,
+} from '../features/patient-ledger/patientLedgerService'
+import { formatPerformedServiceAmount } from '../features/performed-services/performedServicesDraftModel'
+import type { PerformedServiceRecord } from '../features/performed-services/performedServicesService'
+import {
   getPatientDetailPath,
   getPatientFollowUpSchedulingPath,
   routePaths,
@@ -82,11 +88,232 @@ function getTimelinePath(patientId: string) {
   return `${getPatientDetailPath(patientId)}?section=timeline`
 }
 
+function getServicePostingStatus(
+  service: PerformedServiceRecord,
+  summary: CompletedVisitFinancialSummary,
+) {
+  return summary.postedCharges.some(
+    (charge) => charge.performedServiceId === service.id,
+  )
+}
+
+function formatPostedChargeTotals(summary: CompletedVisitFinancialSummary) {
+  return summary.postedChargeTotals
+    .map((total) => formatPerformedServiceAmount(total.amount, total.currency))
+    .join(' + ')
+}
+
+function CompletedVisitServicesChargesSection({
+  error,
+  summary,
+}: {
+  error: string | null
+  summary: CompletedVisitFinancialSummary | null
+}) {
+  if (error) {
+    return (
+      <Card
+        className="print-visit-detail-card border-slate-200 shadow-sm"
+        data-testid="completed-visit-detail-services-charges"
+      >
+        <CardHeader>
+          <div className="flex flex-col gap-2">
+            <CardTitle>Services & charges</CardTitle>
+            <CardDescription>Read-only completed visit record.</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <InlineNotice variant="warning">
+            Services and charges could not be loaded. {error}
+          </InlineNotice>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!summary) {
+    return null
+  }
+
+  if (!summary.canReadFinancialData || summary.status === 'blocked') {
+    return (
+      <Card
+        className="print-visit-detail-card border-slate-200 shadow-sm"
+        data-testid="completed-visit-detail-services-charges"
+      >
+        <CardHeader>
+          <div className="flex flex-col gap-2">
+            <CardTitle>Services & charges</CardTitle>
+            <CardDescription>Read-only completed visit record.</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <InlineNotice
+            data-testid="completed-visit-financial-blocked"
+            variant="neutral"
+          >
+            Services and charges are not available for the current role.
+          </InlineNotice>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (summary.status === 'no_services') {
+    return (
+      <Card
+        className="print-visit-detail-card border-slate-200 shadow-sm"
+        data-testid="completed-visit-detail-services-charges"
+      >
+        <CardHeader>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Services & charges</CardTitle>
+              <Badge variant="neutral">Read-only</Badge>
+            </div>
+            <CardDescription>Read-only completed visit record.</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <InlineNotice
+            data-testid="completed-visit-financial-empty"
+            variant="neutral"
+          >
+            No performed services were recorded for this visit.
+          </InlineNotice>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const totalLabel = formatPostedChargeTotals(summary)
+  const isPosted = summary.status === 'posted'
+
+  return (
+    <Card
+      className="print-visit-detail-card border-slate-200 shadow-sm"
+      data-testid="completed-visit-detail-services-charges"
+    >
+      <CardHeader>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Services & charges</CardTitle>
+              <Badge variant="neutral">Read-only</Badge>
+              <Badge
+                data-testid="completed-visit-financial-posting-status"
+                variant={isPosted ? 'success' : 'warning'}
+              >
+                {isPosted ? 'Posted to patient account' : 'Charge posting pending'}
+              </Badge>
+            </div>
+            <CardDescription>
+              Finalized services and visit-scoped posted charge visibility.
+            </CardDescription>
+          </div>
+          {totalLabel ? (
+            <Badge
+              data-testid="completed-visit-financial-total"
+              variant="info"
+            >
+              Charge total {totalLabel}
+            </Badge>
+          ) : null}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 sm:space-y-5">
+        {!isPosted ? (
+          <InlineNotice
+            data-testid="completed-visit-financial-pending"
+            variant="warning"
+          >
+            Charges have not been fully posted to the patient account. This view
+            is read-only; use Visit Completion retry handling for posting.
+          </InlineNotice>
+        ) : null}
+
+        <ol className="space-y-3 sm:space-y-4">
+          {summary.finalizedServices.map((service, index) => {
+            const posted = getServicePostingStatus(service, summary)
+
+            return (
+              <li
+                className="rounded-md border border-slate-200 bg-slate-50 p-4"
+                data-testid="completed-visit-financial-service-row"
+                key={service.id}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="neutral">#{index + 1}</Badge>
+                  <div className="font-semibold text-slate-950">
+                    {service.serviceNameSnapshot}
+                  </div>
+                  <Badge variant={posted ? 'success' : 'warning'}>
+                    {posted ? 'Posted charge' : 'Posting pending'}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <MetricTile
+                    label="Quantity"
+                    value={String(service.quantity)}
+                    description="Finalized service quantity."
+                    tone="info"
+                  />
+                  <MetricTile
+                    label="Unit price"
+                    value={formatPerformedServiceAmount(
+                      service.unitPriceAmount,
+                      service.currency,
+                    )}
+                    description="Snapshot from completion."
+                    tone="info"
+                  />
+                  <MetricTile
+                    label="Line amount"
+                    value={formatPerformedServiceAmount(
+                      service.finalAmount,
+                      service.currency,
+                    )}
+                    description="Finalized charge snapshot."
+                    tone="success"
+                  />
+                  <MetricTile
+                    label="Credited provider"
+                    value={
+                      service.creditedProvider?.fullName ??
+                      'Provider unavailable'
+                    }
+                    description="Provider credit on rendered service."
+                    tone={service.creditedProvider ? 'success' : 'default'}
+                  />
+                </div>
+                {service.toothOrRegion ? (
+                  <p className="mt-3 text-sm text-slate-600">
+                    Tooth / region: {service.toothOrRegion}
+                  </p>
+                ) : null}
+              </li>
+            )
+          })}
+        </ol>
+        <InlineNotice variant="info">
+          This section shows read-only service and posted charge records. It
+          does not show payment status, invoices, receipts, or patient balance.
+        </InlineNotice>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function PatientVisitDetailPage() {
   const { patientId, visitId } = useParams()
   const navigate = useNavigate()
   const [patient, setPatient] = useState<DemoPatient | undefined>()
   const [visit, setVisit] = useState<CompletedVisitDetail | null>(null)
+  const [financialSummary, setFinancialSummary] =
+    useState<CompletedVisitFinancialSummary | null>(null)
+  const [financialSummaryError, setFinancialSummaryError] = useState<
+    string | null
+  >(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [hasLoaded, setHasLoaded] = useState(false)
@@ -99,10 +326,14 @@ export function PatientVisitDetailPage() {
       setErrorMessage(null)
 
       try {
-        const [loadedPatient, loadedVisit] = await Promise.all([
+        const [loadedPatient, loadedVisit, loadedFinancialSummary] =
+          await Promise.all([
           getPatientById(patientId),
           patientId && visitId
             ? fetchCompletedVisitById(patientId, visitId)
+            : Promise.resolve(null),
+          patientId && visitId
+            ? getCompletedVisitFinancialSummary(patientId, visitId)
             : Promise.resolve(null),
         ])
 
@@ -112,6 +343,16 @@ export function PatientVisitDetailPage() {
 
         setPatient(loadedPatient)
         setVisit(loadedVisit)
+        if (loadedFinancialSummary?.ok) {
+          setFinancialSummary(loadedFinancialSummary.summary)
+          setFinancialSummaryError(null)
+        } else {
+          setFinancialSummary(null)
+          setFinancialSummaryError(
+            loadedFinancialSummary?.error ??
+              'Services and charges could not be loaded.',
+          )
+        }
       } catch (error) {
         if (isCurrent) {
           setErrorMessage(
@@ -420,6 +661,11 @@ export function PatientVisitDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        <CompletedVisitServicesChargesSection
+          error={financialSummaryError}
+          summary={financialSummary}
+        />
 
         <div className="grid gap-5 lg:grid-cols-2">
           <Card
