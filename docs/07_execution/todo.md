@@ -208,6 +208,8 @@ Status legend:
   - [x] Task 64: Appointment Schedule Compact Density / Mobile Readability Pass
   - [x] Task 64B: Fix Appointments Responsive Overflow Regression
   - [x] Task 65: Responsive Overflow Smoke Guard
+  - [x] Task 66: Appointment Card Dropdown Anchoring / Mobile Menu Fix
+  - [x] Task 67: Appointment Operational State Planning / Data Model Decision
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -275,6 +277,9 @@ Status legend:
 - [x] Task 64 - Appointment Schedule Compact Density / Mobile Readability Pass
 - [x] Task 64B - Fix Appointments Responsive Overflow Regression
 - [x] Task 65 - Responsive Overflow Smoke Guard
+- [x] Task 66 - Appointment Card Dropdown Anchoring / Mobile Menu Fix
+- [x] Task 67 - Appointment Operational State Planning / Data Model Decision
+- [ ] Task 68 - Appointment Operational State Schema/RLS Foundation
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -856,6 +861,44 @@ Completed direction:
 - reused the existing authenticated browser smoke session and fixtures,
 - changed no product behavior, schema, migrations, RLS, provider workload,
   availability logic, or appointment states.
+
+### Completed Recommended Task
+
+Task 66 - Appointment Card Dropdown Anchoring / Mobile Menu Fix
+
+Completed direction:
+
+- made AppointmentCard menu triggers card-relative and fixed in the upper-right
+  corner,
+- reserved header/status space so time, patient, and badges do not overlap the
+  fixed trigger,
+- kept status badges and metadata wrapping independently from the trigger,
+- kept the opened menu viewport-bounded on narrow screens,
+- expanded responsive browser smoke coverage to open a scheduled appointment
+  card menu at 390px, 430px, 500px, 912px, and 1440px,
+- verified opening the menu does not create horizontal overflow and the menu
+  remains inside the viewport,
+- preserved Cancel / Mark no-show behavior, provider filtering, provider URL
+  params, Visit Completion handoff, appointment detail navigation, schema, RLS,
+  and lifecycle rules.
+
+### Completed Recommended Task
+
+Task 67 - Appointment Operational State Planning / Data Model Decision
+
+Completed direction:
+
+- documented that appointment lifecycle `status` should remain limited to
+  `scheduled`, `completed`, `cancelled`, and `no_show`,
+- recommended modeling day-of-visit clinic progression separately from
+  appointment lifecycle status,
+- recommended MVP operational states of `not_arrived`, `arrived`, and
+  `ready_for_doctor`,
+- recommended a future `appointments.operational_state` text field with a check
+  constraint and dedicated service/RLS validation,
+- documented transition rules, role/RLS implications, UI impact, smoke/RLS test
+  plan, and phased implementation tasks,
+- changed no runtime behavior.
 
 ### Later Appointment Direction
 

@@ -157,16 +157,28 @@ export function AppointmentCard({
   return (
     <article
       className={classNames(
-        'group min-w-0 max-w-full rounded-md border border-l-4 border-slate-200 bg-white shadow-sm transition-colors hover:border-slate-300',
+        'group relative min-w-0 max-w-full rounded-md border border-l-4 border-slate-200 bg-white shadow-sm transition-colors hover:border-slate-300',
         statusToneClass,
         variant === 'compact' ? 'p-3.5 sm:p-4' : 'p-4',
         className,
       )}
       data-testid="appointment-card"
     >
+      {menuItems.length > 0 ? (
+        <div className="absolute right-3 top-3 z-20 sm:right-4 sm:top-4">
+          <ActionMenu
+            disabled={isBusy}
+            items={menuItems}
+            label="Appointment actions"
+            menuClassName="max-w-[calc(100vw-2rem)] min-w-48 p-1.5"
+            itemClassName="min-h-10 gap-2.5 px-3.5 py-2.5 whitespace-normal font-medium"
+          />
+        </div>
+      ) : null}
+
       <div className="flex min-w-0 flex-col gap-3.5">
         <div className="grid min-w-0 max-w-full gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,auto)] md:items-start">
-          <div className="min-w-0">
+          <div className="min-w-0 pr-12">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <div className="flex items-center gap-2 text-base font-semibold leading-6 text-slate-950 sm:text-lg">
                 <Clock3 aria-hidden className="h-4 w-4 shrink-0 text-cyan-700" />
@@ -200,22 +212,13 @@ export function AppointmentCard({
             )}
           </div>
 
-          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 md:justify-end">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 md:justify-end md:pr-12">
             <StatusBadge status={appointment.status} />
             {hasOpenVisit ? (
               <Badge variant="warning">Visit in progress</Badge>
             ) : null}
             {appointment.linkedVisit ? (
               <Badge variant="success">Visit completed</Badge>
-            ) : null}
-            {menuItems.length > 0 ? (
-              <ActionMenu
-                disabled={isBusy}
-                items={menuItems}
-                label="Appointment actions"
-                menuClassName="max-w-[calc(100vw-2rem)] min-w-48 p-1.5"
-                itemClassName="min-h-10 gap-2.5 px-3.5 py-2.5 whitespace-normal font-medium"
-              />
             ) : null}
           </div>
         </div>

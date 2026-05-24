@@ -3461,6 +3461,111 @@ Initial stack:
 
 ---
 
+### Completed (Task 66 - Appointment Card Dropdown Anchoring / Mobile Menu Fix)
+
+- Fixed AppointmentCard secondary action menu trigger positioning:
+	- card root is now `relative`,
+	- menu trigger is in an absolute upper-right card slot,
+	- time/patient header reserves right-side space,
+	- status badges wrap independently from the trigger,
+	- wider-screen status rows reserve space near the fixed trigger.
+- Kept the opened menu inside the viewport:
+	- retained bounded menu width,
+	- kept menu alignment opening toward the card interior,
+	- avoided clipping the dropdown with overflow hiding.
+- Expanded browser smoke coverage:
+	- added a scheduled fixture appointment for menu-anchor checks,
+	- added a coarse trigger upper-right geometry check,
+	- opened the menu during responsive overflow smoke,
+	- asserted no horizontal overflow after menu open,
+	- asserted opened menu bounds stay within the viewport.
+- The responsive menu check runs at:
+	- 390px,
+	- 430px,
+	- 500px,
+	- 912px,
+	- 1440px.
+- Preserved all existing behavior:
+	- Cancel / Mark no-show visibility and eligibility,
+	- provider filtering,
+	- provider URL params,
+	- Visit Completion handoff,
+	- appointment detail navigation.
+- No schema, migration, RLS, lifecycle rule, provider workload calendar,
+  availability logic, or new appointment states were added.
+- Documented the task in
+  `docs/design/task-66-appointment-card-dropdown-mobile-fix.md`.
+
+### Verification (Task 66)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Checkpoint B - Product Roadmap Re-balance, or provider availability planning
+  if schedule capacity becomes the next priority.
+
+---
+
+### Completed (Task 67 - Appointment Operational State Planning / Data Model Decision)
+
+- Reviewed the current appointment lifecycle/status implementation across:
+	- appointments schema and RLS migrations,
+	- appointment service hydration and lifecycle guards,
+	- Appointments page daily/weekly actions,
+	- Appointment Detail actions,
+	- Patient Appointment Summary actions,
+	- AppointmentCard hierarchy and lifecycle menu,
+	- Visit Completion appointment context and completion service,
+	- appointment/provider/lifecycle RLS and browser smoke coverage.
+- Confirmed the current `appointments.status` model remains lifecycle-focused:
+	- `scheduled`,
+	- `completed`,
+	- `cancelled`,
+	- `no_show`.
+- Confirmed direct appointment status updates are limited to cancel/no-show,
+  while linked Visit Completion completion marks appointments completed.
+- Recommended keeping day-of-visit operational progression separate from
+  appointment lifecycle status.
+- Recommended the MVP operational state set:
+	- `not_arrived`,
+	- `arrived`,
+	- `ready_for_doctor`.
+- Recommended adding a future `appointments.operational_state` text column with
+  a check constraint, rather than expanding `appointments.status` or creating an
+  event table for MVP.
+- Documented allowed transitions, role/RLS implications, UI impact, test plan,
+  and phased implementation tasks.
+- Preserved all runtime behavior. No schema, migration, RLS, service, UI, or
+  smoke test code was changed.
+- Documented the decision in
+  `docs/design/task-67-appointment-operational-state-planning.md`.
+
+### Verification (Task 67)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+
+### Next Recommended Task
+
+- Task 68 - Appointment Operational State Schema/RLS Foundation, or Checkpoint B
+  - Product Roadmap Re-balance if planning should be refreshed first.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

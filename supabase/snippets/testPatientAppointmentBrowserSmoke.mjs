@@ -33,6 +33,7 @@ const MANUAL_CREATION_NOTES = 'Optional note demo'
 const MANUAL_CREATION_DATE = getDateInputValueForOffset(1)
 const ASSIGNED_PROVIDER_NAME = 'Doctor Demo'
 const UNASSIGNED_FILTER_REASON = 'Task 62 unassigned provider filter check'
+const MENU_ANCHOR_REASON = 'Task 66 appointment card menu anchor check'
 const CANCELLED_REASON = 'Task 51 cancelled appointment status check'
 const NO_SHOW_REASON = 'Task 54 no-show appointment status check'
 const BRIDGE_PROCEDURE = 'Task 44 bridge procedure'
@@ -58,6 +59,7 @@ const OVERFLOW_TOLERANCE_PX = 2
 const RESPONSIVE_OVERFLOW_VIEWPORTS = [
   { label: 'mobile 390', mobile: true, width: 390, height: 844, deviceScaleFactor: 3 },
   { label: 'mobile 430', mobile: true, width: 430, height: 932, deviceScaleFactor: 3 },
+  { label: 'mobile 500', mobile: true, width: 500, height: 900, deviceScaleFactor: 2 },
   { label: 'tablet 912', mobile: false, width: 912, height: 1368, deviceScaleFactor: 1 },
   { label: 'desktop 1440', mobile: false, width: 1440, height: 1000, deviceScaleFactor: 1 },
 ]
@@ -138,6 +140,11 @@ async function prepareFixture() {
     .delete()
     .eq('patient_id', DEMO_SLUG_SUPABASE_PATIENT_ID)
     .eq('reason', UNASSIGNED_FILTER_REASON)
+  await serviceClient
+    .from('appointments')
+    .delete()
+    .eq('patient_id', PATIENT_ID)
+    .eq('reason', MENU_ANCHOR_REASON)
   await serviceClient
     .from('visits')
     .update({
@@ -887,6 +894,113 @@ async function assertNoHorizontalOverflow(cdp, label, viewportWidth) {
   }
 }
 
+async function assertAppointmentCardMenuAnchoredAndContained(
+  cdp,
+  cardText,
+  label,
+  viewportWidth,
+) {
+  const geometry = await evaluate(
+    cdp,
+    `(() => {
+      const cards = Array.from(document.querySelectorAll(${JSON.stringify(APPOINTMENT_CARD_SELECTOR)}));
+      const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(cardText)}));
+
+      if (!card) {
+        return { error: 'card_not_found' };
+      }
+
+      const trigger = card.querySelector(${JSON.stringify(`[aria-label="${APPOINTMENT_CARD_MENU_LABEL}"]`)});
+
+      if (!(trigger instanceof HTMLButtonElement)) {
+        return { error: 'trigger_not_found' };
+      }
+
+      const cardRect = card.getBoundingClientRect();
+      const triggerRect = trigger.getBoundingClientRect();
+
+      return {
+        cardRight: Math.round(cardRect.right),
+        cardTop: Math.round(cardRect.top),
+        triggerLeft: Math.round(triggerRect.left),
+        triggerRight: Math.round(triggerRect.right),
+        triggerTop: Math.round(triggerRect.top),
+      };
+    })()`,
+  )
+
+  if (geometry.error) {
+    throw new Error(
+      `${label}: appointment card menu trigger check failed (${geometry.error}).`,
+    )
+  }
+
+  const isNearRightEdge = geometry.triggerRight >= geometry.cardRight - 18
+  const isNearTopEdge = geometry.triggerTop <= geometry.cardTop + 24
+
+  if (!isNearRightEdge || !isNearTopEdge) {
+    throw new Error(
+      [
+        `${label}: appointment card menu trigger is not anchored in the card upper-right area.`,
+        `viewportWidth=${viewportWidth}`,
+        `cardTop=${geometry.cardTop}`,
+        `cardRight=${geometry.cardRight}`,
+        `triggerTop=${geometry.triggerTop}`,
+        `triggerLeft=${geometry.triggerLeft}`,
+        `triggerRight=${geometry.triggerRight}`,
+      ].join(' '),
+    )
+  }
+
+  await openAppointmentCardMenu(cdp, cardText)
+  await waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `document.querySelector('[role="menu"]') instanceof HTMLElement`,
+      ),
+    `${label} appointment menu open`,
+  )
+  await assertNoHorizontalOverflow(cdp, `${label} with appointment menu open`, viewportWidth)
+
+  const menuGeometry = await evaluate(
+    cdp,
+    `(() => {
+      const menu = document.querySelector('[role="menu"]');
+
+      if (!(menu instanceof HTMLElement)) {
+        return { error: 'menu_not_found' };
+      }
+
+      const rect = menu.getBoundingClientRect();
+
+      return {
+        left: Math.round(rect.left),
+        right: Math.round(rect.right),
+        viewportWidth: window.innerWidth,
+      };
+    })()`,
+  )
+
+  if (menuGeometry.error) {
+    throw new Error(`${label}: appointment menu check failed (${menuGeometry.error}).`)
+  }
+
+  if (
+    menuGeometry.left < -OVERFLOW_TOLERANCE_PX ||
+    menuGeometry.right > menuGeometry.viewportWidth + OVERFLOW_TOLERANCE_PX
+  ) {
+    throw new Error(
+      [
+        `${label}: appointment menu opened outside the viewport.`,
+        `viewportWidth=${viewportWidth}`,
+        `menuLeft=${menuGeometry.left}`,
+        `menuRight=${menuGeometry.right}`,
+      ].join(' '),
+    )
+  }
+}
+
 async function runResponsiveOverflowSmoke(cdp, screens) {
   for (const viewport of RESPONSIVE_OVERFLOW_VIEWPORTS) {
     await setViewport(cdp, viewport)
@@ -901,7 +1015,7 @@ async function runResponsiveOverflowSmoke(cdp, screens) {
       )
 
       if (screen.prepare) {
-        await screen.prepare(cdp, label)
+        await screen.prepare(cdp, label, viewport)
       }
 
       await waitFor(
@@ -2439,11 +2553,25 @@ async function main() {
       throw new Error('Completed appointment card should not expose lifecycle status actions.')
     }
 
+    await createServiceAppointment(MENU_ANCHOR_REASON)
+
     await runResponsiveOverflowSmoke(cdp, [
       {
         label: 'Appointments daily schedule',
         url: APPOINTMENTS_URL,
         waitForText: 'Daily schedule',
+        prepare: async (browser, label, viewport) => {
+          await waitFor(
+            () => textIncludes(browser, MENU_ANCHOR_REASON),
+            `${label} scheduled menu anchor appointment`,
+          )
+          await assertAppointmentCardMenuAnchoredAndContained(
+            browser,
+            MENU_ANCHOR_REASON,
+            label,
+            viewport.width,
+          )
+        },
       },
       {
         label: 'Appointments weekly schedule',
