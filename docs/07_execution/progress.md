@@ -4867,6 +4867,48 @@ Initial stack:
 
 ---
 
+### Completed (Task 87B - Browser Smoke Appointment Bridge Timeout Investigation / Narrow Fix)
+
+- Reproduced the authenticated browser smoke timeout and captured output in
+  `tmp-browser-smoke-task87b.log`.
+- Confirmed the failing assertion was the Task 44 appointment bridge check in
+  `supabase/snippets/testPatientAppointmentBrowserSmoke.mjs`, waiting for
+  `Task 44 appointment bridge recommendation` on the appointments list.
+- Verified the backing appointment row existed at failure time as a scheduled,
+  not-arrived appointment for the expected patient and clinic.
+- Identified the root cause as an appointment-list date range mismatch:
+  appointment creation uses local date/time values, while the list query treated
+  date-only range boundaries as UTC calendar days.
+- Updated `src/features/appointments/appointmentService.ts` so date-only
+  appointment range queries use local day start/end boundaries before converting
+  to ISO for Supabase.
+- Documented the investigation and fix in
+  `docs/design/task-87b-browser-smoke-appointment-bridge-timeout-fix.md`.
+- No Task 88 payment service, payment UI, balance, invoice, receipt, refund,
+  reversal, payment schema, ledger schema, or RLS changes were made.
+
+### Verification (Task 87B)
+
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  twice against `http://127.0.0.1:5173`, including the previously failing
+  Task 44 appointment bridge schedule-list assertion.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testPatientLedgerRls.mjs` passes.
+- `node .\supabase\snippets\testPatientLedgerPostingRls.mjs` passes.
+- `node .\supabase\snippets\testPatientPaymentsRls.mjs` passes.
+- `node .\supabase\snippets\testPerformedServicesRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+
+### Next Recommended Task
+
+- Task 88 - Payment Service Layer / Controlled Recording and Reversal Boundary.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

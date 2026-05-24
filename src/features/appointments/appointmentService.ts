@@ -421,8 +421,11 @@ function toRangeDateBoundary(value: string, mode: 'start' | 'end') {
   const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/
 
   if (dateOnlyPattern.test(trimmed)) {
-    const daySuffix = mode === 'start' ? 'T00:00:00.000Z' : 'T23:59:59.999Z'
-    const parsed = new Date(`${trimmed}${daySuffix}`)
+    const [year, month, day] = trimmed.split('-').map(Number)
+    const parsed =
+      mode === 'start'
+        ? new Date(year, month - 1, day, 0, 0, 0, 0)
+        : new Date(year, month - 1, day, 23, 59, 59, 999)
 
     return Number.isNaN(parsed.getTime()) ? null : parsed
   }
