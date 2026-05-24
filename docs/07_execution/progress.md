@@ -4456,6 +4456,75 @@ Initial stack:
 
 ---
 
+### Completed (Task 81 - Patient Ledger Service Layer / Idempotent Charge Posting)
+
+- Added controlled patient-ledger charge posting RPCs:
+  - `get_patient_ledger_charge_posting_state_for_visit(...)`,
+  - `post_finalized_performed_services_to_patient_ledger(...)`.
+- Kept ledger mutation behind the RPC boundary; no broad authenticated direct
+  insert/update/delete table policies were added.
+- Posted charges only from trusted finalized `performed_services` source values:
+  clinic, patient, visit, appointment, amount, currency, service snapshot, and
+  performed-service reference are derived server-side.
+- Created one posted debit `charge` ledger entry per eligible finalized
+  performed service on a completed visit.
+- Preserved idempotency:
+  - repeated posting returns `already_posted` and creates no duplicates,
+  - partial prior posting creates only missing charge entries,
+  - Task 80's unique posted-charge-per-performed-service index remains the final
+    duplicate guard.
+- Added explicit posting/check states for `posting_required`, `posted`,
+  `already_posted`, `no_services`, `blocked`, and frontend `error` fallback.
+- Chose the posting role boundary:
+  - `owner_admin`, `doctor`, and `specialist` can post same-clinic eligible
+    charges,
+  - `reception_admin` can read/check state but cannot post,
+  - `assistant` and `inventory_responsible` remain blocked.
+- Added `src/features/patient-ledger/patientLedgerService.ts` with typed helpers
+  for future UI wiring.
+- Added focused posting/RLS coverage in
+  `supabase/snippets/testPatientLedgerPostingRls.mjs`.
+- Preserved the boundary that ledger posting does not mutate clinical
+  completion, performed-service finalization snapshots, appointment lifecycle,
+  appointment operational state, assigned provider, follow-up/next-step,
+  treatment plans, payments, balances, invoices, receipts, commissions, or
+  materials.
+- Did not wire ledger posting into Visit Completion UI.
+- Documented the task in
+  `docs/design/task-81-patient-ledger-service-idempotent-charge-posting.md`.
+
+### Verification (Task 81)
+
+- `npx.cmd supabase migration up` applies
+  `20260524213000_add_patient_ledger_charge_posting_rpc.sql`.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientLedgerPostingRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testPatientLedgerRls.mjs` passes with local `.env`
+  loaded.
+- `node .\supabase\snippets\testPerformedServicesRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes with
+  local `.env` loaded.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `http://127.0.0.1:5173` after clearing deterministic leftover
+  browser-smoke fixtures from an earlier failed run.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded.
+
+### Next Recommended Task
+
+- Task 82 - Visit Completion Ledger Posting Wiring / Post-completion Charge
+  Posting Failure Handling.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

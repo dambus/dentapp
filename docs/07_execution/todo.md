@@ -297,8 +297,8 @@ Status legend:
 - [x] Task 78 - Visit Completion Performed Services Finalization Wiring
 - [x] Task 79 - Patient Ledger Foundation Planning / Data Model Decision
 - [x] Task 80 - Patient Ledger Schema/RLS Foundation
-- [ ] Task 81 - Patient Ledger Service Layer / Idempotent Charge Posting from Finalized Performed Services
-- [ ] Task 82 - Completed Visit Financial Read-only Display / Posting Visibility
+- [x] Task 81 - Patient Ledger Service Layer / Idempotent Charge Posting from Finalized Performed Services
+- [ ] Task 82 - Visit Completion Ledger Posting Wiring / Post-completion Charge Posting Failure Handling
 - [ ] Task 83 - Patient Account Read-only Ledger / Balance Summary
 - [ ] Task 84 - Payment Recording Foundation
 - [ ] Task 85 - Doctor Commission Planning
@@ -749,6 +749,37 @@ Completed direction:
 
 Task 81 - Patient Ledger Service Layer / Idempotent Charge Posting from
 Finalized Performed Services.
+
+Completed direction:
+
+- added controlled RPCs for checking and posting ledger charge entries from
+  finalized performed services on completed visits,
+- kept ledger mutation server-side and did not add authenticated direct
+  insert/update/delete policies,
+- posted one debit `charge` entry per eligible finalized performed service
+  using trusted service snapshots,
+- made posting retry-safe and partial-posting-safe,
+- kept zero-service visits non-erroring with no fake ledger rows,
+- limited posting to `owner_admin`, `doctor`, and `specialist`; kept
+  `reception_admin`, `assistant`, and `inventory_responsible` from posting,
+- added a typed frontend service wrapper without wiring Visit Completion UI,
+- added focused posting/RLS smoke coverage.
+
+### Next Recommended Task
+
+Task 82 - Visit Completion Ledger Posting Wiring / Post-completion Charge
+Posting Failure Handling
+
+Suggested direction:
+
+- wire the Task 81 posting helper after performed-services finalization in Visit
+  Completion,
+- preserve clinical completion and performed-service finalization even if ledger
+  posting later needs retry,
+- add completed-state UI messaging for posted, no-services, posting-required,
+  and blocked ledger posting states,
+- keep payments, balances, invoices/receipts, refunds/discounts/write-offs,
+  commissions, materials, and treatment-plan conversion out of scope.
 
 ### Completed Recommended Task
 
