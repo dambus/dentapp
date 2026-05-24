@@ -53,6 +53,11 @@ import {
   replaceDraftPerformedServicesForVisit,
   type PerformedServicesFinalizationState,
 } from '../performed-services/performedServicesService'
+import {
+  postFinalizedPerformedServicesChargesForVisit,
+  type PatientLedgerChargePostingReason,
+  type PatientLedgerChargePostingState,
+} from '../patient-ledger/patientLedgerService'
 import { VisitCompletionSummary } from './VisitCompletionSummary'
 import {
   completeVisit,
@@ -214,6 +219,28 @@ function getUserFriendlyFinalizationError(
   return message
 }
 
+function getUserFriendlyLedgerPostingError(
+  message: string | null | undefined,
+) {
+  if (!message?.trim()) {
+    return 'Charges still need to be posted to the patient account. Retry charge posting when the connection is available.'
+  }
+
+  if (
+    message.includes('Failed to fetch') ||
+    message.includes('NetworkError') ||
+    message.includes('network')
+  ) {
+    return 'The visit is completed and services are finalized, but charges could not be posted because the connection failed. Retry charge posting when the local Supabase service is reachable.'
+  }
+
+  if (message.includes('Active profile context')) {
+    return 'The visit is completed and services are finalized, but charges could not be posted because no active profile is available. Sign in again or switch to an authorized user.'
+  }
+
+  return message
+}
+
 export function VisitCompletionFlow({
   appointmentContext,
   appointmentId,
@@ -259,6 +286,14 @@ export function VisitCompletionFlow({
   const [servicesFinalizationError, setServicesFinalizationError] = useState<
     string | null
   >(null)
+  const [ledgerPostingState, setLedgerPostingState] =
+    useState<PatientLedgerChargePostingState | null>(null)
+  const [ledgerPostingError, setLedgerPostingError] = useState<string | null>(
+    null,
+  )
+  const [ledgerPostingReason, setLedgerPostingReason] =
+    useState<PatientLedgerChargePostingReason | null>(null)
+  const [isPostingLedgerCharges, setIsPostingLedgerCharges] = useState(false)
 
   const patientName = getPatientFullName(patient)
   const procedureCount = getCompletedProcedureCount(procedures)
@@ -282,7 +317,8 @@ export function VisitCompletionFlow({
     isLoadingPerformedServices ||
     isSavingDraft ||
     isCompleting ||
-    isFinalizingServices
+    isFinalizingServices ||
+    isPostingLedgerCharges
   const plannedWork =
     patient.activeTreatmentPlanSummary.trim() ||
     'No planned treatment is recorded in the current patient context.'
@@ -384,6 +420,9 @@ export function VisitCompletionFlow({
           setServiceMessage(null)
           setServicesFinalizationState(null)
           setServicesFinalizationError(null)
+          setLedgerPostingState(null)
+          setLedgerPostingError(null)
+          setLedgerPostingReason(null)
         } else {
           setPerformedServices([])
           setServiceWarnings([])
@@ -396,6 +435,9 @@ export function VisitCompletionFlow({
           setServiceMessage(null)
           setServicesFinalizationState(null)
           setServicesFinalizationError(null)
+          setLedgerPostingState(null)
+          setLedgerPostingError(null)
+          setLedgerPostingReason(null)
         }
       } catch (error) {
         if (isCurrent) {
@@ -528,6 +570,9 @@ export function VisitCompletionFlow({
     setServiceMessage(null)
     setServicesFinalizationState(null)
     setServicesFinalizationError(null)
+    setLedgerPostingState(null)
+    setLedgerPostingError(null)
+    setLedgerPostingReason(null)
     setDraftReloadMessage(null)
 
     try {
@@ -593,6 +638,7 @@ export function VisitCompletionFlow({
     setAttemptedCompletion(true)
     setServiceError(null)
     setServicesFinalizationError(null)
+    setLedgerPostingError(null)
 
     if (!isReady) {
       setCompletionState('editing')
@@ -612,6 +658,9 @@ export function VisitCompletionFlow({
     setServiceMessage(null)
     setServicesFinalizationState(null)
     setServicesFinalizationError(null)
+    setLedgerPostingState(null)
+    setLedgerPostingError(null)
+    setLedgerPostingReason(null)
     setDraftReloadMessage(null)
 
     try {
@@ -687,12 +736,19 @@ export function VisitCompletionFlow({
 
         if (finalizationResult.ok) {
           setServicesFinalizationError(null)
+          await postLedgerChargesAfterFinalization(
+            result.draft.id,
+            finalizationResult.state,
+          )
         } else {
           setServicesFinalizationError(
             getUserFriendlyFinalizationError(
               finalizationResult.error ?? finalizationResult.message,
             ),
           )
+          setLedgerPostingState(null)
+          setLedgerPostingError(null)
+          setLedgerPostingReason(null)
         }
 
         setServiceMessage(result.message ?? 'Visit completed.')
@@ -739,12 +795,19 @@ export function VisitCompletionFlow({
 
       if (finalizationResult.ok) {
         setServicesFinalizationError(null)
+        await postLedgerChargesAfterFinalization(
+          visitId,
+          finalizationResult.state,
+        )
       } else {
         setServicesFinalizationError(
           getUserFriendlyFinalizationError(
             finalizationResult.error ?? finalizationResult.message,
           ),
         )
+        setLedgerPostingState(null)
+        setLedgerPostingError(null)
+        setLedgerPostingReason(null)
       }
     } catch (error) {
       setServicesFinalizationError(
@@ -755,6 +818,65 @@ export function VisitCompletionFlow({
     } finally {
       setIsFinalizingServices(false)
     }
+  }
+
+  async function postLedgerChargesAfterFinalization(
+    completedVisitId: string,
+    finalizationState: PerformedServicesFinalizationState | null,
+  ) {
+    if (finalizationState?.status === 'no_services') {
+      setLedgerPostingState(null)
+      setLedgerPostingError(null)
+      setLedgerPostingReason(null)
+      return
+    }
+
+    if (finalizationState?.status !== 'finalized') {
+      setLedgerPostingState(null)
+      setLedgerPostingError(null)
+      setLedgerPostingReason(null)
+      return
+    }
+
+    setIsPostingLedgerCharges(true)
+    setLedgerPostingError(null)
+    setLedgerPostingReason(null)
+
+    try {
+      const ledgerResult =
+        await postFinalizedPerformedServicesChargesForVisit(completedVisitId)
+
+      setLedgerPostingState(ledgerResult.state)
+      setLedgerPostingReason(ledgerResult.reason ?? null)
+
+      if (ledgerResult.ok) {
+        setLedgerPostingError(null)
+      } else {
+        setLedgerPostingError(
+          getUserFriendlyLedgerPostingError(
+            ledgerResult.error ?? ledgerResult.message,
+          ),
+        )
+      }
+    } catch (error) {
+      setLedgerPostingState(null)
+      setLedgerPostingReason('unknown')
+      setLedgerPostingError(
+        getUserFriendlyLedgerPostingError(
+          error instanceof Error ? error.message : null,
+        ),
+      )
+    } finally {
+      setIsPostingLedgerCharges(false)
+    }
+  }
+
+  async function retryLedgerChargePosting() {
+    if (!visitId || isPostingLedgerCharges || isCompleting) {
+      return
+    }
+
+    await postLedgerChargesAfterFinalization(visitId, servicesFinalizationState)
   }
 
   if (completionState === 'completed') {
@@ -785,6 +907,14 @@ export function VisitCompletionFlow({
             isRetrying={isFinalizingServices}
             state={servicesFinalizationState}
             onRetry={retryServicesFinalization}
+          />
+          <LedgerPostingFeedback
+            error={ledgerPostingError}
+            isRetrying={isPostingLedgerCharges}
+            reason={ledgerPostingReason}
+            servicesFinalizationState={servicesFinalizationState}
+            state={ledgerPostingState}
+            onRetry={retryLedgerChargePosting}
           />
           <VisitCompletionSummary
             procedureCount={procedureCount}
@@ -1144,6 +1274,97 @@ function ServicesFinalizationFeedback({
           variant="secondary"
         >
           {isRetrying ? 'Retrying finalization...' : 'Retry finalization'}
+        </Button>
+      ) : null}
+    </div>
+  )
+}
+
+function LedgerPostingFeedback({
+  error,
+  isRetrying,
+  reason,
+  servicesFinalizationState,
+  state,
+  onRetry,
+}: {
+  error: string | null
+  isRetrying: boolean
+  reason: PatientLedgerChargePostingReason | null
+  servicesFinalizationState: PerformedServicesFinalizationState | null
+  state: PatientLedgerChargePostingState | null
+  onRetry: () => void
+}) {
+  if (servicesFinalizationState?.status !== 'finalized') {
+    return null
+  }
+
+  if (isRetrying && !state && !error) {
+    return (
+      <InlineNotice
+        data-testid="visit-ledger-posting-running"
+        variant="info"
+      >
+        Posting charges to patient account...
+      </InlineNotice>
+    )
+  }
+
+  if (state?.status === 'posted' || state?.status === 'already_posted') {
+    return (
+      <InlineNotice
+        data-testid="visit-ledger-posting-success"
+        variant="success"
+      >
+        Charges posted to patient account.
+      </InlineNotice>
+    )
+  }
+
+  if (state?.status === 'no_services') {
+    return null
+  }
+
+  const isAuthorizationBlocked =
+    state?.status === 'blocked' && reason === 'permission'
+  const canRetry =
+    !isAuthorizationBlocked &&
+    (!state ||
+      state.status === 'posting_required' ||
+      state.status === 'error' ||
+      Boolean(error))
+
+  if (!error && !state && !isRetrying) {
+    return null
+  }
+
+  return (
+    <div
+      className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-4"
+      data-testid="visit-ledger-posting-retry-state"
+    >
+      <InlineNotice variant="warning">
+        Visit completed and services finalized. Charges still need to be posted
+        to the patient account.
+        {error ? ` ${error}` : ''}
+      </InlineNotice>
+      {isAuthorizationBlocked ? (
+        <p
+          className="text-sm text-amber-900"
+          data-testid="visit-ledger-posting-blocked"
+        >
+          This user is not authorized to post charges automatically. An
+          authorized clinical user can post them later.
+        </p>
+      ) : null}
+      {canRetry ? (
+        <Button
+          data-testid="visit-ledger-posting-retry"
+          disabled={isRetrying}
+          onClick={onRetry}
+          variant="secondary"
+        >
+          {isRetrying ? 'Retrying charge posting...' : 'Retry charge posting'}
         </Button>
       ) : null}
     </div>

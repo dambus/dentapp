@@ -298,8 +298,9 @@ Status legend:
 - [x] Task 79 - Patient Ledger Foundation Planning / Data Model Decision
 - [x] Task 80 - Patient Ledger Schema/RLS Foundation
 - [x] Task 81 - Patient Ledger Service Layer / Idempotent Charge Posting from Finalized Performed Services
-- [ ] Task 82 - Visit Completion Ledger Posting Wiring / Post-completion Charge Posting Failure Handling
-- [ ] Task 83 - Patient Account Read-only Ledger / Balance Summary
+- [x] Task 82 - Visit Completion Ledger Posting Wiring / Post-completion Charge Posting Failure Handling
+- [ ] Task 83 - Completed Visit Financial Read-only Display / Posted Charge Visibility
+- [ ] Task 83B - Patient Account Read-only Ledger / Balance Summary
 - [ ] Task 84 - Payment Recording Foundation
 - [ ] Task 85 - Doctor Commission Planning
 - [ ] Doctor commission workflow
@@ -770,7 +771,7 @@ Completed direction:
 Task 82 - Visit Completion Ledger Posting Wiring / Post-completion Charge
 Posting Failure Handling
 
-Suggested direction:
+Completed direction:
 
 - wire the Task 81 posting helper after performed-services finalization in Visit
   Completion,
@@ -778,8 +779,24 @@ Suggested direction:
   posting later needs retry,
 - add completed-state UI messaging for posted, no-services, posting-required,
   and blocked ledger posting states,
+- keep finalization retry and charge-posting retry as separate actions,
+- verify zero-service completion creates no fake ledger charge rows,
+- verify forced ledger posting failure can be retried without duplicates,
 - keep payments, balances, invoices/receipts, refunds/discounts/write-offs,
   commissions, materials, and treatment-plan conversion out of scope.
+
+### Next Recommended Task
+
+Task 83 - Completed Visit Financial Read-only Display / Posted Charge Visibility
+
+Suggested direction:
+
+- show finalized performed-service and posted ledger-charge linkage on completed
+  visit detail as read-only financial context,
+- keep amounts as snapshots and avoid editable balance/payment behavior,
+- surface whether charges are posted without adding patient-wide account UI yet,
+- keep payments, invoices/receipts, refunds/discounts/write-offs, commissions,
+  materials, and treatment-plan conversion out of scope.
 
 ### Completed Recommended Task
 

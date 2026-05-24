@@ -45,6 +45,9 @@ const BRIDGE_NEXT_STEP_LABEL = 'Schedule control visit'
 const FINALIZATION_RETRY_REASON = 'Task 78 finalization retry check'
 const FINALIZATION_RETRY_PROCEDURE = 'Task 78 retry service procedure'
 const FINALIZATION_RETRY_NOTE = 'Task 78 finalization retry clinical note'
+const LEDGER_RETRY_REASON = 'Task 82 ledger posting retry check'
+const LEDGER_RETRY_PROCEDURE = 'Task 82 ledger retry service procedure'
+const LEDGER_RETRY_NOTE = 'Task 82 ledger posting retry clinical note'
 const PERFORMED_SERVICE_CATEGORY = 'Task 77 services smoke category'
 const PERFORMED_SERVICE_NAME = 'Task 77 composite filling'
 const PERFORMED_SERVICE_CODE = 'TASK77-SVC'
@@ -141,6 +144,14 @@ async function prepareFixture() {
     throw new Error(profileResult.error?.message ?? 'Missing active doctor profile.')
   }
 
+  await serviceClient
+    .from('patient_ledger_entries')
+    .delete()
+    .in('patient_id', [PATIENT_ID, DEMO_SLUG_SUPABASE_PATIENT_ID])
+  await serviceClient
+    .from('performed_services')
+    .delete()
+    .in('patient_id', [PATIENT_ID, DEMO_SLUG_SUPABASE_PATIENT_ID])
   await serviceClient.from('appointments').delete().eq('patient_id', PATIENT_ID)
   await serviceClient
     .from('appointments')
@@ -167,6 +178,11 @@ async function prepareFixture() {
     .delete()
     .eq('patient_id', PATIENT_ID)
     .eq('reason', FINALIZATION_RETRY_REASON)
+  await serviceClient
+    .from('appointments')
+    .delete()
+    .eq('patient_id', PATIENT_ID)
+    .eq('reason', LEDGER_RETRY_REASON)
   await serviceClient
     .from('visits')
     .update({
@@ -420,6 +436,42 @@ async function getPerformedServicesSnapshotForVisit(visitId) {
   }
 
   return data ?? []
+}
+
+async function getLedgerChargeSnapshotForVisit(visitId) {
+  const serviceClient = getServiceClient()
+  const { data, error } = await serviceClient
+    .from('patient_ledger_entries')
+    .select(
+      'id, entry_type, direction, amount, currency, performed_service_id, visit_id, status',
+    )
+    .eq('visit_id', visitId)
+    .eq('entry_type', 'charge')
+    .eq('status', 'posted')
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
+}
+
+async function getLedgerChargeCountForPatient(patientId) {
+  const serviceClient = getServiceClient()
+  const { count, error } = await serviceClient
+    .from('patient_ledger_entries')
+    .select('id', { count: 'exact', head: true })
+    .eq('patient_id', patientId)
+    .eq('entry_type', 'charge')
+    .eq('status', 'posted')
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return count ?? 0
 }
 
 async function connectToChrome(port) {
@@ -1136,7 +1188,10 @@ async function runResponsiveOverflowSmoke(cdp, screens) {
     for (const screen of screens) {
       const label = `${screen.label} (${viewport.label})`
 
-      await navigate(cdp, screen.url)
+      const screenUrl =
+        typeof screen.url === 'function' ? screen.url(viewport) : screen.url
+
+      await navigate(cdp, screenUrl)
       await waitFor(
         () => textIncludes(cdp, screen.waitForText),
         `${label} ready`,
@@ -1231,6 +1286,19 @@ async function completeVisibleVisit(cdp, procedureName, clinicalNote) {
 
   if (retryVisible) {
     throw new Error('Zero-service completion should not show finalization retry.')
+  }
+
+  const ledgerRetryVisible = await evaluate(
+    cdp,
+    `document.querySelector('[data-testid="visit-ledger-posting-retry"]') !== null`,
+  )
+  const ledgerWarningVisible = await evaluate(
+    cdp,
+    `document.querySelector('[data-testid="visit-ledger-posting-retry-state"]') !== null`,
+  )
+
+  if (ledgerRetryVisible || ledgerWarningVisible) {
+    throw new Error('Zero-service completion should not show ledger posting retry or warning.')
   }
 }
 
@@ -1437,6 +1505,54 @@ async function installOneTimePerformedServiceFinalizationFailure(cdp) {
           body: Buffer.from(
             JSON.stringify({
               message: 'Browser smoke forced finalization retry.',
+            }),
+          ).toString('base64'),
+        })
+        .catch(() => undefined)
+      return
+    }
+
+    void cdp
+      .command('Fetch.continueRequest', {
+        requestId: params.requestId,
+      })
+      .catch(() => undefined)
+  })
+
+  return async () => {
+    unsubscribe()
+    await cdp.command('Fetch.disable').catch(() => undefined)
+    return failed
+  }
+}
+
+async function installOneTimeLedgerPostingFailure(cdp) {
+  let failed = false
+
+  await cdp.command('Fetch.enable', {
+    patterns: [
+      {
+        requestStage: 'Request',
+        urlPattern: '*post_finalized_performed_services_to_patient_ledger*',
+      },
+    ],
+  })
+
+  const unsubscribe = cdp.on('Fetch.requestPaused', (params) => {
+    const isLedgerPostingRequest = params.request?.method === 'POST'
+
+    if (!failed && isLedgerPostingRequest) {
+      failed = true
+      void cdp
+        .command('Fetch.fulfillRequest', {
+          requestId: params.requestId,
+          responseCode: 503,
+          responseHeaders: [
+            { name: 'content-type', value: 'application/json' },
+          ],
+          body: Buffer.from(
+            JSON.stringify({
+              message: 'Browser smoke forced ledger posting retry.',
             }),
           ).toString('base64'),
         })
@@ -1829,11 +1945,20 @@ async function main() {
         }
       },
     )
+    const demoAdHocLedgerCountBefore = await getLedgerChargeCountForPatient(
+      DEMO_SLUG_SUPABASE_PATIENT_ID,
+    )
     await completeVisibleVisit(cdp, DEMO_ADHOC_PROCEDURE, DEMO_ADHOC_NOTE)
+    const demoAdHocLedgerCountAfter = await getLedgerChargeCountForPatient(
+      DEMO_SLUG_SUPABASE_PATIENT_ID,
+    )
     unsubscribeDemoAdHocVisitNetworkCheck()
 
     if (demoAdHocVisitNetworkRequests === 0) {
       throw new Error('Demo slug ad hoc visit completion did not make a visits network request.')
+    }
+    if (demoAdHocLedgerCountAfter !== demoAdHocLedgerCountBefore) {
+      throw new Error('Zero-service ad hoc completion created a ledger charge.')
     }
 
     const demoAdHocPersistenceWarningVisible = await textIncludes(
@@ -2384,11 +2509,20 @@ async function main() {
         }
       },
     )
+    const demoLinkedLedgerCountBefore = await getLedgerChargeCountForPatient(
+      DEMO_SLUG_SUPABASE_PATIENT_ID,
+    )
     await completeVisibleVisit(cdp, DEMO_LINKED_PROCEDURE, DEMO_LINKED_NOTE)
+    const demoLinkedLedgerCountAfter = await getLedgerChargeCountForPatient(
+      DEMO_SLUG_SUPABASE_PATIENT_ID,
+    )
     unsubscribeDemoLinkedVisitNetworkCheck()
 
     if (demoLinkedVisitNetworkRequests === 0) {
       throw new Error('Demo slug linked visit completion did not make a visits network request.')
+    }
+    if (demoLinkedLedgerCountAfter !== demoLinkedLedgerCountBefore) {
+      throw new Error('Zero-service linked completion created a ledger charge.')
     }
 
     const demoLinkedPersistenceWarningVisible = await textIncludes(
@@ -2883,6 +3017,10 @@ async function main() {
       'performed services finalization success',
     )
     await waitFor(
+      () => textIncludes(cdp, 'Charges posted to patient account.'),
+      'ledger charge posting success',
+    )
+    await waitFor(
       () => textIncludes(cdp, 'View patient timeline'),
       'post-completion patient timeline action',
     )
@@ -2898,6 +3036,7 @@ async function main() {
     const linkedVisitId = await verifyCompletedAppointmentLink(appointmentId)
     const linkedPerformedServices =
       await getPerformedServicesSnapshotForVisit(linkedVisitId)
+    const linkedLedgerCharges = await getLedgerChargeSnapshotForVisit(linkedVisitId)
 
     if (
       linkedPerformedServices.length !== 1 ||
@@ -2906,6 +3045,17 @@ async function main() {
     ) {
       throw new Error(
         `Expected one finalized performed service, got ${JSON.stringify(linkedPerformedServices)}`,
+      )
+    }
+    if (
+      linkedLedgerCharges.length !== 1 ||
+      linkedLedgerCharges[0].performed_service_id !== linkedPerformedServices[0].id ||
+      linkedLedgerCharges[0].direction !== 'debit' ||
+      Number(linkedLedgerCharges[0].amount) !==
+        Number(linkedPerformedServices[0].final_amount)
+    ) {
+      throw new Error(
+        `Expected one posted ledger charge for finalized service, got ${JSON.stringify(linkedLedgerCharges)}`,
       )
     }
 
@@ -3274,6 +3424,14 @@ async function main() {
         ),
       'retry finalization action visible',
     )
+    const ledgerStateVisibleDuringFinalizationFailure = await evaluate(
+      cdp,
+      `document.querySelector('[data-testid="visit-ledger-posting-success"], [data-testid="visit-ledger-posting-retry-state"]') !== null`,
+    )
+
+    if (ledgerStateVisibleDuringFinalizationFailure) {
+      throw new Error('Ledger posting state should not be shown before services finalization succeeds.')
+    }
     const forcedFailureTriggered = await stopForcedFinalizationFailure()
 
     if (!forcedFailureTriggered) {
@@ -3297,7 +3455,12 @@ async function main() {
       () => textIncludes(cdp, 'Services & charges finalized.'),
       'retry finalization success',
     )
+    await waitFor(
+      () => textIncludes(cdp, 'Charges posted to patient account.'),
+      'retry finalization then ledger posting success',
+    )
     const retryAfter = await getPerformedServicesSnapshotForVisit(retryVisitId)
+    const retryLedgerCharges = await getLedgerChargeSnapshotForVisit(retryVisitId)
 
     if (
       retryAfter.length !== 1 ||
@@ -3306,6 +3469,129 @@ async function main() {
     ) {
       throw new Error(
         `Expected retry to finalize one existing service, got ${JSON.stringify(retryAfter)}`,
+      )
+    }
+    if (
+      retryLedgerCharges.length !== 1 ||
+      retryLedgerCharges[0].performed_service_id !== retryAfter[0].id
+    ) {
+      throw new Error(
+        `Expected retry finalization to post one ledger charge, got ${JSON.stringify(retryLedgerCharges)}`,
+      )
+    }
+
+    const ledgerRetryAppointmentId = await createServiceAppointment(
+      LEDGER_RETRY_REASON,
+    )
+    await navigate(cdp, `${APPOINTMENTS_URL}/${ledgerRetryAppointmentId}`)
+    await waitFor(
+      () => textIncludes(cdp, 'Appointment Detail'),
+      'ledger retry appointment detail page',
+    )
+    await clickByText(cdp, 'Start visit')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `location.pathname.endsWith('/visit-completion') && location.search.includes(${JSON.stringify(ledgerRetryAppointmentId)})`,
+        ),
+      'ledger retry appointment visit completion route',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'No open draft found for this appointment.'),
+      'ledger retry visit completion ready',
+    )
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'What was done?'), 'ledger retry procedures step')
+    await typeInto(
+      cdp,
+      '[data-testid="visit-procedure-name"]',
+      LEDGER_RETRY_PROCEDURE,
+    )
+    await clickByText(cdp, 'Next')
+    await addPerformedServiceDraftRow(cdp)
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'ledger retry notes step')
+    await typeInto(
+      cdp,
+      '[data-testid="visit-clinical-note"]',
+      LEDGER_RETRY_NOTE,
+    )
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'What happens next?'), 'ledger retry next step')
+    await clickByText(cdp, 'Next')
+    await waitFor(() => textIncludes(cdp, 'Review and complete'), 'ledger retry review step')
+    await assertPerformedServicesReviewSummary(cdp)
+
+    const stopForcedLedgerPostingFailure =
+      await installOneTimeLedgerPostingFailure(cdp)
+
+    await clickByText(cdp, 'Complete Visit')
+    await waitFor(
+      () => textIncludes(cdp, 'Confirm Visit Completion'),
+      'ledger retry completion confirmation',
+    )
+    await clickByText(cdp, 'Confirm completion')
+    await waitFor(() => textIncludes(cdp, 'Visit Completed'), 'ledger retry visit completed')
+    await waitFor(
+      () => textIncludes(cdp, 'Visit was completed successfully.'),
+      'ledger retry clinical completion success',
+    )
+    await waitFor(
+      () => textIncludes(cdp, 'Services & charges finalized.'),
+      'ledger retry services finalized before charge retry',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="visit-ledger-posting-retry"]') instanceof HTMLButtonElement`,
+        ),
+      'ledger retry action visible',
+    )
+    const forcedLedgerFailureTriggered = await stopForcedLedgerPostingFailure()
+
+    if (!forcedLedgerFailureTriggered) {
+      throw new Error('Forced ledger posting failure was not triggered.')
+    }
+
+    const ledgerRetryVisitId = await verifyCompletedAppointmentLink(
+      ledgerRetryAppointmentId,
+    )
+    const ledgerRetryServices =
+      await getPerformedServicesSnapshotForVisit(ledgerRetryVisitId)
+    const ledgerRetryBeforeCharges =
+      await getLedgerChargeSnapshotForVisit(ledgerRetryVisitId)
+
+    if (
+      ledgerRetryServices.length !== 1 ||
+      ledgerRetryServices[0].status !== 'finalized'
+    ) {
+      throw new Error(
+        `Expected ledger retry visit to have one finalized service, got ${JSON.stringify(ledgerRetryServices)}`,
+      )
+    }
+    if (ledgerRetryBeforeCharges.length !== 0) {
+      throw new Error(
+        `Forced ledger posting failure should not create charges, got ${JSON.stringify(ledgerRetryBeforeCharges)}`,
+      )
+    }
+
+    await clickSelector(cdp, '[data-testid="visit-ledger-posting-retry"]')
+    await waitFor(
+      () => textIncludes(cdp, 'Charges posted to patient account.'),
+      'ledger retry success',
+    )
+    const ledgerRetryAfterCharges =
+      await getLedgerChargeSnapshotForVisit(ledgerRetryVisitId)
+
+    if (
+      ledgerRetryAfterCharges.length !== 1 ||
+      ledgerRetryAfterCharges[0].performed_service_id !==
+        ledgerRetryServices[0].id
+    ) {
+      throw new Error(
+        `Expected ledger retry to create one posted charge, got ${JSON.stringify(ledgerRetryAfterCharges)}`,
       )
     }
 
@@ -3358,12 +3644,46 @@ async function main() {
       },
       {
         label: 'Visit Completion',
-        url: `${PATIENT_URL}/visit-completion`,
+        url: (viewport) =>
+          `${PATIENT_URL}/visit-completion?responsiveSmoke=${viewport.width}`,
         waitForText: 'Visit Completion',
         prepare: async (browser, label) => {
-          await clickByText(browser, 'Next')
-          await waitFor(() => textIncludes(browser, 'What was done?'), `${label} procedures step`)
-          await clickByText(browser, 'Next')
+          const atServicesStep = await textIncludes(browser, 'Services & Charges')
+          const atProceduresStep = await textIncludes(browser, 'What was done?')
+
+          if (!atServicesStep && !atProceduresStep) {
+            await waitFor(
+              () =>
+                evaluate(
+                  browser,
+                  `(() => {
+                    const nextButton = Array.from(document.querySelectorAll('button'))
+                      .find((element) => element.textContent?.trim() === 'Next');
+                    return nextButton instanceof HTMLButtonElement && !nextButton.disabled;
+                  })()`,
+                ),
+              `${label} next action ready`,
+            )
+            await clickByText(browser, 'Next')
+            await waitFor(() => textIncludes(browser, 'What was done?'), `${label} procedures step`)
+          }
+
+          if (!atServicesStep) {
+            await waitFor(
+              () =>
+                evaluate(
+                  browser,
+                  `(() => {
+                    const nextButton = Array.from(document.querySelectorAll('button'))
+                      .find((element) => element.textContent?.trim() === 'Next');
+                    return nextButton instanceof HTMLButtonElement && !nextButton.disabled;
+                  })()`,
+                ),
+              `${label} services next action ready`,
+            )
+            await clickByText(browser, 'Next')
+          }
+
           await waitFor(
             () => textIncludes(browser, 'Services & Charges'),
             `${label} services step`,
@@ -3452,10 +3772,15 @@ async function main() {
           servicesDraftSaveReloadVerified: true,
           servicesReviewSummaryVerified: true,
           servicesCompletionFinalizationVerified: true,
+          servicesCompletionLedgerPostingVerified: true,
           zeroServiceFlowVerified: true,
           zeroServiceFinalizationStateVerified: true,
+          zeroServiceLedgerPostingSkippedVerified: true,
           servicesFinalizationRetryVerified: true,
           servicesFinalizationRetryNoDuplicateVerified: true,
+          servicesRetryThenLedgerPostingVerified: true,
+          ledgerPostingRetryVerified: true,
+          ledgerPostingRetryNoDuplicateVerified: true,
           dailyScheduleInProgressLifecycleVerified: true,
           appointmentDetailReadyLifecycleVerified: true,
           appointmentDetailInProgressLifecycleVerified: true,

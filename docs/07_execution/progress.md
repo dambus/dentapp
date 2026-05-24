@@ -4525,6 +4525,70 @@ Initial stack:
 
 ---
 
+### Completed (Task 82 - Visit Completion Ledger Posting Wiring)
+
+- Wired Task 81 ledger charge posting into the completed Visit Completion flow
+  after performed-services finalization succeeds.
+- Preserved the three-stage completion boundary:
+  - clinical `completeVisit(...)` remains authoritative,
+  - performed-services finalization remains the first downstream operation,
+  - ledger charge posting runs only after services are finalized.
+- Added completed-state ledger posting feedback:
+  - posted/already-posted charges show `Charges posted to patient account.`,
+  - zero-service completions keep the existing no-services success state and do
+    not show ledger warnings,
+  - recoverable posting failures show a charge-posting warning and
+    `Retry charge posting`,
+  - permission-blocked posting shows a manual follow-up warning without
+    broadening RLS or pretending retry will solve authorization.
+- Kept performed-services finalization retry separate from ledger retry:
+  - `Retry finalization` does not repeat clinical completion,
+  - successful finalization retry proceeds into ledger posting,
+  - `Retry charge posting` retries only the Task 81 posting helper.
+- Preserved idempotent behavior through the existing Task 76 finalization helper
+  and Task 81 ledger posting RPC; no duplicate performed-service or ledger rows
+  are created by retries.
+- Extended browser smoke coverage for successful posting, zero-service posting
+  skip, forced ledger posting failure/retry, finalization-failure precedence, and
+  posted-charge row counts.
+- Made the Visit Completion responsive smoke setup idempotent across repeated
+  viewport runs.
+- Added no patient balance, payment, invoice, receipt, refund, write-off,
+  discount, reversal, commission, materials, treatment-plan mutation, schema,
+  migration, or RLS changes.
+- Documented the task in
+  `docs/design/task-82-visit-completion-ledger-posting-wiring.md`.
+
+### Verification (Task 82)
+
+- `npx.cmd supabase migration up` reports the local database is up to date; no
+  Task 82 migration was added.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientLedgerRls.mjs` passes with local `.env`
+  loaded.
+- `node .\supabase\snippets\testPatientLedgerPostingRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testPerformedServicesRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes with
+  local `.env` loaded.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `http://127.0.0.1:5173`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded.
+
+### Next Recommended Task
+
+- Task 83 - Completed Visit Financial Read-only Display / Posted Charge
+  Visibility.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:
