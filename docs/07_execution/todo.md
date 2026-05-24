@@ -210,6 +210,7 @@ Status legend:
   - [x] Task 65: Responsive Overflow Smoke Guard
   - [x] Task 66: Appointment Card Dropdown Anchoring / Mobile Menu Fix
   - [x] Task 67: Appointment Operational State Planning / Data Model Decision
+  - [x] Task 68: Appointment Operational State Schema/RLS Foundation
 - [ ] Phase 3: Odontogram and treatment plans
 - [ ] Phase 4: Scheduling and visits
 - [ ] Phase 5: Payments and patient ledger
@@ -279,7 +280,8 @@ Status legend:
 - [x] Task 65 - Responsive Overflow Smoke Guard
 - [x] Task 66 - Appointment Card Dropdown Anchoring / Mobile Menu Fix
 - [x] Task 67 - Appointment Operational State Planning / Data Model Decision
-- [ ] Task 68 - Appointment Operational State Schema/RLS Foundation
+- [x] Task 68 - Appointment Operational State Schema/RLS Foundation
+- [ ] Task 69 - Appointment Operational State Service Wiring
 - [ ] Checkpoint B - Product Roadmap Re-balance
 - [ ] Price/discount/debt workflow
 - [ ] Doctor commission workflow
@@ -899,6 +901,26 @@ Completed direction:
 - documented transition rules, role/RLS implications, UI impact, smoke/RLS test
   plan, and phased implementation tasks,
 - changed no runtime behavior.
+
+### Completed Recommended Task
+
+Task 68 - Appointment Operational State Schema/RLS Foundation
+
+Completed direction:
+
+- added `appointments.operational_state` with default `not_arrived`,
+- constrained operational values to `not_arrived`, `arrived`, and
+  `ready_for_doctor`,
+- kept appointment lifecycle status, provider assignment, and Visit Completion
+  attribution separate,
+- enforced allowed operational transitions at the database boundary,
+- prevented new appointment inserts from starting in a progressed operational
+  state,
+- blocked operational updates for cancelled, no-show, completed, and linked
+  Visit Completion appointments,
+- preserved existing appointment RLS role/clinic boundaries,
+- added focused operational state RLS/data smoke coverage,
+- added no visible UI controls or Start visit readiness requirement.
 
 ### Later Appointment Direction
 

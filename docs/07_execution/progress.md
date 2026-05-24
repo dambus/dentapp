@@ -3566,6 +3566,74 @@ Initial stack:
 
 ---
 
+### Completed (Task 68 - Appointment Operational State Schema/RLS Foundation)
+
+- Added appointment operational state schema foundation:
+	- `appointments.operational_state`,
+	- default `not_arrived`,
+	- allowed values `not_arrived`, `arrived`, and `ready_for_doctor`,
+	- clinic/state/scheduled-start index for future schedule reads.
+- Kept `appointments.status` lifecycle-only:
+	- `scheduled`,
+	- `cancelled`,
+	- `no_show`,
+	- `completed` through linked Visit Completion behavior.
+- Added database transition enforcement for operational state changes:
+	- `not_arrived` -> `arrived`,
+	- `arrived` -> `ready_for_doctor`,
+	- `arrived` -> `not_arrived`,
+	- `ready_for_doctor` -> `arrived`.
+- Blocked operational state updates when:
+	- a new appointment insert attempts to start in a progressed operational
+	  state,
+	- appointment lifecycle status is terminal/non-scheduled,
+	- a linked draft, in-progress, or completed Visit Completion exists,
+	- the requested transition is outside the allowed set.
+- Preserved existing appointment update RLS boundaries for same-clinic active
+  scheduling/clinical roles and kept `inventory_responsible` blocked.
+- Added focused RLS/data smoke coverage in
+  `supabase/snippets/testAppointmentOperationalStateRls.mjs`.
+- Verified the new operational update path does not mutate:
+	- appointment lifecycle `status`,
+	- `assigned_provider_id`,
+	- `visits.completed_by`.
+- No visible UI controls, appointment cards, appointment detail controls,
+  patient appointment summary display, Visit Completion UI, operational filters,
+  Start visit gating, room/chair assignment, waiting queue, analytics, provider
+  workload, availability logic, billing, materials, payments, treatment-plan
+  mutation, reminders, or tasks were added.
+- Documented the task in
+  `docs/design/task-68-appointment-operational-state-schema-rls-foundation.md`.
+
+### Verification (Task 68)
+
+- `npx.cmd supabase migration up` applies the Task 68 operational state
+  migrations.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  with local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes with local
+  `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+
+### Next Recommended Task
+
+- Task 69 - Appointment Operational State Service Wiring, followed by a small
+  UI task for daily schedule controls.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:
