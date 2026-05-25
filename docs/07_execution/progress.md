@@ -4972,6 +4972,117 @@ Initial stack:
 
 ---
 
+### Completed (Task 89 - Patient Account Charges + Payments / Payment UI Integration and Balance Decision)
+
+- Completed a docs-only product/UI-flow decision after Task 88.
+- Confirmed the current UI/payment boundary:
+  - completed visit detail shows read-only `Services & charges`,
+  - patient Full Record shows a `Charges` section with posted ledger `charge`
+    debit rows only,
+  - Task 88 backend/service work can record payments and reversals but no
+    payment UI or account activity UI consumes it yet.
+- Compared next implementation options:
+  - read-only account activity first,
+  - payment-entry UI first while retaining charge-only history,
+  - a tightly scoped Account activity surface with Record payment.
+- Selected the next runtime direction as a combined patient-level Account
+  activity and Record payment slice.
+- Recommended evolving `Posted charges` into `Account activity` with supporting
+  copy such as `Read-only financial entries recorded in DentApp`.
+- Selected Patient Full Record / Account activity as the payment-entry
+  placement, not completed visit detail, appointment detail, or Visit
+  Completion.
+- Defined the first payment-entry UI boundary for `owner_admin` and
+  `reception_admin`:
+  - amount,
+  - currency,
+  - payment method,
+  - optional received timestamp,
+  - optional reference,
+  - optional notes.
+- Made UI-generated payment idempotency keys mandatory for the future payment
+  form and documented retry/repeated-submit behavior.
+- Deferred user-triggered reversal UI to a later narrow task while allowing
+  read-only reversal entries to appear in Account activity.
+- Kept patient balance, amount due, outstanding, paid/unpaid, invoice, receipt,
+  refund, allocation, commission, materials, and treatment-plan conversion out
+  of the next runtime slice.
+- Made no runtime, service, schema, migration, RPC, RLS, browser smoke, or RLS
+  test changes.
+- Documented the task in
+  `docs/design/task-89-patient-account-payments-ui-balance-decision.md`.
+
+### Verification (Task 89)
+
+- `git diff --name-only` reviewed.
+- `git diff --check` passes.
+- Only Task 89 documentation files were changed by this task; pre-existing
+  Task 88 uncommitted files were left untouched.
+
+### Next Recommended Task
+
+- Task 90 - Patient Account Activity + Record Payment UI.
+
+---
+
+### Completed (Task 90 - Optional Internal Settlement Records / Privacy & Access Decision)
+
+- Completed a docs-only corrective product/privacy decision before exposing any
+  payment or financial UI.
+- Superseded the Task 89 runtime recommendation for `Patient Account Activity +
+  Record Payment UI`.
+- Reframed the future capability as an optional internal settlement-record
+  module, disabled by default per clinic.
+- Documented that DentApp must not be positioned as fiscalization, official
+  payment processing, cash register functionality, accounting, invoicing,
+  receipt issuance, tax reporting, or official proof of payment.
+- Required future internal-use wording indicating that any settlement record is
+  internal only and does not replace legally required transaction recording,
+  with final legal/Serbian copy to be reviewed professionally before production.
+- Corrected terminology away from `Account activity`, `Record payment`,
+  `Balance`, `Posted charges`, `Amount due`, `Outstanding`, and `Paid/Unpaid`.
+- Selected safer future terminology around:
+  - `Internal settlement records`,
+  - `Internal settlement entry`,
+  - `Recorded settlement`,
+  - `Recorded service amount`,
+  - Serbian localization candidates `Interna evidencija izmirenja` and
+    `Evidentirano izmirenje`.
+- Corrected access assumptions:
+  - no automatic access for doctors or specialists,
+  - no automatic reception access,
+  - future access should use explicit capabilities such as
+    `can_view_internal_settlement_records` and
+    `can_manage_internal_settlement_records`.
+- Documented that future visibility must be enforced through RLS or trusted
+  server-side checks, not UI hiding alone.
+- Prohibited exposing the capability in Visit Completion, completed visit
+  detail, appointments, patient overview, schedules, global dashboards, or
+  routine navigation badges.
+- Reopened the earlier payment-method assumption; payment method should not be
+  exposed in a future MVP unless a legitimate operational need is approved.
+- Acknowledged that Tasks 80-88 added backend ledger/payment foundations, but no
+  payment UI is exposed yet and existing schema/RLS/service naming/access must
+  be reviewed before any settlement UI is built.
+- Made no runtime, service, schema, migration, RPC, RLS, browser smoke, or RLS
+  test changes.
+- Documented the task in
+  `docs/design/task-90-optional-internal-settlement-records-privacy-access-decision.md`.
+
+### Verification (Task 90)
+
+- `git diff --name-only` reviewed.
+- `git diff --check` passes.
+- `git status --short` reviewed.
+- Only documentation files were changed by this task.
+
+### Next Recommended Task
+
+- Task 91 - Internal Settlement Feature Toggle / Access-Control and Existing
+  Backend Review.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

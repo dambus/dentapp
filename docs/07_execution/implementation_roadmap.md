@@ -203,40 +203,56 @@ Phase 4 is complete when:
 
 ---
 
-## 8. Phase 5 — Payments and Patient Ledger
+## 8. Phase 5 — Optional Internal Settlement Records and Patient Ledger
 
 ### Goal
 
-Track patient financial status, payments, unpaid balances, advances, and installment notes.
+Provide a narrowly scoped optional internal organizational record for patient
+settlement situations, such as installment arrangements or amounts settled
+later, without positioning DentApp as a fiscalization, accounting, cash-register,
+invoice, receipt, tax-reporting, or official payment-processing system.
+
+This phase is disabled by default per clinic until explicitly enabled through a
+future feature/access model.
+
+Task 90 supersedes earlier roadmap wording that referred to patient financial
+status, payments, unpaid balances, payment forms, and unpaid-balance reports.
+Those terms are no longer the accepted product direction for the MVP.
 
 ### Main Work
 
 - service charges,
 - patient ledger,
-- payment form,
-- partial payments,
-- advances,
-- discounts if allowed,
-- unpaid balance calculation,
-- payment permissions,
-- unpaid balances report.
+- optional clinic-level module enablement,
+- explicit internal settlement view/manage access capabilities,
+- internal settlement record privacy and compliance review,
+- review of existing ledger/payment schema, RLS, RPCs, and services against the
+  internal-settlement boundary,
+- internal settlement records only if approved after review.
 
 ### Main Screens
 
-- patient ledger,
-- payment form,
-- unpaid balances report,
-- daily payments report.
+- no default routine financial screen,
+- no patient overview financial summary,
+- no dashboard financial summary,
+- no payment form,
+- no invoice or receipt screen,
+- a future restricted patient-level internal settlement area only if the clinic
+  enables the optional module and the current user has explicit access.
 
 ### Acceptance Criteria
 
 Phase 5 is complete when:
 
 - performed services can create charges,
-- payments can be recorded,
-- unpaid balance is visible to allowed users,
-- patient financial history is clear,
-- sensitive financial data is permission-aware.
+- any optional settlement-record module is disabled by default,
+- clinics without the module see no financial sections, empty states, buttons,
+  badges, dashboards, or hidden-function references,
+- any enabled internal settlement area is clearly marked as an internal
+  organizational record only,
+- access is explicit, minimal, auditable, and separated from ordinary clinical
+  access,
+- sensitive settlement data is protected by RLS or trusted server-side checks.
 
 ---
 

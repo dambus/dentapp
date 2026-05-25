@@ -306,8 +306,11 @@ Status legend:
 - [x] Task 87 - Payment Schema/RLS Foundation
 - [x] Task 87B - Browser Smoke Appointment Bridge Timeout Investigation / Narrow Fix
 - [x] Task 88 - Payment Service Layer / Controlled Recording and Reversal Boundary
-- [ ] Task 89 - Patient Account Charges + Payments Read-only Summary / Balance Decision
-- [ ] Task 90 - Doctor Commission Planning
+- [x] Task 89 - Patient Account Charges + Payments / Payment UI Integration and Balance Decision
+- [x] Task 90 - Optional Internal Settlement Records / Privacy & Access Decision
+- [ ] Task 91 - Internal Settlement Feature Toggle / Access-Control and Existing Backend Review
+- [ ] Task 92 - Internal Settlement Schema/RLS/Service Exposure Correction, if Task 91 requires it
+- [ ] Doctor commission planning
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
 
@@ -898,6 +901,43 @@ Suggested direction:
 - define the first safe reversal boundary or explicitly defer reversal workflow,
 - keep payment UI, balance, invoices/receipts, refunds, allocation, commissions,
   materials, and treatment-plan conversion out of scope.
+
+### Superseded Recommended Task
+
+Task 90 - Patient Account Activity + Record Payment UI
+
+Superseded by Task 90 - Optional Internal Settlement Records / Privacy & Access
+Decision.
+
+Corrected direction:
+
+- do not expose patient account activity or payment UI as the next runtime task,
+- treat any future settlement-record capability as optional per clinic and
+  disabled by default,
+- do not position DentApp as fiscalization, cash register, accounting,
+  invoicing, receipt, tax-reporting, or official payment-processing software,
+- use safer future terminology around internal settlement records, not account
+  activity, record payment, balance, amount due, outstanding, or paid/unpaid,
+- require explicit future capabilities such as
+  `can_view_internal_settlement_records` and
+  `can_manage_internal_settlement_records`,
+- review existing ledger/payment schema, RLS, RPCs, services, naming, and role
+  assumptions before any settlement-related UI is exposed.
+
+### Next Recommended Task
+
+Task 91 - Internal Settlement Feature Toggle / Access-Control and Existing
+Backend Review
+
+Suggested direction:
+
+- define clinic-level optional module enablement and default-disabled behavior,
+- define explicit internal settlement view/manage access capabilities,
+- review existing ledger/payment schema, RLS, RPCs, and frontend service
+  exposure against the new internal-settlement boundary,
+- decide what must be hidden, renamed, wrapped, restricted, or left backend-only,
+- keep runtime UI, payment forms, account activity displays, balance, invoice,
+  receipt, refund, allocation, and fiscal integration out of scope.
 
 ### Completed Recommended Task
 
