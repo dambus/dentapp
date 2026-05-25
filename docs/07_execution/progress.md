@@ -4909,6 +4909,69 @@ Initial stack:
 
 ---
 
+### Completed (Task 88 - Payment Service Layer / Controlled Recording and Reversal Boundary)
+
+- Added controlled payment recording RPCs:
+  - `record_patient_payment(...)`,
+  - `reverse_patient_payment(...)`.
+- Added request-level payment idempotency:
+  - `patient_payments.idempotency_key`,
+  - unique clinic-scoped idempotency key constraint.
+- Recording a payment now creates one trusted `patient_payments` row and one
+  linked posted ledger `payment` credit row in the same RPC transaction.
+- Ledger payment credits derive clinic, patient, amount, currency, source,
+  recorder, and description values server-side.
+- Payment recording and reversal are limited to active same-clinic
+  `owner_admin` and `reception_admin` profiles.
+- Doctors, specialists, assistants, and inventory users are blocked from
+  recording/reversing payments.
+- Implemented narrow reversal:
+  - preserves the original payment and payment credit,
+  - marks the payment as `reversed`,
+  - creates one compensating posted ledger `reversal` debit entry,
+  - repeated reversal returns `already_reversed` without duplicate ledger rows.
+- Added typed frontend helpers in
+  `src/features/patient-payments/patientPaymentService.ts` without adding any
+  React consumer.
+- Added focused operation coverage in
+  `supabase/snippets/testPatientPaymentRecordingRls.mjs`.
+- Added a narrow currency hardening migration so the RPC rejects lowercase
+  currency input instead of silently normalizing it.
+- Preserved Task 87B appointment date behavior; no appointment code was changed
+  in Task 88.
+- No payment UI, patient account summary, balance, amount due, invoice, receipt,
+  refund, allocation, commission, materials, treatment-plan conversion, Visit
+  Completion, or appointment behavior was added.
+- Documented the task in
+  `docs/design/task-88-payment-service-controlled-recording-reversal-boundary.md`.
+
+### Verification (Task 88)
+
+- `npx.cmd supabase migration up` applied:
+  - `20260525100000_add_patient_payment_recording_rpc.sql`,
+  - `20260525101000_harden_patient_payment_recording_currency.sql`.
+- `npm.cmd run build` passes with the existing Vite chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientPaymentsRls.mjs` passes.
+- `node .\supabase\snippets\testPatientPaymentRecordingRls.mjs` passes.
+- `node .\supabase\snippets\testPatientLedgerRls.mjs` passes.
+- `node .\supabase\snippets\testPatientLedgerPostingRls.mjs` passes.
+- `node .\supabase\snippets\testPerformedServicesRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `http://127.0.0.1:5173` after clearing deterministic duplicate
+  `TASK77-SVC` smoke fixture rows left by an earlier interrupted run.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+
+### Next Recommended Task
+
+- Task 89 - Patient Account Charges + Payments Read-only Summary / Balance
+  Decision.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

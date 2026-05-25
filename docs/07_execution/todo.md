@@ -305,7 +305,7 @@ Status legend:
 - [x] Task 86 - Payment Recording Foundation Planning / Data Model Decision
 - [x] Task 87 - Payment Schema/RLS Foundation
 - [x] Task 87B - Browser Smoke Appointment Bridge Timeout Investigation / Narrow Fix
-- [ ] Task 88 - Payment Service Layer / Controlled Recording and Reversal Boundary
+- [x] Task 88 - Payment Service Layer / Controlled Recording and Reversal Boundary
 - [ ] Task 89 - Patient Account Charges + Payments Read-only Summary / Balance Decision
 - [ ] Task 90 - Doctor Commission Planning
 - [ ] Doctor commission workflow
