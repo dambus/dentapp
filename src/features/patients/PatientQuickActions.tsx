@@ -323,8 +323,7 @@ export function PatientQuickActions({
 
         <p className="text-xs leading-5 text-slate-500">
           Available actions reuse existing patient sections and appointment or
-          visit routes. They do not create payments, materials, reminders, or
-          ledger entries.
+          visit routes. They do not create materials or reminders.
         </p>
       </CardContent>
     </Card>

@@ -308,8 +308,9 @@ Status legend:
 - [x] Task 88 - Payment Service Layer / Controlled Recording and Reversal Boundary
 - [x] Task 89 - Patient Account Charges + Payments / Payment UI Integration and Balance Decision
 - [x] Task 90 - Optional Internal Settlement Records / Privacy & Access Decision
-- [ ] Task 91 - Internal Settlement Feature Toggle / Access-Control and Existing Backend Review
-- [ ] Task 92 - Internal Settlement Schema/RLS/Service Exposure Correction, if Task 91 requires it
+- [x] Task 91 - Internal Settlement Feature Toggle / Access-Control and Existing Backend Review
+- [x] Task 92 - Existing Financial Visibility and Automatic Posting Freeze/Gating
+- [ ] Task 93 - Internal Settlement Feature Toggle and Explicit Permission Schema/RLS Foundation
 - [ ] Doctor commission planning
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
@@ -938,6 +939,54 @@ Suggested direction:
 - decide what must be hidden, renamed, wrapped, restricted, or left backend-only,
 - keep runtime UI, payment forms, account activity displays, balance, invoice,
   receipt, refund, allocation, and fiscal integration out of scope.
+
+### Next Recommended Task
+
+Task 92 - Existing Financial Visibility and Automatic Posting Freeze/Gating
+
+Suggested direction:
+
+- freeze or gate existing Visit Completion ledger charge posting before it runs
+  in ordinary workflows without clinic opt-in,
+- hide or gate Completed Visit Detail `Services & charges` financial visibility,
+- hide or gate Patient Full Record `Charges` / `Posted charges` visibility,
+- preserve clinical completion, performed-services finalization, completed visit
+  clinical detail, patient clinical records, appointments, and treatment-plan
+  behavior,
+- do not add payment/settlement forms, account activity, balance, invoice,
+  receipt, refund, allocation, or fiscal integration,
+- leave existing backend tables/RPCs in place unless a narrow safety fix is
+  required.
+
+### Completed Recommended Task
+
+Task 92 - Existing Financial Visibility and Automatic Posting Freeze/Gating
+
+Completed direction:
+
+- removed ordinary Visit Completion `Services & Charges` exposure,
+- stopped performed-service finalization and ledger charge posting from ordinary
+  clinical completion,
+- hid Completed Visit Detail and Patient Full Record financial sections,
+- removed ordinary patient demo balance placeholders and Payments navigation,
+- added an interim migration blocking ordinary authenticated access to
+  `performed_services`, `patient_ledger_entries`, `patient_payments`, and the
+  related ledger/payment RPCs,
+- preserved existing backend objects and historical rows for future review.
+
+### Next Recommended Task
+
+Task 93 - Internal Settlement Feature Toggle and Explicit Permission
+Schema/RLS Foundation
+
+Suggested direction:
+
+- add disabled-by-default clinic enablement for internal settlement records,
+- add explicit view/manage capabilities that are separate from ordinary clinic
+  roles,
+- keep settlement UI, balance, payment forms, invoice/receipt behavior, and
+  fiscal integration out of scope,
+- preserve clinical-only runtime behavior until explicit access exists.
 
 ### Completed Recommended Task
 

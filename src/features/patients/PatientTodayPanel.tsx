@@ -388,8 +388,8 @@ export function PatientTodayPanel({
           >
             Open timeline
           </button>{' '}
-          for deeper visit records. Visit completion does not create payments,
-          materials, reminders, or ledger entries.
+          for deeper visit records. Visit completion remains focused on the
+          clinical record.
         </InlineNotice>
       </CardContent>
     </Card>

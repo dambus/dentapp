@@ -94,6 +94,8 @@ type WorkflowStep = {
   description: string
 }
 
+const VISIT_FINANCIAL_WORKFLOW_ENABLED = false
+
 const workflowSteps: WorkflowStep[] = [
   {
     id: 'planned',
@@ -106,12 +108,6 @@ const workflowSteps: WorkflowStep[] = [
     label: 'Done',
     title: 'What was done?',
     description: 'Enter the performed work only if there was a procedure.',
-  },
-  {
-    id: 'services',
-    label: 'Services',
-    title: 'Services & Charges',
-    description: 'Record chargeable services rendered during this visit.',
   },
   {
     id: 'notes',
@@ -308,17 +304,17 @@ export function VisitCompletionFlow({
     hasClinicalNote ||
     hasRecommendation ||
     hasNextStep ||
-    performedServices.length > 0
+    (VISIT_FINANCIAL_WORKFLOW_ENABLED && performedServices.length > 0)
   const nextStepLabel = getNextStepLabel(nextStep)
   const age = getPatientAge(patient.dateOfBirth)
   const activeStep = workflowSteps[activeStepIndex]
   const isBusy =
     isLoadingDraft ||
-    isLoadingPerformedServices ||
+    (VISIT_FINANCIAL_WORKFLOW_ENABLED && isLoadingPerformedServices) ||
     isSavingDraft ||
     isCompleting ||
-    isFinalizingServices ||
-    isPostingLedgerCharges
+    (VISIT_FINANCIAL_WORKFLOW_ENABLED && isFinalizingServices) ||
+    (VISIT_FINANCIAL_WORKFLOW_ENABLED && isPostingLedgerCharges)
   const plannedWork =
     patient.activeTreatmentPlanSummary.trim() ||
     'No planned treatment is recorded in the current patient context.'
@@ -405,7 +401,9 @@ export function VisitCompletionFlow({
 
         if (draft) {
           applyDraft(draft)
-          void loadPerformedServiceDraftRows(draft.id)
+          if (VISIT_FINANCIAL_WORKFLOW_ENABLED) {
+            void loadPerformedServiceDraftRows(draft.id)
+          }
           setServiceWarnings(draft.warnings)
           setLastSavedAt(draft.updatedAt)
           setDraftReloadMessage(
@@ -576,7 +574,9 @@ export function VisitCompletionFlow({
     setDraftReloadMessage(null)
 
     try {
-      const validationError = validatePerformedServiceDraftRows(performedServices)
+      const validationError = VISIT_FINANCIAL_WORKFLOW_ENABLED
+        ? validatePerformedServiceDraftRows(performedServices)
+        : null
 
       if (validationError) {
         setServiceError(validationError)
@@ -588,9 +588,9 @@ export function VisitCompletionFlow({
       setServiceWarnings(result.warnings ?? [])
 
       if (result.ok && result.draft) {
-        const performedServiceSave = await savePerformedServicesDraft(
-          result.draft,
-        )
+        const performedServiceSave = VISIT_FINANCIAL_WORKFLOW_ENABLED
+          ? await savePerformedServicesDraft(result.draft)
+          : { ok: true, error: null }
 
         if (!performedServiceSave.ok) {
           setVisitId(result.draft.id)
@@ -598,7 +598,7 @@ export function VisitCompletionFlow({
           applyDraft(result.draft)
           setServiceError(
             performedServiceSave.error ??
-              'Visit draft was saved, but services and charges were not saved.',
+              'Visit draft was saved, but internal settlement details were not saved.',
           )
           return
         }
@@ -666,7 +666,7 @@ export function VisitCompletionFlow({
     try {
       let completionInput = buildDraftInput()
 
-      if (performedServices.length > 0) {
+      if (VISIT_FINANCIAL_WORKFLOW_ENABLED && performedServices.length > 0) {
         const validationError =
           validatePerformedServiceDraftRows(performedServices)
 
@@ -703,7 +703,7 @@ export function VisitCompletionFlow({
           applyDraft(draftResult.draft)
           setServiceError(
             performedServiceSave.error ??
-              'Visit was not completed because services and charges could not be saved.',
+              'Visit was not completed because internal settlement details could not be saved.',
           )
           setCompletionState('editing')
           setActiveStepIndex(workflowSteps.length - 1)
@@ -726,29 +726,31 @@ export function VisitCompletionFlow({
         applyDraft(result.draft)
         setCompletionState('completed')
 
-        const finalizationResult =
-          await finalizePerformedServicesForCompletedVisit({
-            patientId: result.draft.patientId,
-            visitId: result.draft.id,
-          })
+        if (VISIT_FINANCIAL_WORKFLOW_ENABLED) {
+          const finalizationResult =
+            await finalizePerformedServicesForCompletedVisit({
+              patientId: result.draft.patientId,
+              visitId: result.draft.id,
+            })
 
-        setServicesFinalizationState(finalizationResult.state)
+          setServicesFinalizationState(finalizationResult.state)
 
-        if (finalizationResult.ok) {
-          setServicesFinalizationError(null)
-          await postLedgerChargesAfterFinalization(
-            result.draft.id,
-            finalizationResult.state,
-          )
-        } else {
-          setServicesFinalizationError(
-            getUserFriendlyFinalizationError(
-              finalizationResult.error ?? finalizationResult.message,
-            ),
-          )
-          setLedgerPostingState(null)
-          setLedgerPostingError(null)
-          setLedgerPostingReason(null)
+          if (finalizationResult.ok) {
+            setServicesFinalizationError(null)
+            await postLedgerChargesAfterFinalization(
+              result.draft.id,
+              finalizationResult.state,
+            )
+          } else {
+            setServicesFinalizationError(
+              getUserFriendlyFinalizationError(
+                finalizationResult.error ?? finalizationResult.message,
+              ),
+            )
+            setLedgerPostingState(null)
+            setLedgerPostingError(null)
+            setLedgerPostingReason(null)
+          }
         }
 
         setServiceMessage(result.message ?? 'Visit completed.')
@@ -888,7 +890,7 @@ export function VisitCompletionFlow({
             <Badge variant="success">Completed</Badge>
           </div>
           <CardDescription>
-            The completion service accepted this visit. Payments, files,
+            The completion service accepted this clinical visit. Files,
             treatment plan changes, and odontogram changes were not created.
           </CardDescription>
         </CardHeader>
@@ -902,20 +904,24 @@ export function VisitCompletionFlow({
             serviceMessage={serviceMessage}
             serviceWarnings={serviceWarnings}
           />
-          <ServicesFinalizationFeedback
-            error={servicesFinalizationError}
-            isRetrying={isFinalizingServices}
-            state={servicesFinalizationState}
-            onRetry={retryServicesFinalization}
-          />
-          <LedgerPostingFeedback
-            error={ledgerPostingError}
-            isRetrying={isPostingLedgerCharges}
-            reason={ledgerPostingReason}
-            servicesFinalizationState={servicesFinalizationState}
-            state={ledgerPostingState}
-            onRetry={retryLedgerChargePosting}
-          />
+          {VISIT_FINANCIAL_WORKFLOW_ENABLED ? (
+            <>
+              <ServicesFinalizationFeedback
+                error={servicesFinalizationError}
+                isRetrying={isFinalizingServices}
+                state={servicesFinalizationState}
+                onRetry={retryServicesFinalization}
+              />
+              <LedgerPostingFeedback
+                error={ledgerPostingError}
+                isRetrying={isPostingLedgerCharges}
+                reason={ledgerPostingReason}
+                servicesFinalizationState={servicesFinalizationState}
+                state={ledgerPostingState}
+                onRetry={retryLedgerChargePosting}
+              />
+            </>
+          ) : null}
           <VisitCompletionSummary
             procedureCount={procedureCount}
             hasClinicalNote={hasClinicalNote}
@@ -1047,7 +1053,7 @@ export function VisitCompletionFlow({
             />
           ) : null}
 
-          {activeStep.id === 'services' ? (
+          {VISIT_FINANCIAL_WORKFLOW_ENABLED && activeStep.id === 'services' ? (
             <PerformedServicesDraftEditor
               appointmentContext={appointmentContext}
               disabled={isBusy}
@@ -2037,79 +2043,81 @@ function ReviewStep({
         />
       </div>
 
-      <div
-        className="rounded-md border border-teal-100 bg-teal-50/40 p-4"
-        data-testid="visit-services-review-summary"
-      >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="text-sm font-semibold text-slate-950">
-              Services & Charges
+      {VISIT_FINANCIAL_WORKFLOW_ENABLED ? (
+        <div
+          className="rounded-md border border-teal-100 bg-teal-50/40 p-4"
+          data-testid="visit-services-review-summary"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-950">
+                Services & Charges
+              </div>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Draft chargeable services recorded for this visit. No payment,
+                invoice, balance, or commission is created here.
+              </p>
             </div>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Draft chargeable services recorded for this visit. No payment,
-              invoice, balance, or commission is created here.
-            </p>
+            <Badge variant={performedServices.length > 0 ? 'info' : 'neutral'}>
+              {performedServices.length}{' '}
+              {performedServices.length === 1 ? 'service' : 'services'}
+            </Badge>
           </div>
-          <Badge variant={performedServices.length > 0 ? 'info' : 'neutral'}>
-            {performedServices.length}{' '}
-            {performedServices.length === 1 ? 'service' : 'services'}
-          </Badge>
-        </div>
 
-        {performedServices.length > 0 ? (
-          <div className="mt-4 space-y-3">
-            {performedServices.map((service) => (
-              <div
-                className="rounded-md border border-slate-200 bg-white p-3"
-                data-testid="visit-services-review-row"
-                key={service.id}
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="wrap-break-word text-sm font-semibold text-slate-950">
-                      {service.serviceNameSnapshot || 'Service not selected'}
+          {performedServices.length > 0 ? (
+            <div className="mt-4 space-y-3">
+              {performedServices.map((service) => (
+                <div
+                  className="rounded-md border border-slate-200 bg-white p-3"
+                  data-testid="visit-services-review-row"
+                  key={service.id}
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="wrap-break-word text-sm font-semibold text-slate-950">
+                        {service.serviceNameSnapshot || 'Service not selected'}
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        Quantity {service.quantity || '0'}
+                        {service.toothOrRegion
+                          ? ` - ${service.toothOrRegion}`
+                          : ''}
+                        {service.creditedProviderName
+                          ? ` - ${service.creditedProviderName}`
+                          : ''}
+                      </p>
                     </div>
-                    <p className="mt-1 text-xs leading-5 text-slate-600">
-                      Quantity {service.quantity || '0'}
-                      {service.toothOrRegion
-                        ? ` - ${service.toothOrRegion}`
-                        : ''}
-                      {service.creditedProviderName
-                        ? ` - ${service.creditedProviderName}`
-                        : ''}
-                    </p>
-                  </div>
-                  <div className="text-sm font-semibold text-teal-900">
-                    {formatPerformedServiceAmount(
-                      getPerformedServiceDraftLineAmount(service),
-                      service.currency,
-                    )}
+                    <div className="text-sm font-semibold text-teal-900">
+                      {formatPerformedServiceAmount(
+                        getPerformedServiceDraftLineAmount(service),
+                        service.currency,
+                      )}
+                    </div>
                   </div>
                 </div>
+              ))}
+              <div
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-teal-200 bg-white px-3 py-2"
+                data-testid="visit-services-review-total"
+              >
+                <span className="text-sm font-semibold text-slate-950">
+                  Draft total
+                </span>
+                <span className="text-sm font-semibold text-teal-900">
+                  {formatPerformedServiceAmount(
+                    serviceTotal,
+                    performedServices[0]?.currency ?? 'RSD',
+                  )}
+                </span>
               </div>
-            ))}
-            <div
-              className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-teal-200 bg-white px-3 py-2"
-              data-testid="visit-services-review-total"
-            >
-              <span className="text-sm font-semibold text-slate-950">
-                Draft total
-              </span>
-              <span className="text-sm font-semibold text-teal-900">
-                {formatPerformedServiceAmount(
-                  serviceTotal,
-                  performedServices[0]?.currency ?? 'RSD',
-                )}
-              </span>
             </div>
-          </div>
-        ) : (
-          <InlineNotice className="mt-4" variant="neutral">
-            No chargeable services added for this visit.
-          </InlineNotice>
-        )}
-      </div>
+          ) : (
+            <InlineNotice className="mt-4" variant="neutral">
+              No chargeable services added for this visit.
+            </InlineNotice>
+          )}
+        </div>
+      ) : null}
 
       {attemptedCompletion && !isReady ? (
         <InlineNotice variant="warning">
@@ -2137,7 +2145,7 @@ function getStepPrompt(stepId: string) {
   }
 
   if (stepId === 'services') {
-    return 'Record chargeable services without collecting payment.'
+    return 'Internal settlement records are disabled in the ordinary clinical workflow.'
   }
 
   if (stepId === 'notes') {

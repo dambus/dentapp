@@ -221,8 +221,7 @@ Those terms are no longer the accepted product direction for the MVP.
 
 ### Main Work
 
-- service charges,
-- patient ledger,
+- internal settlement-record backend review,
 - optional clinic-level module enablement,
 - explicit internal settlement view/manage access capabilities,
 - internal settlement record privacy and compliance review,
@@ -420,11 +419,11 @@ Current status:
 
 Next step:
 
-- Task 72 - Performed Services Foundation Planning,
-- then service catalog/performed services schema and Visit Completion UI
-  integration,
-- then patient ledger planning/schema/UI,
-- then doctor commission foundation.
+- Task 93 - Internal Settlement Feature Toggle and Explicit Permission
+  Schema/RLS Foundation,
+- then review/wrap existing ledger/payment backend APIs before any restricted
+  patient-level internal-settlement UI,
+- then doctor commission foundation only after the settlement boundary is clear.
 
 ---
 
@@ -436,8 +435,14 @@ Next step:
   allow a manual service-name snapshot?
 - Should one Visit Completion support multiple performed services in the first
   slice?
-- Which roles can view patient financial balance in the pilot?
-- Who can apply discounts or corrections?
+- Should any clinic enable optional internal settlement records during pilot?
+- Which explicit profiles may view or manage internal settlement records if a
+  clinic enables the optional module?
+- What legal/accounting review wording is required before production use?
+- Should existing ledger/payment backend API names be wrapped or renamed before
+  any clinic-facing exposure?
+- Who, if anyone, may apply internal settlement corrections after explicit
+  access controls exist?
 - Is pilot commission performed-based, collected-based, or mixed?
 - Should treatment-plan items be updated from performed services automatically
   or only by explicit user action?

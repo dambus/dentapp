@@ -17,7 +17,6 @@ import {
 } from '../components/ui'
 import { classNames } from '../lib/classNames'
 import {
-  formatDemoCurrency,
   formatPatientDateTime,
   getPatientFullName,
   patientStatusBadgeVariants,
@@ -121,10 +120,7 @@ function PatientListCard({ patient }: PatientCardProps) {
             value={importantNoteLabel}
             tone={patient.importantNote ? 'warning' : 'default'}
           />
-          <PatientFact
-            label="Demo balance"
-            value={formatDemoCurrency(patient.unpaidBalance)}
-          />
+          <PatientFact label="Status" value={patientStatusLabels[patient.status]} />
         </div>
       </CardContent>
     </Card>

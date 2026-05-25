@@ -65,19 +65,6 @@ const treatmentPlanReadRoles: AppRole[] = [
   'reception_admin',
 ]
 
-const postedChargesReadRoles: AppRole[] = [
-  'owner_admin',
-  'doctor',
-  'specialist',
-  'reception_admin',
-]
-
-const completedVisitDetailRoles: AppRole[] = [
-  'owner_admin',
-  'doctor',
-  'specialist',
-]
-
 const visitCompletionRoles: AppRole[] = [
   'owner_admin',
   'doctor',
@@ -99,7 +86,6 @@ const patientFullRecordSections: PatientFullRecordSection[] = [
   'odontogram',
   'treatment-plans',
   'clinical-notes',
-  'charges',
   'documents',
   'timeline',
 ]
@@ -227,12 +213,6 @@ export function PatientDetailPage() {
     : false
   const canViewTreatmentPlans = currentProfile.profile
     ? treatmentPlanReadRoles.includes(currentProfile.profile.role)
-    : false
-  const canViewPostedCharges = currentProfile.profile
-    ? postedChargesReadRoles.includes(currentProfile.profile.role)
-    : false
-  const canOpenCompletedChargeVisits = currentProfile.profile
-    ? completedVisitDetailRoles.includes(currentProfile.profile.role)
     : false
   const canCompleteVisit = currentProfile.profile
     ? visitCompletionRoles.includes(currentProfile.profile.role)
@@ -487,15 +467,10 @@ export function PatientDetailPage() {
           canViewClinicalNotes={canViewClinicalNotes}
           canManageClinicalNotes={canViewClinicalNotes}
           canViewTreatmentPlans={canViewTreatmentPlans}
-          canViewPostedCharges={canViewPostedCharges}
-          canOpenCompletedChargeVisits={canOpenCompletedChargeVisits}
           highlightedVisitId={highlightedVisitId}
           isPatientArchived={isArchived}
           onEditMedicalRecord={() =>
             navigate(getPatientMedicalRecordEditPath(patient.id))
-          }
-          onOpenCompletedVisit={(visitId) =>
-            navigate(getPatientVisitDetailPath(patient.id, visitId))
           }
         />
       </div>

@@ -11,7 +11,6 @@ import {
 } from '../../components/ui'
 import type { AppRole } from '../../types/navigation'
 import {
-  formatDemoCurrency,
   formatPatientDate,
   formatPatientDateTime,
   getPatientAge,
@@ -38,20 +37,8 @@ type PatientSnapshotProps = {
   onViewFullRecord: () => void
 }
 
-const financialPlaceholderRoles: AppRole[] = [
-  'owner_admin',
-  'doctor',
-  'specialist',
-  'reception_admin',
-]
-
-function getFinancialVisibility(role: AppRole | null) {
-  return !role || financialPlaceholderRoles.includes(role)
-}
-
 export function PatientSnapshot({
   patient,
-  role,
   isArchived,
   isLifecycleSubmitting,
   lifecycleError,
@@ -70,7 +57,6 @@ export function PatientSnapshot({
   const hasMedicalWarnings = patient.medicalWarnings.length > 0
   const hasAllergies = Boolean(patient.allergies.trim())
   const hasImportantNote = Boolean(patient.importantNote?.trim())
-  const canViewFinancialPlaceholder = getFinancialVisibility(role)
   const activePlanLabel = patient.activeTreatmentPlan ?? 'No active plan'
   const hasAnyCriticalContext =
     hasMedicalWarnings || hasAllergies || hasImportantNote
@@ -260,21 +246,12 @@ export function PatientSnapshot({
               patient.nextAppointment,
             )}`}
           />
-          {canViewFinancialPlaceholder ? (
-            <MetricTile
-              className="min-h-36"
-              label="Financial placeholder"
-              value={formatDemoCurrency(patient.unpaidBalance)}
-              description="Current demo/unpaid balance placeholder. Real ledger is not implemented yet."
-            />
-          ) : (
-            <MetricTile
-              className="min-h-36"
-              label="Financial context"
-              value="Restricted"
-              description="Financial data is hidden for this role."
-            />
-          )}
+          <MetricTile
+            className="min-h-36"
+            label="Contact"
+            value={patient.phone}
+            description={patient.email || 'No email recorded.'}
+          />
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
@@ -285,10 +262,10 @@ export function PatientSnapshot({
             description={patient.recentVisitSummary}
           />
           <MetricTile
-            label="Contact"
-            tone="default"
-            value={patient.phone}
-            description={patient.email || 'No email recorded.'}
+            label="Status"
+            tone={patient.status === 'active' ? 'success' : 'warning'}
+            value={patientStatusLabels[patient.status]}
+            description="Patient profile lifecycle state."
           />
         </div>
 

@@ -5083,6 +5083,121 @@ Initial stack:
 
 ---
 
+### Completed (Task 91 - Internal Settlement Feature Toggle / Access-Control and Existing Backend Review)
+
+- Completed a docs-only architecture/security review of the Tasks 80-88 backend
+  against the corrected Task 90 internal-settlement boundary.
+- Confirmed existing runtime exposure that must be remediated before any new
+  settlement UI:
+  - Visit Completion currently posts ledger charge rows after performed-services
+    finalization,
+  - Completed Visit Detail currently shows `Services & charges`, posted charge
+    state, and visit-scoped charge totals,
+  - Patient Full Record currently exposes `Charges` / `Posted charges`.
+- Confirmed existing read access is too broad for the corrected model:
+  - ledger/payment read policies include `doctor`, `specialist`, and
+    `reception_admin` automatically,
+  - future internal settlement access must use explicit capabilities instead of
+    ordinary clinical role access.
+- Selected a future dedicated clinic internal-settlement settings table instead
+  of a bare `clinics` column, with absence/default treated as disabled.
+- Selected a future explicit per-profile grant model for capabilities such as
+  `can_view_internal_settlement_records` and
+  `can_manage_internal_settlement_records`.
+- Classified existing ledger/payment artifacts:
+  - finalized performed services remain safe independently,
+  - ledger/payment tables and RPCs may remain as internal technical foundation,
+    but require future access/RLS hardening and terminology/API review,
+  - current UI exposure and automatic posting require immediate freeze/gating.
+- Decided internal DB names may remain temporarily during development if not
+  user-visible, while UI/export/clinic-facing language must move to internal
+  settlement terminology.
+- Documented auditability and lawful-use requirements:
+  - minimal explicit access,
+  - traceable corrections,
+  - no silent deletion,
+  - no design for bypassing legal/fiscal obligations,
+  - legal/accounting review before production rollout.
+- Recommended the next implementation as
+  `Task 92 - Existing Financial Visibility and Automatic Posting Freeze/Gating`.
+- Made no runtime, service, schema, migration, RPC, RLS, browser smoke, or RLS
+  test changes.
+- Documented the task in
+  `docs/design/task-91-internal-settlement-feature-toggle-access-control-backend-review.md`.
+
+### Verification (Task 91)
+
+- `git diff --name-only` reviewed.
+- `git diff --check` passes.
+- `git status --short` reviewed.
+- Only documentation files were changed by this task.
+
+### Next Recommended Task
+
+- Task 92 - Existing Financial Visibility and Automatic Posting Freeze/Gating.
+
+---
+
+### Completed (Task 92 - Existing Financial Visibility and Automatic Posting Freeze/Gating)
+
+- Restored ordinary runtime to a clinical-only baseline while the future
+  optional internal-settlement module remains unimplemented and disabled.
+- Removed or disabled ordinary financial exposure:
+  - Visit Completion no longer shows `Services & Charges`,
+  - Completed Visit Detail no longer shows `Services & charges`, charge totals,
+    posting state, or financial retry actions,
+  - Patient Full Record no longer shows `Charges` / `Posted charges`,
+  - patient overview/list demo balance placeholders were removed,
+  - the `Payments` navigation/route exposure was removed from ordinary routing.
+- Stopped automatic financial record creation from Visit Completion:
+  - clinical visit completion still succeeds,
+  - performed-service financial draft save/finalization is not invoked from the
+    ordinary UI,
+  - ledger charge posting and retry handling are not invoked.
+- Added interim access-block migration
+  `20260525103000_freeze_internal_settlement_visibility_and_access.sql`:
+  - removed ordinary authenticated read policies from `patient_ledger_entries`
+    and `patient_payments`,
+  - removed ordinary authenticated read/write policies from
+    `performed_services`,
+  - revoked authenticated table access to those frozen artifacts,
+  - revoked authenticated execution of ledger posting, payment recording, and
+    payment reversal RPCs.
+- Preserved existing backend objects and stored rows; no financial table,
+  column, RPC, or historical record was deleted or renamed.
+- Kept `visit_procedures` as the clinical procedure record while freezing
+  `performed_services` because it is the chargeable financial snapshot table.
+- Updated browser smoke coverage to assert the frozen UI baseline and clinical
+  completion behavior.
+- Added `supabase/snippets/testInternalSettlementFreezeRls.mjs` for interim
+  blocked-state RLS/RPC coverage.
+- Documented the task in
+  `docs/design/task-92-existing-financial-visibility-automatic-posting-freeze-gating.md`.
+
+### Verification (Task 92)
+
+- `npx.cmd supabase migration up` passes.
+- `npm.cmd run build` passes with the existing Vite large chunk warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testInternalSettlementFreezeRls.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes with
+  local `.env` loaded and `SUPABASE_SERVICE_ROLE_KEY` mapped from
+  `SUPABASE_SERVICE_KEY`.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes on
+  rerun after one transient local upstream response failure.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+
+### Next Recommended Task
+
+- Task 93 - Internal Settlement Feature Toggle and Explicit Permission
+  Schema/RLS Foundation.
+
+---
+
 ### Completed (Task 54 - Appointment Lifecycle State Transition Hardening)
 
 - Confirmed the supported lifecycle behavior:

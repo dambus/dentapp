@@ -1331,13 +1331,11 @@ async function completeVisibleVisit(cdp, procedureName, clinicalNote) {
   )
   await typeInto(cdp, 'input[placeholder="16, upper right, full mouth"]', '16')
   await clickByText(cdp, 'Next')
-  await waitFor(() => textIncludes(cdp, 'Services & Charges'), 'services step')
-  await waitFor(
-    () => textIncludes(cdp, 'No chargeable services added for this visit.'),
-    'zero-service visit remains allowed',
-  )
-  await clickByText(cdp, 'Next')
   await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'notes step')
+  const servicesStepVisible = await textIncludes(cdp, 'Services & Charges')
+  if (servicesStepVisible) {
+    throw new Error('Visit Completion should not expose Services & Charges during the Task 92 freeze.')
+  }
   await typeInto(
     cdp,
     'textarea[placeholder="What was observed and completed today?"]',
@@ -1358,17 +1356,13 @@ async function completeVisibleVisit(cdp, procedureName, clinicalNote) {
     () => textIncludes(cdp, 'Visit was completed successfully.'),
     'visit completion success message',
   )
-  await waitFor(
-    () => textIncludes(cdp, 'No performed services were recorded for this visit.'),
-    'zero-services finalization state',
-  )
   const retryVisible = await evaluate(
     cdp,
     `document.querySelector('[data-testid="visit-services-finalization-retry"]') !== null`,
   )
 
   if (retryVisible) {
-    throw new Error('Zero-service completion should not show finalization retry.')
+    throw new Error('Clinical-only completion should not show financial finalization retry.')
   }
 
   const ledgerRetryVisible = await evaluate(
@@ -1381,7 +1375,7 @@ async function completeVisibleVisit(cdp, procedureName, clinicalNote) {
   )
 
   if (ledgerRetryVisible || ledgerWarningVisible) {
-    throw new Error('Zero-service completion should not show ledger posting retry or warning.')
+    throw new Error('Clinical-only completion should not show ledger posting retry or warning.')
   }
 }
 
@@ -2968,9 +2962,10 @@ async function main() {
     )
     await typeInto(cdp, '[data-testid="visit-procedure-tooth"]', '16')
     await clickByText(cdp, 'Next')
-    await addPerformedServiceDraftRow(cdp)
-    await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'notes step')
+    if (await textIncludes(cdp, 'Services & Charges')) {
+      throw new Error('Task 92 freeze should remove Services & Charges from Visit Completion.')
+    }
     await typeInto(
       cdp,
       '[data-testid="visit-clinical-note"]',
@@ -2986,7 +2981,6 @@ async function main() {
     await setSelectValue(cdp, '[data-testid="visit-next-step"]', BRIDGE_NEXT_STEP)
     await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'Review and complete'), 'review step')
-    await assertPerformedServicesReviewSummary(cdp)
     await clickEnabledButtonByText(cdp, 'Save Draft')
     await waitForDraftSaveSuccess(cdp, 'draft save success feedback')
     await waitFor(
@@ -3064,9 +3058,6 @@ async function main() {
     )
     await assertFieldValue(cdp, '[data-testid="visit-procedure-tooth"]', '16')
     await clickByText(cdp, 'Next')
-    await waitFor(() => textIncludes(cdp, 'Services & Charges'), 'reloaded services step')
-    await assertPerformedServiceDraftRowReloaded(cdp)
-    await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'reloaded notes step')
     await assertFieldValue(
       cdp,
@@ -3083,7 +3074,6 @@ async function main() {
     await assertFieldValue(cdp, '[data-testid="visit-next-step"]', BRIDGE_NEXT_STEP)
     await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'Review and complete'), 'reloaded review step')
-    await assertPerformedServicesReviewSummary(cdp)
     await clickByText(cdp, 'Complete Visit')
     await waitFor(
       () => textIncludes(cdp, 'Confirm Visit Completion'),
@@ -3094,14 +3084,6 @@ async function main() {
     await waitFor(
       () => textIncludes(cdp, 'Visit was completed successfully.'),
       'visit completion success message',
-    )
-    await waitFor(
-      () => textIncludes(cdp, 'Services & charges finalized.'),
-      'performed services finalization success',
-    )
-    await waitFor(
-      () => textIncludes(cdp, 'Charges posted to patient account.'),
-      'ledger charge posting success',
     )
     await waitFor(
       () => textIncludes(cdp, 'View patient timeline'),
@@ -3117,28 +3099,19 @@ async function main() {
     )
 
     const linkedVisitId = await verifyCompletedAppointmentLink(appointmentId)
-    const linkedPerformedServices =
+    const linkedPerformedServicesAfterFreeze =
       await getPerformedServicesSnapshotForVisit(linkedVisitId)
-    const linkedLedgerCharges = await getLedgerChargeSnapshotForVisit(linkedVisitId)
+    const linkedLedgerChargesAfterFreeze =
+      await getLedgerChargeSnapshotForVisit(linkedVisitId)
 
-    if (
-      linkedPerformedServices.length !== 1 ||
-      linkedPerformedServices[0].status !== 'finalized' ||
-      linkedPerformedServices[0].service_name_snapshot !== PERFORMED_SERVICE_NAME
-    ) {
+    if (linkedPerformedServicesAfterFreeze.length !== 0) {
       throw new Error(
-        `Expected one finalized performed service, got ${JSON.stringify(linkedPerformedServices)}`,
+        `Clinical-only completion created performed-service rows: ${JSON.stringify(linkedPerformedServicesAfterFreeze)}`,
       )
     }
-    if (
-      linkedLedgerCharges.length !== 1 ||
-      linkedLedgerCharges[0].performed_service_id !== linkedPerformedServices[0].id ||
-      linkedLedgerCharges[0].direction !== 'debit' ||
-      Number(linkedLedgerCharges[0].amount) !==
-        Number(linkedPerformedServices[0].final_amount)
-    ) {
+    if (linkedLedgerChargesAfterFreeze.length !== 0) {
       throw new Error(
-        `Expected one posted ledger charge for finalized service, got ${JSON.stringify(linkedLedgerCharges)}`,
+        `Clinical-only completion created ledger charge rows: ${JSON.stringify(linkedLedgerChargesAfterFreeze)}`,
       )
     }
 
@@ -3221,30 +3194,14 @@ async function main() {
       () => textIncludes(cdp, 'Linked Appointment'),
       'linked appointment visible on detail page',
     )
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `(() => {
-            const section = document.querySelector('[data-testid="completed-visit-detail-services-charges"]');
-            const text = section?.textContent ?? '';
-            const paymentActions = Array.from(section?.querySelectorAll('button, a') ?? [])
-              .map((element) => element.textContent?.trim())
-              .filter(Boolean);
-
-            return text.includes('Services & charges') &&
-              text.includes('Read-only') &&
-              text.includes(${JSON.stringify(PERFORMED_SERVICE_NAME)}) &&
-              text.includes('Posted to patient account') &&
-              text.includes('Charge total') &&
-              text.includes('8.400 RSD') &&
-              text.includes('Posted charge') &&
-              text.includes('Line amount') &&
-              paymentActions.length === 0;
-          })()`,
-        ),
-      'completed visit services and charges posted read-only section',
+    const completedVisitFinancialSectionVisible = await evaluate(
+      cdp,
+      `document.querySelector('[data-testid="completed-visit-detail-services-charges"]') !== null`,
     )
+
+    if (completedVisitFinancialSectionVisible) {
+      throw new Error('Completed visit detail should not expose Services & charges during the Task 92 freeze.')
+    }
     await waitFor(
       () => textIncludes(cdp, 'Print review'),
       'print review action visible on detail page',
@@ -3252,28 +3209,6 @@ async function main() {
     await waitFor(
       () => textIncludes(cdp, 'Schedule follow-up'),
       'completed visit detail follow-up scheduling action',
-    )
-
-    await navigate(cdp, `${PATIENT_URL}/visits/${fixtureVisitId}`)
-    await waitFor(
-      () => textIncludes(cdp, 'Completed Visit Review'),
-      'zero-service completed visit detail page',
-    )
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `(() => {
-            const section = document.querySelector('[data-testid="completed-visit-detail-services-charges"]');
-            const text = section?.textContent ?? '';
-
-            return text.includes('Services & charges') &&
-              text.includes('No performed services were recorded for this visit.') &&
-              !text.includes('Charge total') &&
-              !text.includes('Charge posting pending');
-          })()`,
-        ),
-      'completed visit zero-service financial empty state',
     )
 
     await navigate(cdp, `${PATIENT_URL}/visits/${linkedVisitId}`)
@@ -3408,82 +3343,16 @@ async function main() {
       'completed appointment removed from upcoming summary',
     )
 
-    await navigate(cdp, `${PATIENT_URL}?section=charges`)
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `(() => {
-            const section = document.querySelector('[data-testid="patient-posted-charges-section"]');
-            const text = section?.textContent ?? '';
-            const forbiddenTerms = [
-              'Balance',
-              'Amount due',
-              'Outstanding',
-              'Record payment',
-              'Pay',
-              'Invoice',
-              'Receipt',
-            ];
-            return location.search.includes('section=charges') &&
-              text.includes('Posted charges recorded in DentApp') &&
-              text.includes(${JSON.stringify(PERFORMED_SERVICE_NAME)}) &&
-              text.includes('8.400 RSD') &&
-              text.includes('Total posted charges') &&
-              text.includes('Posted charge') &&
-              text.includes('View completed visit') &&
-              forbiddenTerms.every((term) => !text.includes(term));
-          })()`,
-        ),
-      'patient posted charges read-only section',
-    )
-    await evaluate(
-      cdp,
-      `(() => {
-        const section = document.querySelector('[data-testid="patient-posted-charges-section"]');
-        const button = Array.from(section?.querySelectorAll('button, a') ?? [])
-          .find((element) => element.textContent?.trim() === 'View completed visit');
-        if (button instanceof HTMLElement) {
-          button.click();
-          return true;
-        }
-        return false;
-      })()`,
-    )
-    await waitFor(
-      () => textIncludes(cdp, 'Completed Visit Review'),
-      'patient posted charge completed visit link',
-    )
     await navigate(cdp, PATIENT_URL)
     await waitFor(() => textIncludes(cdp, 'Full Record'), 'patient detail after posted charges link')
-
-    const pendingFinancialVisitId = await createUnpostedCompletedFinancialVisit()
-    await navigate(cdp, `${PATIENT_URL}/visits/${pendingFinancialVisitId}`)
-    await waitFor(
-      () => textIncludes(cdp, 'Completed Visit Review'),
-      'pending financial completed visit detail page',
+    const patientFinancialSectionVisible = await evaluate(
+      cdp,
+      `document.querySelector('[data-testid="patient-posted-charges-section"]') !== null`,
     )
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `(() => {
-            const section = document.querySelector('[data-testid="completed-visit-detail-services-charges"]');
-            const text = section?.textContent ?? '';
-            const actions = Array.from(section?.querySelectorAll('button, a') ?? [])
-              .map((element) => element.textContent?.trim())
-              .filter(Boolean);
 
-            return text.includes(${JSON.stringify(PERFORMED_SERVICE_NAME)}) &&
-              text.includes('Charge posting pending') &&
-              text.includes('Posting pending') &&
-              text.includes('Charges have not been fully posted') &&
-              !text.includes('Charge total') &&
-              !actions.includes('Retry charge posting');
-          })()`,
-        ),
-      'completed visit pending charge posting read-only state',
-    )
+    if (patientFinancialSectionVisible) {
+      throw new Error('Patient Full Record should not expose posted charges during the Task 92 freeze.')
+    }
 
     await navigate(cdp, `${APPOINTMENTS_URL}/${appointmentId}`)
     await waitFor(
@@ -3571,242 +3440,6 @@ async function main() {
       throw new Error('Completed appointment card should not expose lifecycle status actions.')
     }
 
-    const retryAppointmentId = await createServiceAppointment(
-      FINALIZATION_RETRY_REASON,
-    )
-    await navigate(cdp, `${APPOINTMENTS_URL}/${retryAppointmentId}`)
-    await waitFor(
-      () => textIncludes(cdp, 'Appointment Detail'),
-      'retry appointment detail page',
-    )
-    await clickByText(cdp, 'Start visit')
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `location.pathname.endsWith('/visit-completion') && location.search.includes(${JSON.stringify(retryAppointmentId)})`,
-        ),
-      'retry appointment visit completion route',
-    )
-    await waitFor(
-      () => textIncludes(cdp, 'No open draft found for this appointment.'),
-      'retry appointment new visit completion ready',
-    )
-    await clickByText(cdp, 'Next')
-    await waitFor(() => textIncludes(cdp, 'What was done?'), 'retry procedures step')
-    await typeInto(
-      cdp,
-      '[data-testid="visit-procedure-name"]',
-      FINALIZATION_RETRY_PROCEDURE,
-    )
-    await clickByText(cdp, 'Next')
-    await addPerformedServiceDraftRow(cdp)
-    await clickByText(cdp, 'Next')
-    await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'retry notes step')
-    await typeInto(
-      cdp,
-      '[data-testid="visit-clinical-note"]',
-      FINALIZATION_RETRY_NOTE,
-    )
-    await clickByText(cdp, 'Next')
-    await waitFor(() => textIncludes(cdp, 'What happens next?'), 'retry next step')
-    await clickByText(cdp, 'Next')
-    await waitFor(() => textIncludes(cdp, 'Review and complete'), 'retry review step')
-    await assertPerformedServicesReviewSummary(cdp)
-
-    const stopForcedFinalizationFailure =
-      await installOneTimePerformedServiceFinalizationFailure(cdp)
-
-    await clickByText(cdp, 'Complete Visit')
-    await waitFor(
-      () => textIncludes(cdp, 'Confirm Visit Completion'),
-      'retry completion confirmation',
-    )
-    await clickByText(cdp, 'Confirm completion')
-    await waitFor(() => textIncludes(cdp, 'Visit Completed'), 'retry visit completed')
-    await waitFor(
-      () => textIncludes(cdp, 'Visit was completed successfully.'),
-      'retry visit clinical completion success',
-    )
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `document.querySelector('[data-testid="visit-services-finalization-retry"]') instanceof HTMLButtonElement`,
-        ),
-      'retry finalization action visible',
-    )
-    const ledgerStateVisibleDuringFinalizationFailure = await evaluate(
-      cdp,
-      `document.querySelector('[data-testid="visit-ledger-posting-success"], [data-testid="visit-ledger-posting-retry-state"]') !== null`,
-    )
-
-    if (ledgerStateVisibleDuringFinalizationFailure) {
-      throw new Error('Ledger posting state should not be shown before services finalization succeeds.')
-    }
-    const forcedFailureTriggered = await stopForcedFinalizationFailure()
-
-    if (!forcedFailureTriggered) {
-      throw new Error('Forced performed-service finalization failure was not triggered.')
-    }
-
-    const retryVisitId = await verifyCompletedAppointmentLink(retryAppointmentId)
-    const retryBefore = await getPerformedServicesSnapshotForVisit(retryVisitId)
-
-    if (
-      retryBefore.length !== 1 ||
-      retryBefore[0].status !== 'draft'
-    ) {
-      throw new Error(
-        `Expected one draft service before retry, got ${JSON.stringify(retryBefore)}`,
-      )
-    }
-
-    await clickSelector(cdp, '[data-testid="visit-services-finalization-retry"]')
-    await waitFor(
-      () => textIncludes(cdp, 'Services & charges finalized.'),
-      'retry finalization success',
-    )
-    await waitFor(
-      () => textIncludes(cdp, 'Charges posted to patient account.'),
-      'retry finalization then ledger posting success',
-    )
-    const retryAfter = await getPerformedServicesSnapshotForVisit(retryVisitId)
-    const retryLedgerCharges = await getLedgerChargeSnapshotForVisit(retryVisitId)
-
-    if (
-      retryAfter.length !== 1 ||
-      retryAfter[0].status !== 'finalized' ||
-      retryAfter[0].id !== retryBefore[0].id
-    ) {
-      throw new Error(
-        `Expected retry to finalize one existing service, got ${JSON.stringify(retryAfter)}`,
-      )
-    }
-    if (
-      retryLedgerCharges.length !== 1 ||
-      retryLedgerCharges[0].performed_service_id !== retryAfter[0].id
-    ) {
-      throw new Error(
-        `Expected retry finalization to post one ledger charge, got ${JSON.stringify(retryLedgerCharges)}`,
-      )
-    }
-
-    const ledgerRetryAppointmentId = await createServiceAppointment(
-      LEDGER_RETRY_REASON,
-    )
-    await navigate(cdp, `${APPOINTMENTS_URL}/${ledgerRetryAppointmentId}`)
-    await waitFor(
-      () => textIncludes(cdp, 'Appointment Detail'),
-      'ledger retry appointment detail page',
-    )
-    await clickByText(cdp, 'Start visit')
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `location.pathname.endsWith('/visit-completion') && location.search.includes(${JSON.stringify(ledgerRetryAppointmentId)})`,
-        ),
-      'ledger retry appointment visit completion route',
-    )
-    await waitFor(
-      () => textIncludes(cdp, 'No open draft found for this appointment.'),
-      'ledger retry visit completion ready',
-    )
-    await clickByText(cdp, 'Next')
-    await waitFor(() => textIncludes(cdp, 'What was done?'), 'ledger retry procedures step')
-    await typeInto(
-      cdp,
-      '[data-testid="visit-procedure-name"]',
-      LEDGER_RETRY_PROCEDURE,
-    )
-    await clickByText(cdp, 'Next')
-    await addPerformedServiceDraftRow(cdp)
-    await clickByText(cdp, 'Next')
-    await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'ledger retry notes step')
-    await typeInto(
-      cdp,
-      '[data-testid="visit-clinical-note"]',
-      LEDGER_RETRY_NOTE,
-    )
-    await clickByText(cdp, 'Next')
-    await waitFor(() => textIncludes(cdp, 'What happens next?'), 'ledger retry next step')
-    await clickByText(cdp, 'Next')
-    await waitFor(() => textIncludes(cdp, 'Review and complete'), 'ledger retry review step')
-    await assertPerformedServicesReviewSummary(cdp)
-
-    const stopForcedLedgerPostingFailure =
-      await installOneTimeLedgerPostingFailure(cdp)
-
-    await clickByText(cdp, 'Complete Visit')
-    await waitFor(
-      () => textIncludes(cdp, 'Confirm Visit Completion'),
-      'ledger retry completion confirmation',
-    )
-    await clickByText(cdp, 'Confirm completion')
-    await waitFor(() => textIncludes(cdp, 'Visit Completed'), 'ledger retry visit completed')
-    await waitFor(
-      () => textIncludes(cdp, 'Visit was completed successfully.'),
-      'ledger retry clinical completion success',
-    )
-    await waitFor(
-      () => textIncludes(cdp, 'Services & charges finalized.'),
-      'ledger retry services finalized before charge retry',
-    )
-    await waitFor(
-      () =>
-        evaluate(
-          cdp,
-          `document.querySelector('[data-testid="visit-ledger-posting-retry"]') instanceof HTMLButtonElement`,
-        ),
-      'ledger retry action visible',
-    )
-    const forcedLedgerFailureTriggered = await stopForcedLedgerPostingFailure()
-
-    if (!forcedLedgerFailureTriggered) {
-      throw new Error('Forced ledger posting failure was not triggered.')
-    }
-
-    const ledgerRetryVisitId = await verifyCompletedAppointmentLink(
-      ledgerRetryAppointmentId,
-    )
-    const ledgerRetryServices =
-      await getPerformedServicesSnapshotForVisit(ledgerRetryVisitId)
-    const ledgerRetryBeforeCharges =
-      await getLedgerChargeSnapshotForVisit(ledgerRetryVisitId)
-
-    if (
-      ledgerRetryServices.length !== 1 ||
-      ledgerRetryServices[0].status !== 'finalized'
-    ) {
-      throw new Error(
-        `Expected ledger retry visit to have one finalized service, got ${JSON.stringify(ledgerRetryServices)}`,
-      )
-    }
-    if (ledgerRetryBeforeCharges.length !== 0) {
-      throw new Error(
-        `Forced ledger posting failure should not create charges, got ${JSON.stringify(ledgerRetryBeforeCharges)}`,
-      )
-    }
-
-    await clickSelector(cdp, '[data-testid="visit-ledger-posting-retry"]')
-    await waitFor(
-      () => textIncludes(cdp, 'Charges posted to patient account.'),
-      'ledger retry success',
-    )
-    const ledgerRetryAfterCharges =
-      await getLedgerChargeSnapshotForVisit(ledgerRetryVisitId)
-
-    if (
-      ledgerRetryAfterCharges.length !== 1 ||
-      ledgerRetryAfterCharges[0].performed_service_id !==
-        ledgerRetryServices[0].id
-    ) {
-      throw new Error(
-        `Expected ledger retry to create one posted charge, got ${JSON.stringify(ledgerRetryAfterCharges)}`,
-      )
-    }
-
     await createServiceAppointment(MENU_ANCHOR_REASON)
 
     await runResponsiveOverflowSmoke(cdp, [
@@ -3860,10 +3493,9 @@ async function main() {
           `${PATIENT_URL}/visit-completion?responsiveSmoke=${viewport.width}`,
         waitForText: 'Visit Completion',
         prepare: async (browser, label) => {
-          const atServicesStep = await textIncludes(browser, 'Services & Charges')
           const atProceduresStep = await textIncludes(browser, 'What was done?')
 
-          if (!atServicesStep && !atProceduresStep) {
+          if (!atProceduresStep) {
             await waitFor(
               () =>
                 evaluate(
@@ -3880,30 +3512,9 @@ async function main() {
             await waitFor(() => textIncludes(browser, 'What was done?'), `${label} procedures step`)
           }
 
-          if (!atServicesStep) {
-            await waitFor(
-              () =>
-                evaluate(
-                  browser,
-                  `(() => {
-                    const nextButton = Array.from(document.querySelectorAll('button'))
-                      .find((element) => element.textContent?.trim() === 'Next');
-                    return nextButton instanceof HTMLButtonElement && !nextButton.disabled;
-                  })()`,
-                ),
-              `${label} services next action ready`,
-            )
-            await clickByText(browser, 'Next')
+          if (await textIncludes(browser, 'Services & Charges')) {
+            throw new Error(`${label} should not expose Services & Charges during the Task 92 freeze.`)
           }
-
-          await waitFor(
-            () => textIncludes(browser, 'Services & Charges'),
-            `${label} services step`,
-          )
-          await waitFor(
-            () => textIncludes(browser, 'No chargeable services added for this visit.'),
-            `${label} zero services state`,
-          )
         },
       },
       {
@@ -3918,11 +3529,10 @@ async function main() {
     await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'What was done?'), 'normal route procedures step')
     await clickByText(cdp, 'Next')
-    await waitFor(() => textIncludes(cdp, 'Services & Charges'), 'normal route services step')
-    await waitFor(
-      () => textIncludes(cdp, 'No chargeable services added for this visit.'),
-      'normal route zero-service state',
-    )
+    await waitFor(() => textIncludes(cdp, 'What should be recorded?'), 'normal route notes step')
+    if (await textIncludes(cdp, 'Services & Charges')) {
+      throw new Error('Normal Visit Completion route should not expose Services & Charges.')
+    }
     await waitFor(
       () =>
         evaluate(
@@ -3980,19 +3590,19 @@ async function main() {
           startVisitFromAppointmentVerified: true,
           appointmentContextVerified: true,
           appointmentContextDetailsVerified: true,
-          servicesChargesStepVerified: true,
-          servicesDraftSaveReloadVerified: true,
-          servicesReviewSummaryVerified: true,
-          servicesCompletionFinalizationVerified: true,
-          servicesCompletionLedgerPostingVerified: true,
+          servicesChargesStepFrozenVerified: true,
+          servicesDraftSaveReloadFrozenVerified: true,
+          servicesReviewSummaryFrozenVerified: true,
+          servicesCompletionFinalizationFrozenVerified: true,
+          servicesCompletionLedgerPostingFrozenVerified: true,
           zeroServiceFlowVerified: true,
-          zeroServiceFinalizationStateVerified: true,
-          zeroServiceLedgerPostingSkippedVerified: true,
-          servicesFinalizationRetryVerified: true,
-          servicesFinalizationRetryNoDuplicateVerified: true,
-          servicesRetryThenLedgerPostingVerified: true,
-          ledgerPostingRetryVerified: true,
-          ledgerPostingRetryNoDuplicateVerified: true,
+          zeroServiceFinalizationStateFrozenVerified: true,
+          zeroServiceLedgerPostingFrozenVerified: true,
+          servicesFinalizationRetryFrozenVerified: true,
+          servicesFinalizationRetryNoDuplicateFrozenVerified: true,
+          servicesRetryThenLedgerPostingFrozenVerified: true,
+          ledgerPostingRetryFrozenVerified: true,
+          ledgerPostingRetryNoDuplicateFrozenVerified: true,
           dailyScheduleInProgressLifecycleVerified: true,
           appointmentDetailReadyLifecycleVerified: true,
           appointmentDetailInProgressLifecycleVerified: true,
@@ -4006,16 +3616,16 @@ async function main() {
           completedAppointmentFollowUpVerified: true,
           completedVisitDetailVerified: true,
           completedVisitDetailClinicalSectionsVerified: true,
-          completedVisitFinancialPostedVisibilityVerified: true,
-          completedVisitFinancialPendingVisibilityVerified: true,
-          completedVisitFinancialZeroServiceVisibilityVerified: true,
+          completedVisitFinancialVisibilityFrozenVerified: true,
+          completedVisitFinancialPendingFrozenVerified: true,
+          completedVisitFinancialZeroServiceFrozenVerified: true,
           completedVisitDetailFollowUpVerified: true,
           dailyScheduleCompletedLifecycleVerified: true,
           patientOverviewClinicalSummaryVerified: true,
           patientOverviewFollowUpVerified: true,
           patientOverviewTreatmentPlanVerified: true,
           patientTreatmentPlanEntryPointVerified: true,
-          patientPostedChargesSectionVerified: true,
+          patientPostedChargesSectionFrozenVerified: true,
           followUpSchedulingActionVerified: true,
           followUpSchedulingPrefillVerified: true,
           printActionVerified: true,

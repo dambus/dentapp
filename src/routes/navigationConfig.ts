@@ -36,12 +36,6 @@ export const navigationItems: NavigationItem[] = [
     description: 'Treatment planning workspace',
   },
   {
-    label: 'Payments',
-    path: routePaths.payments,
-    allowedRoles: routeAllowedRoles[routePaths.payments],
-    description: 'Financial workspace',
-  },
-  {
     label: 'Commissions',
     path: routePaths.commissions,
     allowedRoles: routeAllowedRoles[routePaths.commissions],

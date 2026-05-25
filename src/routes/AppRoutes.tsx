@@ -16,7 +16,6 @@ import { PatientEditPage } from '../pages/PatientEditPage'
 import { PatientMedicalRecordEditPage } from '../pages/PatientMedicalRecordEditPage'
 import { PatientVisitDetailPage } from '../pages/PatientVisitDetailPage'
 import { PatientsPage } from '../pages/PatientsPage'
-import { PaymentsPage } from '../pages/PaymentsPage'
 import { ReportsPage } from '../pages/ReportsPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { TreatmentPlansPage } from '../pages/TreatmentPlansPage'
@@ -102,10 +101,6 @@ export function AppRoutes() {
         <Route
           path={routePaths.treatmentPlans}
           element={withRoleGuard('treatmentPlans', <TreatmentPlansPage />)}
-        />
-        <Route
-          path={routePaths.payments}
-          element={withRoleGuard('payments', <PaymentsPage />)}
         />
         <Route
           path={routePaths.commissions}
