@@ -5299,6 +5299,83 @@ Initial stack:
 
 ---
 
+### Completed (Task 94 - Internal Settlement Post-MVP Deferral / MVP Roadmap Refocus)
+
+- Documented that internal settlement records / Interna evidencija izmirenja are
+  outside the MVP.
+- Confirmed the Task 92/93 safe baseline remains unchanged: no ordinary
+  settlement/payment/charge/balance visibility, no payment route, no Visit
+  Completion financial step, no automatic ledger posting, frozen backend access,
+  and inactive future-only setting/grant foundation.
+- Deferred settlement record-model decisions, controlled RPCs, settlement UI,
+  histories, balances, payment methods, corrections/reversals UI, audit UI,
+  exports, reports, fiscalization, invoices, and receipts until after MVP.
+- Updated the roadmap/todo direction so the next active stream returns to MVP
+  clinical/product readiness and UI/UX restyling planning.
+- Recommended `Task 95 - MVP UI/UX Restyling Foundation Planning` as the next
+  active task.
+- Added
+  `docs/design/task-94-internal-settlement-post-mvp-deferral-roadmap-refocus.md`.
+- No runtime code, schema, migrations, RLS, RPCs, services, tests, UI
+  components, or routes were changed for Task 94.
+
+### Verification (Task 94)
+
+- `git diff --name-only` reviewed; Task 94 changes are documentation-only.
+- `git diff --check` passes with standard line-ending warnings on edited docs.
+- `git status --short` reviewed.
+
+### Next Recommended Task
+
+- Task 95 - MVP UI/UX Restyling Foundation Planning.
+
+---
+
+### Completed (Task 95 - Pilot Clinical Flow Audit and UI/UX Restyling Foundation Planning)
+
+- Defined the first in-clinic pilot as the focused clinical workflow:
+  appointment scheduling, planner/schedule display, patient reception
+  progression, clinical visit work, treatment-plan creation/use, and optional
+  next-appointment scheduling.
+- Audited the current appointment, planner, appointment detail, patient detail,
+  reception operational-state, Visit Completion, completed visit review,
+  treatment-plan, route, and navigation surfaces.
+- Confirmed appointment scheduling, daily/weekly planner display, provider
+  assignment/filtering, reception operational progression, clinical-only Visit
+  Completion, completed visit review, and rebooking already have functional
+  foundations.
+- Confirmed current treatment-plan patient surfaces are read-only and the
+  top-level Treatment Plans route remains a placeholder, while the service layer
+  already contains write functions.
+- Classified treatment-plan creation/editing UI as the main pilot-critical
+  functional blocker.
+- Added a priority layer over the existing roadmap:
+  - `Pilot-critical`,
+  - `Pilot usability / restyling`,
+  - `Post-pilot or deferred`.
+- Prioritized planner/card/reception/patient-detail/Visit Completion restyling
+  around the pilot flow instead of broad generic MVP redesign.
+- Kept internal settlement, payments, ledger, balances, fiscalization, invoices,
+  receipts, commissions, advanced reports, advanced reminders, external
+  calendar sync, online booking, patient portal, and broad inventory work out of
+  the active pilot stream.
+- Added
+  `docs/design/task-95-pilot-clinical-flow-ui-ux-restyling-foundation-planning.md`.
+- No runtime code, schema, migrations, RLS, RPCs, services, tests, routes, UI
+  components, or styling were changed for Task 95.
+
+### Verification (Task 95)
+
+- `git diff --name-only` reviewed; Task 95 changes are documentation-only.
+- `git diff --check` passes with standard line-ending warnings on edited docs.
+- `git status --short` reviewed.
+
+### Next Recommended Task
+
+- Task 96 - Treatment Plan Creation/Edit Pilot Workflow.
+
+---
+
 ### Completed (Task 53 - Restore Appointment Lifecycle Secondary Actions)
 
 - Root cause found: the status transitions still existed, but recent action

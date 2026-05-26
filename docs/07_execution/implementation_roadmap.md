@@ -203,55 +203,52 @@ Phase 4 is complete when:
 
 ---
 
-## 8. Phase 5 — Optional Internal Settlement Records and Patient Ledger
+## 8. Phase 5 — Pilot Clinical Flow Readiness and UI/UX Restyling
 
 ### Goal
 
-Provide a narrowly scoped optional internal organizational record for patient
-settlement situations, such as installment arrangements or amounts settled
-later, without positioning DentApp as a fiscalization, accounting, cash-register,
-invoice, receipt, tax-reporting, or official payment-processing system.
+Prepare the first realistic in-clinic pilot workflow before adding more domain
+surface area.
 
-This phase is disabled by default per clinic until explicitly enabled through a
-future feature/access model.
+Task 94 confirms that optional internal settlement records are deferred until
+after MVP. The active MVP roadmap should return to clinical product readiness
+and structured UI/UX restyling.
 
-Task 90 supersedes earlier roadmap wording that referred to patient financial
-status, payments, unpaid balances, payment forms, and unpaid-balance reports.
-Those terms are no longer the accepted product direction for the MVP.
+Task 95 narrows the first testable milestone to appointment scheduling,
+planner/schedule display, patient reception progression, clinical visit work,
+treatment-plan creation/use, and next-appointment scheduling.
 
 ### Main Work
 
-- internal settlement-record backend review,
-- optional clinic-level module enablement,
-- explicit internal settlement view/manage access capabilities,
-- internal settlement record privacy and compliance review,
-- review of existing ledger/payment schema, RLS, RPCs, and services against the
-  internal-settlement boundary,
-- internal settlement records only if approved after review.
+- implement the missing treatment-plan create/edit pilot workflow,
+- restyle the pilot-critical planner, appointment card, reception action,
+  patient detail, Visit Completion, completed visit, treatment-plan, and
+  rebooking surfaces,
+- align shared layout, navigation, spacing, list, card, form, and action
+  patterns around the pilot flow,
+- preserve existing clinical behavior while improving usability,
+- keep settlement/payment/ledger work outside the MVP stream.
 
 ### Main Screens
 
-- no default routine financial screen,
-- no patient overview financial summary,
-- no dashboard financial summary,
-- no payment form,
-- no invoice or receipt screen,
-- a future restricted patient-level internal settlement area only if the clinic
-  enables the optional module and the current user has explicit access.
+- dashboard,
+- appointments and schedule views,
+- appointment detail,
+- patient list and patient detail,
+- Visit Completion,
+- completed visit detail,
+- treatment-plan patient surfaces.
 
 ### Acceptance Criteria
 
 Phase 5 is complete when:
 
-- performed services can create charges,
-- any optional settlement-record module is disabled by default,
-- clinics without the module see no financial sections, empty states, buttons,
-  badges, dashboards, or hidden-function references,
-- any enabled internal settlement area is clearly marked as an internal
-  organizational record only,
-- access is explicit, minimal, auditable, and separated from ordinary clinical
-  access,
-- sensitive settlement data is protected by RLS or trusted server-side checks.
+- treatment plans can be created/edited well enough for pilot use,
+- pilot-critical screen priority is implemented or explicitly accepted as
+  sufficient for first clinic testing,
+- visual and interaction patterns are documented before implementation,
+- existing clinical smoke coverage remains the regression guard,
+- no settlement/payment/ledger UI or workflow is reintroduced.
 
 ---
 
@@ -348,18 +345,23 @@ Prepare the MVP for pilot use.
 
 ### Main Screens
 
-## Current Sequencing Note - Internal Settlement
+## Current Sequencing Note - Pilot Clinical Flow
 
-Task 93 establishes only the disabled-by-default clinic setting, explicit
-per-profile grants, helper functions, and RLS foundation for a possible future
-internal settlement capability.
+Task 94 defers internal settlement records until after MVP. Task 93 remains only
+an inactive authorization foundation for a possible future optional clinic
+capability.
 
-The next settlement-related task should be docs-first:
+Task 95 refocuses the active stream on the first in-clinic pilot flow. The next
+active tasks should be:
 
-`Task 94 - Internal Settlement Record Model / Controlled Access Path Decision`
+1. `Task 96 - Treatment Plan Creation/Edit Pilot Workflow`
+2. `Task 97 - Planner and Appointment Card Pilot Restyling`
+3. `Task 98 - Patient Detail Pilot Workflow Entry Restyling`
+4. `Task 99 - Visit Completion and Completed Visit Pilot Usability Pass`
+5. `Task 100 - Pilot Clinical Flow Validation Checkpoint`
 
-Do not expose UI or reconnect frozen ledger/payment/performed-service flows
-until that decision task defines the record model and controlled access paths.
+Do not expose settlement UI or reconnect frozen ledger/payment/performed-service
+flows in the MVP stream.
 
 ---
 
@@ -429,35 +431,24 @@ Current status:
   completion handoff,
 - appointment operational state exists separately from lifecycle status with
   `not_arrived`, `arrived`, and `ready_for_doctor`,
+- Task 95 identifies treatment-plan creation/editing UI as the main
+  pilot-critical functional gap,
 - Checkpoint B rebalanced the next roadmap around performed services before
   ledger and commissions.
 
 Next step:
 
-- Task 93 - Internal Settlement Feature Toggle and Explicit Permission
-  Schema/RLS Foundation,
-- then review/wrap existing ledger/payment backend APIs before any restricted
-  patient-level internal-settlement UI,
-- then doctor commission foundation only after the settlement boundary is clear.
+- Task 96 - Treatment Plan Creation/Edit Pilot Workflow.
 
 ---
 
 ## 15. Open Implementation Questions
 
-- Should performed services be persisted during Visit Completion draft save,
-  completion only, or both?
-- Should the first performed-services slice require a service catalog row, or
-  allow a manual service-name snapshot?
-- Should one Visit Completion support multiple performed services in the first
-  slice?
-- Should any clinic enable optional internal settlement records during pilot?
-- Which explicit profiles may view or manage internal settlement records if a
-  clinic enables the optional module?
-- What legal/accounting review wording is required before production use?
-- Should existing ledger/payment backend API names be wrapped or renamed before
-  any clinic-facing exposure?
-- Who, if anyone, may apply internal settlement corrections after explicit
-  access controls exist?
+- What is the narrowest patient-level treatment-plan write UI that is credible
+  for first pilot testing?
+- Should the first treatment-plan write UI live inside Patient Detail, a
+  dedicated treatment-plan route, or both with one canonical editor?
+- Which pilot restyling task should run immediately after treatment-plan writes?
 - Is pilot commission performed-based, collected-based, or mixed?
 - Should treatment-plan items be updated from performed services automatically
   or only by explicit user action?

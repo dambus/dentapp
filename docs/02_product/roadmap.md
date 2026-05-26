@@ -7,8 +7,17 @@ the patient, treatment-plan read-only, appointment, provider-assignment, Visit
 Completion, and appointment operational-state foundations.
 
 The roadmap is intentionally ordered around the daily clinic workflow. Work that
-creates clinical or financial facts should come before reports, analytics, and
-automation that depend on those facts.
+improves clinical and operational readiness should come before reports,
+analytics, and automation that depend on stable workflows.
+
+Task 94 updates the near-term direction: optional internal settlement records
+are deferred until after MVP. The active MVP stream should not add settlement,
+payment, balance, ledger, invoice, receipt, fiscal, or report functionality.
+
+Task 95 adds the pilot priority layer. The first in-clinic test should focus on
+appointment scheduling, planner/schedule display, patient reception progression,
+clinical visit work, treatment-plan creation/use, and optional next-appointment
+scheduling.
 
 ## Current Foundation
 
@@ -37,70 +46,99 @@ Important boundaries:
 - treatment plans are visible as clinical planning context but are not yet
   mutated from Visit Completion.
 
+## Pilot Priority Layer
+
+### Pilot-critical
+
+- treatment-plan creation/editing UI for patient plans and plan items;
+- any blocking appointment, reception, or Visit Completion defect found during
+  pilot-path validation;
+- enough end-to-end validation to confirm the first clinic test can run.
+
+### Pilot usability / restyling
+
+- planner daily/weekly readability;
+- appointment-card hierarchy and reception operational actions;
+- patient-detail workflow entry points;
+- Visit Completion and completed visit clinical usability;
+- rebooking / next appointment action clarity;
+- responsive checks on desktop, tablet, and supported mobile widths.
+
+### Post-pilot or deferred
+
+- internal settlement records and all payment/ledger/balance/fiscal/invoice or
+  receipt work;
+- doctor commissions;
+- broad reports/analytics;
+- advanced reminders, recall automation, external calendar sync, online booking,
+  patient portal, room/chair scheduling, and waiting-time analytics;
+- broad inventory/material-request work unless a narrow pilot need is approved.
+
 ## Rebalanced Sequence
 
-### Stage 1 - Performed Services Foundation
+### Stage 1 - Pilot Clinical Workflow Readiness
 
 Goal:
 
-Turn completed visit context into structured performed work that can later drive
-ledger, commissions, reports, and treatment-plan progress.
+Stabilize the first in-clinic pilot workflow around scheduling, planner use,
+reception progression, patient clinical work, treatment-plan creation/use, and
+next-appointment scheduling.
 
 Priorities:
 
-- define the service catalog and performed-service MVP slice;
-- decide whether Visit Completion should record one or many performed services;
-- add schema/RLS for service categories, services, and performed services;
-- connect performed services to patient, visit, provider, and optional treatment
-  plan item;
-- keep billing, payments, materials, and commissions out of the first performed
-  services slice.
+- preserve `visit_procedures` as the active clinical procedure record;
+- keep Visit Completion clinical-only;
+- improve patient/appointment/visit workflow clarity;
+- implement the missing treatment-plan create/edit pilot workflow;
+- identify remaining clinical MVP blockers before pilot;
+- keep settlement, payment, ledger, balance, invoice, receipt, and fiscal work
+  out of scope.
 
 Reasoning:
 
-The next major modules need a stable source of clinical work. Ledger and
-commission work should not be built on free-text visit notes alone.
+Tasks 92-94 deliberately froze finance-like behavior. Task 95 confirms that the
+first usable milestone is a focused pilot clinical path, not the whole final
+product.
 
-### Stage 2 - Price, Discount, and Patient Ledger
+### Stage 2 - Pilot UI/UX Restyling Foundation
 
 Goal:
 
-Track patient financial status from performed services without becoming a fiscal
-or accounting system.
+Improve the validated clinical and operational screens that the pilot will use.
 
 Priorities:
 
-- define charge creation from performed services;
-- define patient ledger entries for charges, payments, discounts, corrections,
-  advances, and installment notes;
-- decide discount permissions and audit requirements;
-- show patient balance only to allowed roles;
-- add minimal patient ledger UI and smoke/RLS coverage.
+- review existing patient, appointment, schedule, Visit Completion, completed
+  visit, and treatment-plan read-only surfaces;
+- restyle planner, appointment cards, reception actions, patient detail, Visit
+  Completion, treatment-plan surfaces, and rebooking actions in that order where
+  dependencies allow;
+- standardize layout, navigation, cards, lists, tables, forms, and action
+  patterns;
+- preserve existing behavior and smoke coverage while improving usability.
 
 Reasoning:
 
-Debt and payment visibility is a core MVP promise, but it depends on knowing
-what was actually performed and priced.
+Treatment-plan writes are the main functional blocker. The rest of the pilot
+path has enough foundation to benefit from focused usability and visual work.
 
-### Stage 3 - Doctor Commission Foundation
+### Stage 3 - Post-Restyling Clinical Enhancements
 
 Goal:
 
-Calculate and review doctor/specialist commission from structured performed work
-and, where configured, collected payments.
+Extend the clinical MVP only after the restyled validated workflow is stable.
 
 Priorities:
 
-- decide pilot default: performed-based, collected-based, or both;
-- define commission rules per doctor and optionally per service/category;
-- define commission entries and payout status;
-- keep commission visibility highly restricted;
-- add owner report first, doctor own-report only if enabled.
+- treatment-plan mutation planning;
+- inventory and material request planning;
+- print/export review for clinical records;
+- pilot feedback fixes.
 
 Reasoning:
 
-Commission calculations are sensitive and should be built after performed
-services and ledger rules are explicit.
+New domain behavior should not be layered onto screens that still need a
+coherent MVP visual and interaction pass.
 
 ### Stage 4 - Treatment Plan Mutation and Clinical Completion Integration
 
@@ -138,7 +176,6 @@ Prepare the pilot workflow after the core facts exist.
 Priorities:
 
 - daily schedule and completed work reports;
-- patient ledger and debt reports;
 - commission reports;
 - low-stock/material request reports;
 - print/export review;
@@ -147,22 +184,28 @@ Priorities:
 
 ## Near-Term Recommended Tasks
 
-1. Task 72 - Performed Services Foundation Planning
-2. Task 73 - Service Catalog and Performed Services Schema/RLS
-3. Task 74 - Performed Services Service Layer
-4. Task 75 - Visit Completion Performed Services UI Slice
-5. Task 76 - Patient Ledger Planning
-6. Task 77 - Patient Ledger Schema/RLS Foundation
-7. Task 78 - Patient Ledger UI Slice
-8. Task 79 - Doctor Commission Planning
+1. Task 95 - Pilot Clinical Flow Audit and UI/UX Restyling Foundation Planning
+2. Task 96 - Treatment Plan Creation/Edit Pilot Workflow
+3. Task 97 - Planner and Appointment Card Pilot Restyling
+4. Task 98 - Patient Detail Pilot Workflow Entry Restyling
+5. Task 99 - Visit Completion and Completed Visit Pilot Usability Pass
+6. Task 100 - Pilot Clinical Flow Validation Checkpoint
 
 ## Deferred Until After These Stages
 
+- internal settlement records;
+- patient ledger/payment/balance UI;
+- settlement record model decisions;
+- controlled settlement read/write RPCs;
+- settlement exports or reports;
+- service catalog / financial performed-service revival;
+- doctor commission calculation;
 - room/chair scheduling;
 - provider workload calendar and availability rules;
 - waiting-time analytics;
 - automatic treatment-plan mutation;
 - payment fiscalization;
+- invoices and receipts;
 - external calendar sync;
 - patient portal and online booking;
 - reminders and task automation.

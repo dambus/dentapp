@@ -310,7 +310,14 @@ Status legend:
 - [x] Task 90 - Optional Internal Settlement Records / Privacy & Access Decision
 - [x] Task 91 - Internal Settlement Feature Toggle / Access-Control and Existing Backend Review
 - [x] Task 92 - Existing Financial Visibility and Automatic Posting Freeze/Gating
-- [ ] Task 93 - Internal Settlement Feature Toggle and Explicit Permission Schema/RLS Foundation
+- [x] Task 93 - Internal Settlement Feature Toggle and Explicit Permission Schema/RLS Foundation
+- [x] Task 94 - Internal Settlement Post-MVP Deferral / MVP Roadmap Refocus
+- [x] Task 95 - Pilot Clinical Flow Audit and UI/UX Restyling Foundation Planning
+- [ ] Task 96 - Treatment Plan Creation/Edit Pilot Workflow
+- [ ] Task 97 - Planner and Appointment Card Pilot Restyling
+- [ ] Task 98 - Patient Detail Pilot Workflow Entry Restyling
+- [ ] Task 99 - Visit Completion and Completed Visit Pilot Usability Pass
+- [ ] Task 100 - Pilot Clinical Flow Validation Checkpoint
 - [ ] Doctor commission planning
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
@@ -1078,19 +1085,56 @@ Completed direction:
 
 ### Completed Recommended Task
 
-Task 94 - Internal Settlement Record Model / Controlled Access Path Decision
+Task 95 - MVP UI/UX Restyling Foundation Planning
 
-Recommended direction:
+Completed direction:
 
-- decide whether retained `patient_ledger_entries` and `patient_payments` can be
-  safely adapted behind the Task 93 feature-toggle and explicit-grant model;
-- compare that option against a narrower internal-settlement-specific record
-  model;
-- decide whether performed-service-derived amounts should ever reconnect to
-  internal settlement records;
-- define the minimal controlled read/write/RPC paths before any UI is exposed;
-- keep fiscalization, accounting, receipts, invoices, exports, reports, and
-  ordinary clinical workflow visibility out of scope unless explicitly approved.
+- defined the first in-clinic pilot flow around scheduling, planner use,
+  reception progression, clinical visit work, treatment-plan creation/use, and
+  next-appointment scheduling;
+- audited the current source and docs for appointment scheduling, schedule
+  cards, appointment detail, patient workflow entry points, operational state,
+  Visit Completion, completed visit review, treatment-plan surfaces, and routes;
+- confirmed appointment scheduling, planner display, reception state, clinical
+  Visit Completion, completed visit review, and rebooking have functional
+  foundations;
+- identified treatment-plan creation/editing UI as the main pilot-critical
+  functional blocker because current patient treatment-plan surfaces are
+  read-only and the top-level Treatment Plans route is a placeholder;
+- classified work into `Pilot-critical`, `Pilot usability / restyling`, and
+  `Post-pilot or deferred`;
+- recommended Task 96 as treatment-plan create/edit pilot workflow before broad
+  visual restyling;
+- preserved the Task 92-94 settlement/payment/ledger deferral boundary.
+
+### Next Recommended Task
+
+Task 96 - Treatment Plan Creation/Edit Pilot Workflow
+
+Suggested direction:
+
+- implement the minimal patient-level treatment-plan write UI needed for first
+  clinic pilot testing;
+- use the existing treatment-plan service/schema/RLS foundation;
+- support plan and plan-item create/edit/archive behavior where already
+  supported by the service model;
+- keep treatment plans clinical-only;
+- exclude settlement, billing, payment, ledger, material usage, and automatic
+  Visit Completion mutation.
+
+### Completed Recommended Task
+
+Task 94 - Internal Settlement Post-MVP Deferral / MVP Roadmap Refocus
+
+Completed direction:
+
+- confirmed internal settlement records are not an MVP feature,
+- retained the Task 92/93 safe baseline as authoritative,
+- kept the Task 93 setting/grant foundation inactive from product usage,
+- deferred settlement record-model, RPC, UI, reporting, balance, payment,
+  correction, export, invoice, receipt, and fiscal work until after MVP,
+- redirected the active roadmap back to clinical MVP readiness and UI/UX
+  restyling planning.
 
 ### Completed Recommended Task
 
