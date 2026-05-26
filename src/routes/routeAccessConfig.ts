@@ -71,7 +71,6 @@ export const routeAllowedRoles: Record<ProtectedRoutePath, AppRole[]> = {
     'assistant',
   ],
   [routePaths.treatmentPlans]: ['owner_admin', 'doctor', 'specialist'],
-  [routePaths.payments]: ['owner_admin', 'reception_admin'],
   [routePaths.commissions]: ['owner_admin'],
   [routePaths.inventory]: ['owner_admin', 'assistant', 'inventory_responsible'],
   [routePaths.reports]: [

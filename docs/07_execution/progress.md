@@ -5255,6 +5255,50 @@ Initial stack:
 
 ---
 
+### Completed (Task 93 - Internal Settlement Feature Toggle and Explicit Permission Foundation)
+
+- Added a disabled-by-default clinic setting table for the future internal
+  settlement records capability.
+- Added explicit same-clinic per-profile access grants with active-profile
+  validation and no empty false/false grants.
+- Added future-only helper functions for enabled/view/manage eligibility without
+  attaching them to any ledger, payment, performed-service, posting, payment, or
+  reversal access path.
+- Added RLS so only active same-clinic `owner_admin` users can administer the
+  setting and grants.
+- Added focused RLS coverage in
+  `supabase/snippets/testInternalSettlementFeatureAccessRls.mjs`.
+- Documented the feature-toggle foundation, disabled semantics, grant semantics,
+  audit expectations, frozen-access boundary, and deferred decisions in
+  `docs/design/task-93-internal-settlement-feature-toggle-explicit-permission-foundation.md`.
+- No React UI, routes, patient settlement display, payment forms, balance
+  indicators, automatic posting, RPC thawing, invoices, receipts, exports, or
+  reports were added.
+
+### Verification (Task 93)
+
+- `npx.cmd supabase migration up` passes and applies
+  `20260525110000_add_internal_settlement_feature_toggle_and_access_grants.sql`.
+- `npm.cmd run build` passes with the existing Vite large chunk-size warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testInternalSettlementFeatureAccessRls.mjs`
+  passes after provisioning demo auth users and loading local Supabase env
+  values.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `DENTAPP_APP_URL=http://localhost:5173`.
+- `node .\supabase\snippets\testInternalSettlementFreezeRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `git diff --check` passes with existing line-ending warnings on edited docs.
+
+### Next Recommended Task
+
+- Task 94 - Internal Settlement Record Model / Controlled Access Path Decision.
+
+---
+
 ### Completed (Task 53 - Restore Appointment Lifecycle Secondary Actions)
 
 - Root cause found: the status transitions still existed, but recent action

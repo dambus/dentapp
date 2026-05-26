@@ -12,7 +12,6 @@ export const routePaths = {
   patientVisitDetail: '/patients/:patientId/visits/:visitId',
   patientVisitCompletion: '/patients/:patientId/visit-completion',
   treatmentPlans: '/treatment-plans',
-  payments: '/payments',
   commissions: '/commissions',
   inventory: '/inventory',
   reports: '/reports',

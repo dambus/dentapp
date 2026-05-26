@@ -1078,6 +1078,38 @@ Completed direction:
 
 ### Completed Recommended Task
 
+Task 94 - Internal Settlement Record Model / Controlled Access Path Decision
+
+Recommended direction:
+
+- decide whether retained `patient_ledger_entries` and `patient_payments` can be
+  safely adapted behind the Task 93 feature-toggle and explicit-grant model;
+- compare that option against a narrower internal-settlement-specific record
+  model;
+- decide whether performed-service-derived amounts should ever reconnect to
+  internal settlement records;
+- define the minimal controlled read/write/RPC paths before any UI is exposed;
+- keep fiscalization, accounting, receipts, invoices, exports, reports, and
+  ordinary clinical workflow visibility out of scope unless explicitly approved.
+
+### Completed Recommended Task
+
+Task 93 - Internal Settlement Feature Toggle and Explicit Permission Foundation
+
+Completed direction:
+
+- added clinic-level disabled-by-default internal settlement settings;
+- added explicit same-clinic profile grants for future view/manage eligibility;
+- limited settings and grant administration to active same-clinic
+  `owner_admin` users;
+- kept owner configuration authority separate from future record access;
+- added helper functions for future eligibility evaluation only;
+- kept frozen ledger/payment/performed-service access and posting/payment RPC
+  access untouched;
+- added focused RLS coverage and design documentation;
+- added no settlement UI, routes, payment forms, balances, posting behavior,
+  invoices, receipts, exports, or reports.
+
 Task 58 - Provider Assignment Planning / Data Model Decision
 
 Completed direction:

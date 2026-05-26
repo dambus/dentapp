@@ -35,29 +35,6 @@ import {
   patientStatusLabels,
 } from '../patients/patientDisplay'
 import type { DemoPatient } from '../patients/types'
-import {
-  PerformedServicesDraftEditor,
-} from '../performed-services/PerformedServicesDraftEditor'
-import {
-  buildPerformedServiceInputs,
-  formatPerformedServiceAmount,
-  getPerformedServiceDraftLineAmount,
-  getPerformedServicesDraftTotal,
-  mapPerformedServiceRecordToDraftRow,
-  validatePerformedServiceDraftRows,
-  type PerformedServiceDraftRow,
-} from '../performed-services/performedServicesDraftModel'
-import {
-  fetchPerformedServicesForVisit,
-  finalizePerformedServicesForCompletedVisit,
-  replaceDraftPerformedServicesForVisit,
-  type PerformedServicesFinalizationState,
-} from '../performed-services/performedServicesService'
-import {
-  postFinalizedPerformedServicesChargesForVisit,
-  type PatientLedgerChargePostingReason,
-  type PatientLedgerChargePostingState,
-} from '../patient-ledger/patientLedgerService'
 import { VisitCompletionSummary } from './VisitCompletionSummary'
 import {
   completeVisit,
@@ -93,8 +70,6 @@ type WorkflowStep = {
   title: string
   description: string
 }
-
-const VISIT_FINANCIAL_WORKFLOW_ENABLED = false
 
 const workflowSteps: WorkflowStep[] = [
   {
@@ -193,50 +168,6 @@ function getUserFriendlyServiceError(
   return message
 }
 
-function getUserFriendlyFinalizationError(
-  message: string | null | undefined,
-) {
-  if (!message?.trim()) {
-    return 'Services & charges still need finalization. Retry is required.'
-  }
-
-  if (
-    message.includes('Failed to fetch') ||
-    message.includes('NetworkError') ||
-    message.includes('network')
-  ) {
-    return 'The visit is completed, but services & charges could not be finalized because the connection failed. Retry finalization when the local Supabase service is reachable.'
-  }
-
-  if (message.includes('Active profile context')) {
-    return 'The visit is completed, but services & charges could not be finalized because no active clinical profile is available. Sign in again or switch to an active clinical user, then retry finalization.'
-  }
-
-  return message
-}
-
-function getUserFriendlyLedgerPostingError(
-  message: string | null | undefined,
-) {
-  if (!message?.trim()) {
-    return 'Charges still need to be posted to the patient account. Retry charge posting when the connection is available.'
-  }
-
-  if (
-    message.includes('Failed to fetch') ||
-    message.includes('NetworkError') ||
-    message.includes('network')
-  ) {
-    return 'The visit is completed and services are finalized, but charges could not be posted because the connection failed. Retry charge posting when the local Supabase service is reachable.'
-  }
-
-  if (message.includes('Active profile context')) {
-    return 'The visit is completed and services are finalized, but charges could not be posted because no active profile is available. Sign in again or switch to an authorized user.'
-  }
-
-  return message
-}
-
 export function VisitCompletionFlow({
   appointmentContext,
   appointmentId,
@@ -253,9 +184,6 @@ export function VisitCompletionFlow({
   const [procedures, setProcedures] = useState<ProcedureRow[]>([
     createProcedureRow(),
   ])
-  const [performedServices, setPerformedServices] = useState<
-    PerformedServiceDraftRow[]
-  >([])
   const [clinicalNote, setClinicalNote] = useState('')
   const [recommendation, setRecommendation] = useState('')
   const [nextStep, setNextStep] = useState('')
@@ -263,11 +191,8 @@ export function VisitCompletionFlow({
     useState<CompletionState>('editing')
   const [attemptedCompletion, setAttemptedCompletion] = useState(false)
   const [isLoadingDraft, setIsLoadingDraft] = useState(true)
-  const [isLoadingPerformedServices, setIsLoadingPerformedServices] =
-    useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
-  const [isFinalizingServices, setIsFinalizingServices] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [draftReloadMessage, setDraftReloadMessage] = useState<string | null>(
     null,
@@ -277,20 +202,6 @@ export function VisitCompletionFlow({
   >([])
   const [serviceError, setServiceError] = useState<string | null>(null)
   const [serviceMessage, setServiceMessage] = useState<string | null>(null)
-  const [servicesFinalizationState, setServicesFinalizationState] =
-    useState<PerformedServicesFinalizationState | null>(null)
-  const [servicesFinalizationError, setServicesFinalizationError] = useState<
-    string | null
-  >(null)
-  const [ledgerPostingState, setLedgerPostingState] =
-    useState<PatientLedgerChargePostingState | null>(null)
-  const [ledgerPostingError, setLedgerPostingError] = useState<string | null>(
-    null,
-  )
-  const [ledgerPostingReason, setLedgerPostingReason] =
-    useState<PatientLedgerChargePostingReason | null>(null)
-  const [isPostingLedgerCharges, setIsPostingLedgerCharges] = useState(false)
-
   const patientName = getPatientFullName(patient)
   const procedureCount = getCompletedProcedureCount(procedures)
   const incompleteProcedureCount = getIncompleteProcedureCount(procedures)
@@ -303,18 +214,12 @@ export function VisitCompletionFlow({
     procedureCount > 0 ||
     hasClinicalNote ||
     hasRecommendation ||
-    hasNextStep ||
-    (VISIT_FINANCIAL_WORKFLOW_ENABLED && performedServices.length > 0)
+    hasNextStep
   const nextStepLabel = getNextStepLabel(nextStep)
   const age = getPatientAge(patient.dateOfBirth)
   const activeStep = workflowSteps[activeStepIndex]
   const isBusy =
-    isLoadingDraft ||
-    (VISIT_FINANCIAL_WORKFLOW_ENABLED && isLoadingPerformedServices) ||
-    isSavingDraft ||
-    isCompleting ||
-    (VISIT_FINANCIAL_WORKFLOW_ENABLED && isFinalizingServices) ||
-    (VISIT_FINANCIAL_WORKFLOW_ENABLED && isPostingLedgerCharges)
+    isLoadingDraft || isSavingDraft || isCompleting
   const plannedWork =
     patient.activeTreatmentPlanSummary.trim() ||
     'No planned treatment is recorded in the current patient context.'
@@ -347,31 +252,6 @@ export function VisitCompletionFlow({
     [appointmentId],
   )
 
-  const loadPerformedServiceDraftRows = useCallback(
-    async (draftVisitId: string) => {
-      setIsLoadingPerformedServices(true)
-
-      try {
-        const records = await fetchPerformedServicesForVisit(draftVisitId)
-        setPerformedServices(
-          records
-            .filter((record) => record.status === 'draft')
-            .map(mapPerformedServiceRecordToDraftRow),
-        )
-      } catch (error) {
-        setServiceError(
-          getUserFriendlyServiceError(
-            error instanceof Error ? error.message : null,
-            'Saved services and charges could not be loaded. Clinical draft data is still available.',
-          ),
-        )
-      } finally {
-        setIsLoadingPerformedServices(false)
-      }
-    },
-    [],
-  )
-
   useEffect(() => {
     if (appointmentId) {
       const timeoutId = window.setTimeout(() => {
@@ -401,9 +281,6 @@ export function VisitCompletionFlow({
 
         if (draft) {
           applyDraft(draft)
-          if (VISIT_FINANCIAL_WORKFLOW_ENABLED) {
-            void loadPerformedServiceDraftRows(draft.id)
-          }
           setServiceWarnings(draft.warnings)
           setLastSavedAt(draft.updatedAt)
           setDraftReloadMessage(
@@ -416,13 +293,7 @@ export function VisitCompletionFlow({
             )}.`,
           )
           setServiceMessage(null)
-          setServicesFinalizationState(null)
-          setServicesFinalizationError(null)
-          setLedgerPostingState(null)
-          setLedgerPostingError(null)
-          setLedgerPostingReason(null)
         } else {
-          setPerformedServices([])
           setServiceWarnings([])
           setLastSavedAt(null)
           setDraftReloadMessage(
@@ -431,11 +302,6 @@ export function VisitCompletionFlow({
               : 'No open draft found. New visit completion ready. Use Save Draft before leaving or refreshing.',
           )
           setServiceMessage(null)
-          setServicesFinalizationState(null)
-          setServicesFinalizationError(null)
-          setLedgerPostingState(null)
-          setLedgerPostingError(null)
-          setLedgerPostingReason(null)
         }
       } catch (error) {
         if (isCurrent) {
@@ -462,7 +328,6 @@ export function VisitCompletionFlow({
     appointmentContext,
     appointmentId,
     applyDraft,
-    loadPerformedServiceDraftRows,
     patient.id,
   ])
 
@@ -518,46 +383,6 @@ export function VisitCompletionFlow({
     }
   }
 
-  async function savePerformedServicesDraft(draft: VisitCompletionDraft) {
-    const validationError = validatePerformedServiceDraftRows(performedServices)
-
-    if (validationError) {
-      return {
-        ok: false,
-        error: validationError,
-      }
-    }
-
-    const result = await replaceDraftPerformedServicesForVisit({
-      patientId: draft.patientId,
-      visitId: draft.id,
-      performedServices: buildPerformedServiceInputs(performedServices, {
-        appointmentId: draft.appointmentId ?? linkedAppointmentId,
-        patientId: draft.patientId,
-        visitId: draft.id,
-      }),
-    })
-
-    if (!result.ok) {
-      return {
-        ok: false,
-        error:
-          result.error ??
-          result.message ??
-          'Services and charges draft rows could not be saved.',
-      }
-    }
-
-    setPerformedServices(
-      (result.performedServices ?? []).map(mapPerformedServiceRecordToDraftRow),
-    )
-
-    return {
-      ok: true,
-      error: null,
-    }
-  }
-
   async function handleSaveDraft() {
     if (!hasMeaningfulDraftData || isSavingDraft || isCompleting) {
       return
@@ -566,43 +391,14 @@ export function VisitCompletionFlow({
     setIsSavingDraft(true)
     setServiceError(null)
     setServiceMessage(null)
-    setServicesFinalizationState(null)
-    setServicesFinalizationError(null)
-    setLedgerPostingState(null)
-    setLedgerPostingError(null)
-    setLedgerPostingReason(null)
     setDraftReloadMessage(null)
 
     try {
-      const validationError = VISIT_FINANCIAL_WORKFLOW_ENABLED
-        ? validatePerformedServiceDraftRows(performedServices)
-        : null
-
-      if (validationError) {
-        setServiceError(validationError)
-        return
-      }
-
       const result = await saveVisitCompletionDraft(buildDraftInput())
 
       setServiceWarnings(result.warnings ?? [])
 
       if (result.ok && result.draft) {
-        const performedServiceSave = VISIT_FINANCIAL_WORKFLOW_ENABLED
-          ? await savePerformedServicesDraft(result.draft)
-          : { ok: true, error: null }
-
-        if (!performedServiceSave.ok) {
-          setVisitId(result.draft.id)
-          setLastSavedAt(result.draft.updatedAt)
-          applyDraft(result.draft)
-          setServiceError(
-            performedServiceSave.error ??
-              'Visit draft was saved, but internal settlement details were not saved.',
-          )
-          return
-        }
-
         setVisitId(result.draft.id)
         setLastSavedAt(result.draft.updatedAt)
         setServiceMessage(
@@ -637,8 +433,6 @@ export function VisitCompletionFlow({
 
     setAttemptedCompletion(true)
     setServiceError(null)
-    setServicesFinalizationError(null)
-    setLedgerPostingError(null)
 
     if (!isReady) {
       setCompletionState('editing')
@@ -656,65 +450,10 @@ export function VisitCompletionFlow({
     setIsCompleting(true)
     setServiceError(null)
     setServiceMessage(null)
-    setServicesFinalizationState(null)
-    setServicesFinalizationError(null)
-    setLedgerPostingState(null)
-    setLedgerPostingError(null)
-    setLedgerPostingReason(null)
     setDraftReloadMessage(null)
 
     try {
-      let completionInput = buildDraftInput()
-
-      if (VISIT_FINANCIAL_WORKFLOW_ENABLED && performedServices.length > 0) {
-        const validationError =
-          validatePerformedServiceDraftRows(performedServices)
-
-        if (validationError) {
-          setServiceError(validationError)
-          setCompletionState('editing')
-          setActiveStepIndex(workflowSteps.length - 1)
-          return
-        }
-
-        const draftResult = await saveVisitCompletionDraft(completionInput)
-
-        setServiceWarnings(draftResult.warnings ?? [])
-
-        if (!draftResult.ok || !draftResult.draft) {
-          setServiceError(
-            getUserFriendlyServiceError(
-              draftResult.error ?? draftResult.message,
-              'Visit was not completed. Your entered data is still visible.',
-            ),
-          )
-          setCompletionState('editing')
-          setActiveStepIndex(workflowSteps.length - 1)
-          return
-        }
-
-        const performedServiceSave = await savePerformedServicesDraft(
-          draftResult.draft,
-        )
-
-        if (!performedServiceSave.ok) {
-          setVisitId(draftResult.draft.id)
-          setLastSavedAt(draftResult.draft.updatedAt)
-          applyDraft(draftResult.draft)
-          setServiceError(
-            performedServiceSave.error ??
-              'Visit was not completed because internal settlement details could not be saved.',
-          )
-          setCompletionState('editing')
-          setActiveStepIndex(workflowSteps.length - 1)
-          return
-        }
-
-        completionInput = {
-          ...completionInput,
-          visitId: draftResult.draft.id,
-        }
-      }
+      const completionInput = buildDraftInput()
 
       const result = await completeVisit(completionInput)
 
@@ -725,33 +464,6 @@ export function VisitCompletionFlow({
         setLastSavedAt(result.draft.updatedAt)
         applyDraft(result.draft)
         setCompletionState('completed')
-
-        if (VISIT_FINANCIAL_WORKFLOW_ENABLED) {
-          const finalizationResult =
-            await finalizePerformedServicesForCompletedVisit({
-              patientId: result.draft.patientId,
-              visitId: result.draft.id,
-            })
-
-          setServicesFinalizationState(finalizationResult.state)
-
-          if (finalizationResult.ok) {
-            setServicesFinalizationError(null)
-            await postLedgerChargesAfterFinalization(
-              result.draft.id,
-              finalizationResult.state,
-            )
-          } else {
-            setServicesFinalizationError(
-              getUserFriendlyFinalizationError(
-                finalizationResult.error ?? finalizationResult.message,
-              ),
-            )
-            setLedgerPostingState(null)
-            setLedgerPostingError(null)
-            setLedgerPostingReason(null)
-          }
-        }
 
         setServiceMessage(result.message ?? 'Visit completed.')
       } else {
@@ -778,109 +490,6 @@ export function VisitCompletionFlow({
     }
   }
 
-  async function retryServicesFinalization() {
-    if (!visitId || isFinalizingServices || isCompleting) {
-      return
-    }
-
-    setIsFinalizingServices(true)
-    setServicesFinalizationError(null)
-
-    try {
-      const finalizationResult =
-        await finalizePerformedServicesForCompletedVisit({
-          patientId: patient.id,
-          visitId,
-        })
-
-      setServicesFinalizationState(finalizationResult.state)
-
-      if (finalizationResult.ok) {
-        setServicesFinalizationError(null)
-        await postLedgerChargesAfterFinalization(
-          visitId,
-          finalizationResult.state,
-        )
-      } else {
-        setServicesFinalizationError(
-          getUserFriendlyFinalizationError(
-            finalizationResult.error ?? finalizationResult.message,
-          ),
-        )
-        setLedgerPostingState(null)
-        setLedgerPostingError(null)
-        setLedgerPostingReason(null)
-      }
-    } catch (error) {
-      setServicesFinalizationError(
-        getUserFriendlyFinalizationError(
-          error instanceof Error ? error.message : null,
-        ),
-      )
-    } finally {
-      setIsFinalizingServices(false)
-    }
-  }
-
-  async function postLedgerChargesAfterFinalization(
-    completedVisitId: string,
-    finalizationState: PerformedServicesFinalizationState | null,
-  ) {
-    if (finalizationState?.status === 'no_services') {
-      setLedgerPostingState(null)
-      setLedgerPostingError(null)
-      setLedgerPostingReason(null)
-      return
-    }
-
-    if (finalizationState?.status !== 'finalized') {
-      setLedgerPostingState(null)
-      setLedgerPostingError(null)
-      setLedgerPostingReason(null)
-      return
-    }
-
-    setIsPostingLedgerCharges(true)
-    setLedgerPostingError(null)
-    setLedgerPostingReason(null)
-
-    try {
-      const ledgerResult =
-        await postFinalizedPerformedServicesChargesForVisit(completedVisitId)
-
-      setLedgerPostingState(ledgerResult.state)
-      setLedgerPostingReason(ledgerResult.reason ?? null)
-
-      if (ledgerResult.ok) {
-        setLedgerPostingError(null)
-      } else {
-        setLedgerPostingError(
-          getUserFriendlyLedgerPostingError(
-            ledgerResult.error ?? ledgerResult.message,
-          ),
-        )
-      }
-    } catch (error) {
-      setLedgerPostingState(null)
-      setLedgerPostingReason('unknown')
-      setLedgerPostingError(
-        getUserFriendlyLedgerPostingError(
-          error instanceof Error ? error.message : null,
-        ),
-      )
-    } finally {
-      setIsPostingLedgerCharges(false)
-    }
-  }
-
-  async function retryLedgerChargePosting() {
-    if (!visitId || isPostingLedgerCharges || isCompleting) {
-      return
-    }
-
-    await postLedgerChargesAfterFinalization(visitId, servicesFinalizationState)
-  }
-
   if (completionState === 'completed') {
     return (
       <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm">
@@ -904,24 +513,6 @@ export function VisitCompletionFlow({
             serviceMessage={serviceMessage}
             serviceWarnings={serviceWarnings}
           />
-          {VISIT_FINANCIAL_WORKFLOW_ENABLED ? (
-            <>
-              <ServicesFinalizationFeedback
-                error={servicesFinalizationError}
-                isRetrying={isFinalizingServices}
-                state={servicesFinalizationState}
-                onRetry={retryServicesFinalization}
-              />
-              <LedgerPostingFeedback
-                error={ledgerPostingError}
-                isRetrying={isPostingLedgerCharges}
-                reason={ledgerPostingReason}
-                servicesFinalizationState={servicesFinalizationState}
-                state={ledgerPostingState}
-                onRetry={retryLedgerChargePosting}
-              />
-            </>
-          ) : null}
           <VisitCompletionSummary
             procedureCount={procedureCount}
             hasClinicalNote={hasClinicalNote}
@@ -1053,15 +644,6 @@ export function VisitCompletionFlow({
             />
           ) : null}
 
-          {VISIT_FINANCIAL_WORKFLOW_ENABLED && activeStep.id === 'services' ? (
-            <PerformedServicesDraftEditor
-              appointmentContext={appointmentContext}
-              disabled={isBusy}
-              rows={performedServices}
-              onRowsChange={setPerformedServices}
-            />
-          ) : null}
-
           {activeStep.id === 'next-step' ? (
             <NextStep
               disabled={isBusy}
@@ -1081,7 +663,6 @@ export function VisitCompletionFlow({
               isReady={isReady}
               nextStepLabel={nextStepLabel}
               procedureCount={procedureCount}
-              performedServices={performedServices}
               recommendation={recommendation}
               warnings={warnings}
             />
@@ -1201,177 +782,6 @@ function ServiceFeedback({
               )}. Refresh will reload this saved draft until completion.`
             : ''}
         </InlineNotice>
-      ) : null}
-    </div>
-  )
-}
-
-function ServicesFinalizationFeedback({
-  error,
-  isRetrying,
-  state,
-  onRetry,
-}: {
-  error: string | null
-  isRetrying: boolean
-  state: PerformedServicesFinalizationState | null
-  onRetry: () => void
-}) {
-  const canRetry =
-    !state ||
-    state.needsRetry ||
-    state.status === 'finalization_required'
-
-  if (!state && !error) {
-    return null
-  }
-
-  if (state?.status === 'finalized') {
-    return (
-      <InlineNotice
-        data-testid="visit-services-finalization-success"
-        variant="success"
-      >
-        Services & charges finalized.
-      </InlineNotice>
-    )
-  }
-
-  if (state?.status === 'no_services') {
-    return (
-      <InlineNotice
-        data-testid="visit-services-finalization-empty"
-        variant="neutral"
-      >
-        No performed services were recorded for this visit.
-      </InlineNotice>
-    )
-  }
-
-  if (state?.status === 'blocked') {
-    return (
-      <InlineNotice
-        data-testid="visit-services-finalization-blocked"
-        variant="warning"
-      >
-        Visit completed. Services & charges could not be finalized: {error ?? state.message}
-      </InlineNotice>
-    )
-  }
-
-  if (!error && !canRetry) {
-    return null
-  }
-
-  return (
-    <div
-      className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-4"
-      data-testid="visit-services-finalization-retry-state"
-    >
-      <InlineNotice variant="warning">
-        Visit completed. Services & charges still need finalization.
-        {error ? ` ${error}` : ''}
-      </InlineNotice>
-      {canRetry ? (
-        <Button
-          data-testid="visit-services-finalization-retry"
-          disabled={isRetrying}
-          onClick={onRetry}
-          variant="secondary"
-        >
-          {isRetrying ? 'Retrying finalization...' : 'Retry finalization'}
-        </Button>
-      ) : null}
-    </div>
-  )
-}
-
-function LedgerPostingFeedback({
-  error,
-  isRetrying,
-  reason,
-  servicesFinalizationState,
-  state,
-  onRetry,
-}: {
-  error: string | null
-  isRetrying: boolean
-  reason: PatientLedgerChargePostingReason | null
-  servicesFinalizationState: PerformedServicesFinalizationState | null
-  state: PatientLedgerChargePostingState | null
-  onRetry: () => void
-}) {
-  if (servicesFinalizationState?.status !== 'finalized') {
-    return null
-  }
-
-  if (isRetrying && !state && !error) {
-    return (
-      <InlineNotice
-        data-testid="visit-ledger-posting-running"
-        variant="info"
-      >
-        Posting charges to patient account...
-      </InlineNotice>
-    )
-  }
-
-  if (state?.status === 'posted' || state?.status === 'already_posted') {
-    return (
-      <InlineNotice
-        data-testid="visit-ledger-posting-success"
-        variant="success"
-      >
-        Charges posted to patient account.
-      </InlineNotice>
-    )
-  }
-
-  if (state?.status === 'no_services') {
-    return null
-  }
-
-  const isAuthorizationBlocked =
-    state?.status === 'blocked' && reason === 'permission'
-  const canRetry =
-    !isAuthorizationBlocked &&
-    (!state ||
-      state.status === 'posting_required' ||
-      state.status === 'error' ||
-      Boolean(error))
-
-  if (!error && !state && !isRetrying) {
-    return null
-  }
-
-  return (
-    <div
-      className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-4"
-      data-testid="visit-ledger-posting-retry-state"
-    >
-      <InlineNotice variant="warning">
-        Visit completed and services finalized. Charges still need to be posted
-        to the patient account.
-        {error ? ` ${error}` : ''}
-      </InlineNotice>
-      {isAuthorizationBlocked ? (
-        <p
-          className="text-sm text-amber-900"
-          data-testid="visit-ledger-posting-blocked"
-        >
-          This user is not authorized to post charges automatically. An
-          authorized clinical user can post them later.
-        </p>
-      ) : null}
-      {canRetry ? (
-        <Button
-          data-testid="visit-ledger-posting-retry"
-          disabled={isRetrying}
-          onClick={onRetry}
-          variant="secondary"
-        >
-          {isRetrying ? 'Retrying charge posting...' : 'Retry charge posting'}
-        </Button>
       ) : null}
     </div>
   )
@@ -1999,7 +1409,6 @@ function ReviewStep({
   hasRecommendation,
   isReady,
   nextStepLabel,
-  performedServices,
   procedureCount,
   recommendation,
   warnings,
@@ -2012,13 +1421,10 @@ function ReviewStep({
   hasRecommendation: boolean
   isReady: boolean
   nextStepLabel: string
-  performedServices: PerformedServiceDraftRow[]
   procedureCount: number
   recommendation: string
   warnings: string[]
 }) {
-  const serviceTotal = getPerformedServicesDraftTotal(performedServices)
-
   return (
     <div className="space-y-4">
       <VisitCompletionSummary
@@ -2043,82 +1449,6 @@ function ReviewStep({
         />
       </div>
 
-      {VISIT_FINANCIAL_WORKFLOW_ENABLED ? (
-        <div
-          className="rounded-md border border-teal-100 bg-teal-50/40 p-4"
-          data-testid="visit-services-review-summary"
-        >
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="text-sm font-semibold text-slate-950">
-                Services & Charges
-              </div>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                Draft chargeable services recorded for this visit. No payment,
-                invoice, balance, or commission is created here.
-              </p>
-            </div>
-            <Badge variant={performedServices.length > 0 ? 'info' : 'neutral'}>
-              {performedServices.length}{' '}
-              {performedServices.length === 1 ? 'service' : 'services'}
-            </Badge>
-          </div>
-
-          {performedServices.length > 0 ? (
-            <div className="mt-4 space-y-3">
-              {performedServices.map((service) => (
-                <div
-                  className="rounded-md border border-slate-200 bg-white p-3"
-                  data-testid="visit-services-review-row"
-                  key={service.id}
-                >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="wrap-break-word text-sm font-semibold text-slate-950">
-                        {service.serviceNameSnapshot || 'Service not selected'}
-                      </div>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">
-                        Quantity {service.quantity || '0'}
-                        {service.toothOrRegion
-                          ? ` - ${service.toothOrRegion}`
-                          : ''}
-                        {service.creditedProviderName
-                          ? ` - ${service.creditedProviderName}`
-                          : ''}
-                      </p>
-                    </div>
-                    <div className="text-sm font-semibold text-teal-900">
-                      {formatPerformedServiceAmount(
-                        getPerformedServiceDraftLineAmount(service),
-                        service.currency,
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <div
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-teal-200 bg-white px-3 py-2"
-                data-testid="visit-services-review-total"
-              >
-                <span className="text-sm font-semibold text-slate-950">
-                  Draft total
-                </span>
-                <span className="text-sm font-semibold text-teal-900">
-                  {formatPerformedServiceAmount(
-                    serviceTotal,
-                    performedServices[0]?.currency ?? 'RSD',
-                  )}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <InlineNotice className="mt-4" variant="neutral">
-              No chargeable services added for this visit.
-            </InlineNotice>
-          )}
-        </div>
-      ) : null}
-
       {attemptedCompletion && !isReady ? (
         <InlineNotice variant="warning">
           Add at least one procedure, clinical note, or next step before
@@ -2142,10 +1472,6 @@ function getStepPrompt(stepId: string) {
 
   if (stepId === 'procedures') {
     return 'Record only what was actually performed.'
-  }
-
-  if (stepId === 'services') {
-    return 'Internal settlement records are disabled in the ordinary clinical workflow.'
   }
 
   if (stepId === 'notes') {

@@ -16,7 +16,6 @@ const navigationMarkers: Record<string, string> = {
   [routePaths.appointments]: 'A',
   [routePaths.patients]: 'P',
   [routePaths.treatmentPlans]: 'TP',
-  [routePaths.payments]: '$',
   [routePaths.commissions]: '%',
   [routePaths.inventory]: 'I',
   [routePaths.reports]: 'R',

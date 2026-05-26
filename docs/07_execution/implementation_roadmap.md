@@ -348,6 +348,21 @@ Prepare the MVP for pilot use.
 
 ### Main Screens
 
+## Current Sequencing Note - Internal Settlement
+
+Task 93 establishes only the disabled-by-default clinic setting, explicit
+per-profile grants, helper functions, and RLS foundation for a possible future
+internal settlement capability.
+
+The next settlement-related task should be docs-first:
+
+`Task 94 - Internal Settlement Record Model / Controlled Access Path Decision`
+
+Do not expose UI or reconnect frozen ledger/payment/performed-service flows
+until that decision task defines the record model and controlled access paths.
+
+---
+
 - reports,
 - print views,
 - audit log,
