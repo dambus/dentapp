@@ -221,6 +221,7 @@ treatment-plan creation/use, and next-appointment scheduling.
 ### Main Work
 
 - implement the missing treatment-plan create/edit pilot workflow,
+- harden treatment-plan write RLS before exposing mutation UI,
 - restyle the pilot-critical planner, appointment card, reception action,
   patient detail, Visit Completion, completed visit, treatment-plan, and
   rebooking surfaces,
@@ -354,11 +355,14 @@ capability.
 Task 95 refocuses the active stream on the first in-clinic pilot flow. The next
 active tasks should be:
 
-1. `Task 96 - Treatment Plan Creation/Edit Pilot Workflow`
-2. `Task 97 - Planner and Appointment Card Pilot Restyling`
-3. `Task 98 - Patient Detail Pilot Workflow Entry Restyling`
-4. `Task 99 - Visit Completion and Completed Visit Pilot Usability Pass`
-5. `Task 100 - Pilot Clinical Flow Validation Checkpoint`
+1. `Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization`
+2. `Task 97 - Treatment Plan Mutation Schema/RLS Hardening`
+3. `Task 98 - Patient Treatment Plan Creation/Edit UI`
+4. `Task 99 - Pilot Treatment Plan Smoke and Rebooking Entry-Point Polish`
+5. `Task 100 - Planner and Appointment Card Pilot Restyling`
+6. `Task 101 - Patient Detail Pilot Workflow Entry Restyling`
+7. `Task 102 - Visit Completion and Completed Visit Pilot Usability Pass`
+8. `Task 103 - Pilot Clinical Flow Validation Checkpoint`
 
 Do not expose settlement UI or reconnect frozen ledger/payment/performed-service
 flows in the MVP stream.
@@ -433,22 +437,26 @@ Current status:
   `not_arrived`, `arrived`, and `ready_for_doctor`,
 - Task 95 identifies treatment-plan creation/editing UI as the main
   pilot-critical functional gap,
+- Task 96 confirms treatment-plan tables, item tables, service write methods,
+  and CRUD/RLS test coverage already exist, but plan-level write RLS needs
+  same-clinic patient hardening before UI exposure,
 - Checkpoint B rebalanced the next roadmap around performed services before
   ledger and commissions.
 
 Next step:
 
-- Task 96 - Treatment Plan Creation/Edit Pilot Workflow.
+- Task 97 - Treatment Plan Mutation Schema/RLS Hardening.
 
 ---
 
 ## 15. Open Implementation Questions
 
-- What is the narrowest patient-level treatment-plan write UI that is credible
-  for first pilot testing?
-- Should the first treatment-plan write UI live inside Patient Detail, a
-  dedicated treatment-plan route, or both with one canonical editor?
-- Which pilot restyling task should run immediately after treatment-plan writes?
+- Should treatment-plan patient reassignment be blocked by trigger as well as
+  service/UI scope?
+- What exact browser-smoke path should verify treatment-plan create/edit/archive
+  without making the pilot UI too large?
+- Which pilot restyling task should run immediately after treatment-plan writes
+  are validated?
 - Is pilot commission performed-based, collected-based, or mixed?
 - Should treatment-plan items be updated from performed services automatically
   or only by explicit user action?

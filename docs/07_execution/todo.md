@@ -313,11 +313,14 @@ Status legend:
 - [x] Task 93 - Internal Settlement Feature Toggle and Explicit Permission Schema/RLS Foundation
 - [x] Task 94 - Internal Settlement Post-MVP Deferral / MVP Roadmap Refocus
 - [x] Task 95 - Pilot Clinical Flow Audit and UI/UX Restyling Foundation Planning
-- [ ] Task 96 - Treatment Plan Creation/Edit Pilot Workflow
-- [ ] Task 97 - Planner and Appointment Card Pilot Restyling
-- [ ] Task 98 - Patient Detail Pilot Workflow Entry Restyling
-- [ ] Task 99 - Visit Completion and Completed Visit Pilot Usability Pass
-- [ ] Task 100 - Pilot Clinical Flow Validation Checkpoint
+- [x] Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization
+- [ ] Task 97 - Treatment Plan Mutation Schema/RLS Hardening
+- [ ] Task 98 - Patient Treatment Plan Creation/Edit UI
+- [ ] Task 99 - Pilot Treatment Plan Smoke and Rebooking Entry-Point Polish
+- [ ] Task 100 - Planner and Appointment Card Pilot Restyling
+- [ ] Task 101 - Patient Detail Pilot Workflow Entry Restyling
+- [ ] Task 102 - Visit Completion and Completed Visit Pilot Usability Pass
+- [ ] Task 103 - Pilot Clinical Flow Validation Checkpoint
 - [ ] Doctor commission planning
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
@@ -1107,20 +1110,44 @@ Completed direction:
   visual restyling;
 - preserved the Task 92-94 settlement/payment/ledger deferral boundary.
 
+### Completed Recommended Task
+
+Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization
+
+Completed direction:
+
+- inspected treatment-plan migrations, RLS policies, service methods, tests,
+  Patient Detail surfaces, Visit Completion, completed visit review, route
+  access, and prior treatment-plan design docs;
+- confirmed treatment-plan tables, treatment-plan item tables, write service
+  methods, audit calls, and CRUD/RLS test coverage already exist;
+- confirmed the runtime treatment-plan UI remains read-only and the top-level
+  Treatment Plans route is still a placeholder;
+- identified a plan-level RLS hardening gap: treatment-plan insert/update checks
+  clinic and role, but should also prove the referenced patient belongs to the
+  same clinic before mutation UI is exposed;
+- selected Patient Detail / Full Record treatment-plan section as the first
+  pilot mutation UI location;
+- required the pilot UI to hide/ignore `proposed_total`, `estimated_price`, and
+  service-code fields so treatment plans remain clinical planning records;
+- kept Visit Completion separate from treatment-plan mutation and preserved the
+  settlement/payment/ledger deferral boundary.
+
 ### Next Recommended Task
 
-Task 96 - Treatment Plan Creation/Edit Pilot Workflow
+Task 97 - Treatment Plan Mutation Schema/RLS Hardening
 
 Suggested direction:
 
-- implement the minimal patient-level treatment-plan write UI needed for first
-  clinic pilot testing;
-- use the existing treatment-plan service/schema/RLS foundation;
-- support plan and plan-item create/edit/archive behavior where already
-  supported by the service model;
-- keep treatment plans clinical-only;
-- exclude settlement, billing, payment, ledger, material usage, and automatic
-  Visit Completion mutation.
+- harden `treatment_plans` insert/update policies so the referenced patient must
+  belong to the same clinic;
+- decide whether treatment-plan patient reassignment should be blocked by
+  policy, trigger, or service scope;
+- preserve item parent-plan RLS hardening and hard-delete denial;
+- add focused RLS coverage for cross-clinic patient references and denied
+  non-clinical writes;
+- add no UI, settlement, billing, payment, ledger, materials, reports, or
+  automatic Visit Completion mutation.
 
 ### Completed Recommended Task
 

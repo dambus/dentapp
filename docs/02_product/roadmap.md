@@ -50,6 +50,7 @@ Important boundaries:
 
 ### Pilot-critical
 
+- treatment-plan schema/RLS hardening before mutation UI exposure;
 - treatment-plan creation/editing UI for patient plans and plan items;
 - any blocking appointment, reception, or Visit Completion defect found during
   pilot-path validation;
@@ -89,6 +90,7 @@ Priorities:
 - preserve `visit_procedures` as the active clinical procedure record;
 - keep Visit Completion clinical-only;
 - improve patient/appointment/visit workflow clarity;
+- harden treatment-plan write RLS around same-clinic patient ownership;
 - implement the missing treatment-plan create/edit pilot workflow;
 - identify remaining clinical MVP blockers before pilot;
 - keep settlement, payment, ledger, balance, invoice, receipt, and fiscal work
@@ -120,7 +122,8 @@ Priorities:
 Reasoning:
 
 Treatment-plan writes are the main functional blocker. The rest of the pilot
-path has enough foundation to benefit from focused usability and visual work.
+path has enough foundation to benefit from focused usability and visual work
+after treatment-plan write hardening and UI wiring are complete.
 
 ### Stage 3 - Post-Restyling Clinical Enhancements
 
@@ -185,11 +188,14 @@ Priorities:
 ## Near-Term Recommended Tasks
 
 1. Task 95 - Pilot Clinical Flow Audit and UI/UX Restyling Foundation Planning
-2. Task 96 - Treatment Plan Creation/Edit Pilot Workflow
-3. Task 97 - Planner and Appointment Card Pilot Restyling
-4. Task 98 - Patient Detail Pilot Workflow Entry Restyling
-5. Task 99 - Visit Completion and Completed Visit Pilot Usability Pass
-6. Task 100 - Pilot Clinical Flow Validation Checkpoint
+2. Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization
+3. Task 97 - Treatment Plan Mutation Schema/RLS Hardening
+4. Task 98 - Patient Treatment Plan Creation/Edit UI
+5. Task 99 - Pilot Treatment Plan Smoke and Rebooking Entry-Point Polish
+6. Task 100 - Planner and Appointment Card Pilot Restyling
+7. Task 101 - Patient Detail Pilot Workflow Entry Restyling
+8. Task 102 - Visit Completion and Completed Visit Pilot Usability Pass
+9. Task 103 - Pilot Clinical Flow Validation Checkpoint
 
 ## Deferred Until After These Stages
 

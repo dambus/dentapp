@@ -5372,7 +5372,52 @@ Initial stack:
 
 ### Next Recommended Task
 
-- Task 96 - Treatment Plan Creation/Edit Pilot Workflow.
+- Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization.
+
+---
+
+### Completed (Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization)
+
+- Inspected actual treatment-plan schema, RLS, service, UI, route, browser
+  smoke, and design-document baselines.
+- Confirmed `treatment_plans` and `treatment_plan_items` already exist with
+  patient scope, clinic scope, statuses, soft archive fields, timestamps,
+  created/updated profile references, indexes, triggers, and RLS.
+- Confirmed treatment-plan service methods already exist for plan and item
+  create/update/archive, including validation and audit-log calls.
+- Confirmed existing RLS/read coverage includes
+  `testTreatmentPlanReadRls.mjs`, `testTreatmentPlanCrud.mjs`, and browser
+  smoke read-only assertions.
+- Confirmed the current runtime treatment-plan UI is still read-only:
+  `PatientTreatmentPlanSummary`, `TreatmentPlansSection`, and
+  `PatientQuickActions` expose view-only patient context, while
+  `TreatmentPlansPage` remains a placeholder.
+- Identified the main implementation gap as patient-scoped treatment-plan
+  mutation UI, not missing storage or missing service methods.
+- Identified a required hardening gap before UI exposure: plan-level
+  insert/update RLS should prove the referenced `patient_id` belongs to the same
+  clinic, matching the stronger appointment and treatment-plan-item patterns.
+- Decided the first pilot mutation UI should live in Patient Detail / Full
+  Record treatment-plan section rather than in Visit Completion or a broad
+  global planning workspace.
+- Decided pilot treatment-plan UI must hide/ignore legacy amount fields such as
+  `proposed_total`, `estimated_price`, and service-code style inputs.
+- Preserved the boundary between treatment plan items as intended future work
+  and `visit_procedures` as actual completed clinical work.
+- Added
+  `docs/design/task-96-treatment-plan-creation-edit-pilot-workflow-finalization.md`.
+- No runtime code, services, schema, migrations, RLS, RPCs, tests, routes,
+  styles, or design mockups were changed for Task 96.
+
+### Verification (Task 96)
+
+- `git diff --name-only` reviewed; Task 96 changes are documentation-only.
+- `git diff --check` passes with standard line-ending warnings on edited docs.
+- `git status --short` reviewed.
+
+### Next Recommended Task
+
+- Task 97 - Treatment Plan Mutation Schema/RLS Hardening.
 
 ---
 

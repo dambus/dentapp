@@ -12,6 +12,7 @@ Task 94 supersedes the earlier finance-like backlog order. Internal settlement r
 
 Scope:
 
+- treatment-plan schema/RLS hardening before write UI exposure;
 - treatment-plan creation/editing UI for patient plans and plan items;
 - minimal patient-level plan workflow using the existing treatment-plan service,
   schema, RLS, and audit foundation;
@@ -43,17 +44,18 @@ Scope:
 
 ## Ready Next
 
-### Task 96 - Treatment Plan Creation/Edit Pilot Workflow
+### Task 97 - Treatment Plan Mutation Schema/RLS Hardening
 
 Scope:
 
-- implement the minimal patient-level treatment-plan write UI required for the
-  first clinic pilot;
-- support creating/editing/archiving treatment plans and plan items where the
-  existing service/RLS model allows;
-- keep treatment plans clinical-only;
-- preserve patient record visibility and existing read coverage;
-- add focused validation for the new write path.
+- harden `treatment_plans` insert/update policies so referenced patients must
+  belong to the same clinic;
+- preserve existing clinical write roles and read roles unless a concrete RLS
+  defect is found;
+- keep item parent-plan RLS hardening in place;
+- keep hard delete unavailable;
+- add focused RLS coverage for cross-clinic patient references and denied
+  non-clinical writes.
 
 Non-goals:
 
@@ -65,11 +67,33 @@ Non-goals:
 - fiscalization;
 - commissions;
 - material usage;
-- automatic treatment-plan mutation from Visit Completion.
+- automatic treatment-plan mutation from Visit Completion;
+- UI implementation.
 
 ## Next Planning Queue
 
-### Task 97 - Planner And Appointment Card Pilot Restyling
+### Task 98 - Patient Treatment Plan Creation/Edit UI
+
+Scope:
+
+- wire the existing treatment-plan service methods into Patient Detail /
+  TreatmentPlansSection;
+- expose patient-scoped create/edit/archive controls to `owner_admin`, `doctor`,
+  and `specialist`;
+- keep assistant and reception treatment-plan access read-only;
+- hide or ignore `proposed_total`, `estimated_price`, and service-code fields;
+- preserve settlement/payment/ledger deferral.
+
+### Task 99 - Pilot Treatment Plan Smoke And Rebooking Entry-Point Polish
+
+Scope:
+
+- update browser smoke coverage for treatment-plan create/edit/archive behavior;
+- verify RLS/read-write boundaries remain intact;
+- add only a narrowly justified patient appointment shortcut if needed, routing
+  to the existing scheduling form.
+
+### Task 100 - Planner And Appointment Card Pilot Restyling
 
 Scope:
 
@@ -78,14 +102,14 @@ Scope:
   clinical actions;
 - preserve existing behavior and smoke guards.
 
-### Task 98 - Patient Detail Pilot Workflow Entry Restyling
+### Task 101 - Patient Detail Pilot Workflow Entry Restyling
 
 Scope:
 
 - refine Patient Today, Quick Actions, Appointments, Treatment Plan, and
   Timeline entry points for the pilot path.
 
-### Task 99 - Visit Completion And Completed Visit Pilot Usability Pass
+### Task 102 - Visit Completion And Completed Visit Pilot Usability Pass
 
 Scope:
 
@@ -93,7 +117,7 @@ Scope:
 - improve follow-up/rebooking action clarity;
 - keep settlement/payment behavior absent.
 
-### Task 100 - Pilot Clinical Flow Validation Checkpoint
+### Task 103 - Pilot Clinical Flow Validation Checkpoint
 
 Scope:
 
