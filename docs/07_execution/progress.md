@@ -5421,6 +5421,65 @@ Initial stack:
 
 ---
 
+### Completed (Task 97 - Treatment Plan Mutation Schema/RLS Hardening)
+
+- Rechecked actual treatment-plan migrations, item parent-scope hardening,
+  patient/profile helper functions, treatment-plan service write methods,
+  audit-log RPC behavior, read RLS tests, CRUD/RLS tests, and read-only browser
+  smoke assertions before editing.
+- Added
+  `supabase/migrations/20260526100000_harden_treatment_plan_mutation_scope.sql`.
+- Added treatment-plan trigger enforcement so plan mutation requires a
+  non-deleted same-clinic patient, blocks `clinic_id` reassignment, blocks
+  `patient_id` reassignment, and blocks further mutation after soft archive.
+- Recreated treatment-plan insert/update policies with explicit same-clinic
+  patient existence checks.
+- Added treatment-plan-item trigger enforcement so items must remain aligned
+  with a non-deleted same-clinic parent plan and cannot reassign parent, clinic,
+  or patient after creation.
+- Preserved existing mutation authority for `owner_admin`, `doctor`, and
+  `specialist`.
+- Preserved read-only treatment-plan access for `assistant` and
+  `reception_admin`.
+- Preserved no treatment-plan access for `inventory_responsible`.
+- Added
+  `supabase/snippets/testTreatmentPlanMutationRls.mjs` to cover allowed doctor
+  mutations, denied non-clinical writes, cross-clinic patient blocking,
+  clinic/patient reassignment blocking, archived-plan blocking, and item-parent
+  mismatch blocking.
+- Added
+  `docs/design/task-97-treatment-plan-mutation-schema-rls-hardening.md`.
+- Added no Patient Detail mutation UI, React forms, route changes, service
+  redesign, prices, settlement/payment/ledger behavior, Visit Completion
+  conversion, materials, reminders, reports, invoices, or receipts.
+
+### Verification (Task 97)
+
+- `npx.cmd supabase migration up` passes and applies
+  `20260526100000_harden_treatment_plan_mutation_scope.sql`.
+- `node .\supabase\snippets\testTreatmentPlanMutationRls.mjs` passes with local
+  Supabase env loaded from `npx.cmd supabase status -o env` plus `.env.local`.
+- `npm.cmd run build` passes with the existing Vite large chunk warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes after updating
+  the mismatched-item assertion to accept trigger-level blocking.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `DENTAPP_APP_URL=http://localhost:5173` after restarting the local
+  Vite dev server.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFreezeRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFeatureAccessRls.mjs` passes.
+- `git diff --check` passes with standard line-ending warnings on edited docs
+  and snippets.
+
+### Next Recommended Task
+
+- Task 98 - Patient Treatment Plan Creation/Edit UI.
+
+---
+
 ### Completed (Task 53 - Restore Appointment Lifecycle Secondary Actions)
 
 - Root cause found: the status transitions still existed, but recent action

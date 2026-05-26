@@ -440,12 +440,14 @@ Current status:
 - Task 96 confirms treatment-plan tables, item tables, service write methods,
   and CRUD/RLS test coverage already exist, but plan-level write RLS needs
   same-clinic patient hardening before UI exposure,
+- Task 97 hardens treatment-plan plan/item mutation scope before Patient Detail
+  write UI exposure,
 - Checkpoint B rebalanced the next roadmap around performed services before
   ledger and commissions.
 
 Next step:
 
-- Task 97 - Treatment Plan Mutation Schema/RLS Hardening.
+- Task 98 - Patient Treatment Plan Creation/Edit UI.
 
 ---
 

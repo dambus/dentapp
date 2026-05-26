@@ -167,19 +167,25 @@ async function prepareFixture() {
     sort_order: 0,
   })
 
-  const mismatchedItem = await insertRow('treatment_plan_items', {
-    clinic_id: DEMO_CLINIC_ID,
-    patient_id: demoPatient.id,
-    treatment_plan_id: outPlan.id,
-    tooth_number: '36',
-    title: 'Mismatched parent treatment plan item',
-    description:
-      'Service-created mismatch fixture that must be hidden by item RLS.',
-    service_code: 'MISMATCH-RLS',
-    status: 'planned',
-    estimated_price: 1,
-    sort_order: 1,
-  })
+  const serviceClient = getServiceClient()
+  const { data: mismatchedItem, error: mismatchedItemError } =
+    await serviceClient
+      .from('treatment_plan_items')
+      .insert({
+        clinic_id: DEMO_CLINIC_ID,
+        patient_id: demoPatient.id,
+        treatment_plan_id: outPlan.id,
+        tooth_number: '36',
+        title: 'Mismatched parent treatment plan item',
+        description:
+          'Service-created mismatch fixture that must be hidden or blocked by item RLS.',
+        service_code: 'MISMATCH-RLS',
+        status: 'planned',
+        estimated_price: 1,
+        sort_order: 1,
+      })
+      .select('id')
+      .single()
 
   return {
     runId,
@@ -190,7 +196,9 @@ async function prepareFixture() {
     demoItemId: demoItem.id,
     outPlanId: outPlan.id,
     outItemId: outItem.id,
-    mismatchedItemId: mismatchedItem.id,
+    mismatchedItemId: mismatchedItem?.id ?? null,
+    mismatchedItemInsertBlocked: Boolean(mismatchedItemError),
+    mismatchedItemInsertError: mismatchedItemError?.message ?? null,
   }
 }
 
@@ -219,9 +227,11 @@ async function testRole(roleUser, fixture) {
   const demoItemRead = await countRowsAs(client, 'treatment_plan_items', {
     patient_id: fixture.demoPatientId,
   })
-  const mismatchedItemRead = await countRowsAs(client, 'treatment_plan_items', {
-    id: fixture.mismatchedItemId,
-  })
+  const mismatchedItemRead = fixture.mismatchedItemId
+    ? await countRowsAs(client, 'treatment_plan_items', {
+        id: fixture.mismatchedItemId,
+      })
+    : { count: 0, error: null }
   const outPlanRead = await countRowsAs(client, 'treatment_plans', {
     patient_id: fixture.outPatientId,
   })
@@ -253,7 +263,7 @@ async function cleanupFixture(fixture) {
     .in('id', [
       fixture.demoItemId,
       fixture.outItemId,
-      fixture.mismatchedItemId,
+      ...(fixture.mismatchedItemId ? [fixture.mismatchedItemId] : []),
     ])
   await serviceClient
     .from('treatment_plans')
@@ -296,7 +306,10 @@ async function main() {
         }
       }
 
-      if (result.mismatchedItemReadCount !== 0) {
+      if (
+        !fixture.mismatchedItemInsertBlocked &&
+        result.mismatchedItemReadCount !== 0
+      ) {
         failures.push(
           `${roleUser.role}: mismatched treatment plan item was readable`,
         )
@@ -311,11 +324,20 @@ async function main() {
       }
     }
 
+    if (!fixture.mismatchedItemInsertBlocked && !fixture.mismatchedItemId) {
+      failures.push(
+        'mismatched treatment plan item was neither blocked nor created for read assertion',
+      )
+    }
+
     console.log(
       JSON.stringify(
         {
           fixture: {
             runId: fixture.runId,
+            mismatchedItemInsertBlocked:
+              fixture.mismatchedItemInsertBlocked,
+            mismatchedItemInsertError: fixture.mismatchedItemInsertError,
           },
           results,
         },

@@ -44,18 +44,17 @@ Scope:
 
 ## Ready Next
 
-### Task 97 - Treatment Plan Mutation Schema/RLS Hardening
+### Task 98 - Patient Treatment Plan Creation/Edit UI
 
 Scope:
 
-- harden `treatment_plans` insert/update policies so referenced patients must
-  belong to the same clinic;
-- preserve existing clinical write roles and read roles unless a concrete RLS
-  defect is found;
-- keep item parent-plan RLS hardening in place;
-- keep hard delete unavailable;
-- add focused RLS coverage for cross-clinic patient references and denied
-  non-clinical writes.
+- wire the existing treatment-plan service methods into Patient Detail /
+  TreatmentPlansSection;
+- expose patient-scoped create/edit/archive controls to `owner_admin`, `doctor`,
+  and `specialist`;
+- keep assistant and reception treatment-plan access read-only;
+- hide or ignore `proposed_total`, `estimated_price`, and service-code fields;
+- preserve settlement/payment/ledger deferral.
 
 Non-goals:
 
@@ -68,21 +67,9 @@ Non-goals:
 - commissions;
 - material usage;
 - automatic treatment-plan mutation from Visit Completion;
-- UI implementation.
+- broad visual restyling.
 
 ## Next Planning Queue
-
-### Task 98 - Patient Treatment Plan Creation/Edit UI
-
-Scope:
-
-- wire the existing treatment-plan service methods into Patient Detail /
-  TreatmentPlansSection;
-- expose patient-scoped create/edit/archive controls to `owner_admin`, `doctor`,
-  and `specialist`;
-- keep assistant and reception treatment-plan access read-only;
-- hide or ignore `proposed_total`, `estimated_price`, and service-code fields;
-- preserve settlement/payment/ledger deferral.
 
 ### Task 99 - Pilot Treatment Plan Smoke And Rebooking Entry-Point Polish
 

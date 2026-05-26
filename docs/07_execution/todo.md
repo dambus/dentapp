@@ -314,7 +314,7 @@ Status legend:
 - [x] Task 94 - Internal Settlement Post-MVP Deferral / MVP Roadmap Refocus
 - [x] Task 95 - Pilot Clinical Flow Audit and UI/UX Restyling Foundation Planning
 - [x] Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization
-- [ ] Task 97 - Treatment Plan Mutation Schema/RLS Hardening
+- [x] Task 97 - Treatment Plan Mutation Schema/RLS Hardening
 - [ ] Task 98 - Patient Treatment Plan Creation/Edit UI
 - [ ] Task 99 - Pilot Treatment Plan Smoke and Rebooking Entry-Point Polish
 - [ ] Task 100 - Planner and Appointment Card Pilot Restyling
@@ -1137,17 +1137,38 @@ Completed direction:
 
 Task 97 - Treatment Plan Mutation Schema/RLS Hardening
 
+Completed direction:
+
+- verified the Task 96 plan-level gap against actual migrations, RLS policies,
+  service methods, CRUD/RLS snippets, and treatment-plan read-only docs;
+- added `20260526100000_harden_treatment_plan_mutation_scope.sql`;
+- hardened plan mutation so treatment plans must reference a non-deleted
+  same-clinic patient;
+- prevented treatment-plan `clinic_id` and `patient_id` reassignment;
+- prevented further normal mutation after plan soft archive;
+- added trigger-level item scope enforcement so items must remain aligned with a
+  non-deleted parent plan and cannot reassign parent, clinic, or patient;
+- preserved clinical writer mutation roles and assistant/reception read-only
+  behavior;
+- added `testTreatmentPlanMutationRls.mjs` for focused mutation and integrity
+  coverage;
+- added no Treatment Plan UI, prices, settlement, payment, ledger, Visit
+  Completion conversion, materials, reminders, or reports.
+
+### Next Recommended Task
+
+Task 98 - Patient Treatment Plan Creation/Edit UI
+
 Suggested direction:
 
-- harden `treatment_plans` insert/update policies so the referenced patient must
-  belong to the same clinic;
-- decide whether treatment-plan patient reassignment should be blocked by
-  policy, trigger, or service scope;
-- preserve item parent-plan RLS hardening and hard-delete denial;
-- add focused RLS coverage for cross-clinic patient references and denied
-  non-clinical writes;
-- add no UI, settlement, billing, payment, ledger, materials, reports, or
-  automatic Visit Completion mutation.
+- wire the existing treatment-plan service methods into Patient Detail /
+  TreatmentPlansSection;
+- expose patient-scoped create/edit/archive controls to `owner_admin`, `doctor`,
+  and `specialist`;
+- keep assistant and reception treatment-plan access read-only;
+- hide or ignore `proposed_total`, `estimated_price`, and service-code fields;
+- preserve settlement/payment/ledger deferral and keep Visit Completion
+  mutation out of scope.
 
 ### Completed Recommended Task
 
