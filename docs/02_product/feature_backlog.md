@@ -44,17 +44,14 @@ Scope:
 
 ## Ready Next
 
-### Task 98 - Patient Treatment Plan Creation/Edit UI
+### Task 99 - Planner And Appointment Card Pilot UI/UX Restyling
 
 Scope:
 
-- wire the existing treatment-plan service methods into Patient Detail /
-  TreatmentPlansSection;
-- expose patient-scoped create/edit/archive controls to `owner_admin`, `doctor`,
-  and `specialist`;
-- keep assistant and reception treatment-plan access read-only;
-- hide or ignore `proposed_total`, `estimated_price`, and service-code fields;
-- preserve settlement/payment/ledger deferral.
+- restyle Appointments daily/weekly views and appointment cards around scan
+  clarity, provider/status visibility, reception progression, and primary
+  clinical actions;
+- preserve existing behavior and smoke guards.
 
 Non-goals:
 
@@ -67,36 +64,18 @@ Non-goals:
 - commissions;
 - material usage;
 - automatic treatment-plan mutation from Visit Completion;
-- broad visual restyling.
+- broad Patient Detail or Visit Completion redesign.
 
 ## Next Planning Queue
 
-### Task 99 - Pilot Treatment Plan Smoke And Rebooking Entry-Point Polish
-
-Scope:
-
-- update browser smoke coverage for treatment-plan create/edit/archive behavior;
-- verify RLS/read-write boundaries remain intact;
-- add only a narrowly justified patient appointment shortcut if needed, routing
-  to the existing scheduling form.
-
-### Task 100 - Planner And Appointment Card Pilot Restyling
-
-Scope:
-
-- restyle Appointments daily/weekly views and appointment cards around scan
-  clarity, provider/status visibility, reception progression, and primary
-  clinical actions;
-- preserve existing behavior and smoke guards.
-
-### Task 101 - Patient Detail Pilot Workflow Entry Restyling
+### Task 100 - Patient Detail Pilot Workflow Entry Restyling
 
 Scope:
 
 - refine Patient Today, Quick Actions, Appointments, Treatment Plan, and
   Timeline entry points for the pilot path.
 
-### Task 102 - Visit Completion And Completed Visit Pilot Usability Pass
+### Task 101 - Visit Completion And Completed Visit Pilot Usability Pass
 
 Scope:
 
@@ -104,7 +83,7 @@ Scope:
 - improve follow-up/rebooking action clarity;
 - keep settlement/payment behavior absent.
 
-### Task 103 - Pilot Clinical Flow Validation Checkpoint
+### Task 102 - Pilot Clinical Flow Validation Checkpoint
 
 Scope:
 

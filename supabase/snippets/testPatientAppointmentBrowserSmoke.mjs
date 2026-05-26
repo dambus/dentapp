@@ -42,6 +42,14 @@ const BRIDGE_NOTE = 'Task 44 bridge clinical note'
 const BRIDGE_RECOMMENDATION = 'Task 44 follow-up recommendation'
 const BRIDGE_NEXT_STEP = 'schedule_control_visit'
 const BRIDGE_NEXT_STEP_LABEL = 'Schedule control visit'
+const TREATMENT_PLAN_TITLE = 'Task 98 pilot treatment plan'
+const TREATMENT_PLAN_UPDATED_TITLE = 'Task 98 pilot treatment plan updated'
+const TREATMENT_PLAN_DESCRIPTION = 'Pilot treatment planning objective'
+const TREATMENT_PLAN_UPDATED_DESCRIPTION = 'Updated pilot treatment planning objective'
+const TREATMENT_PLAN_ITEM_TITLE = 'Task 98 planned restoration'
+const TREATMENT_PLAN_ITEM_UPDATED_TITLE = 'Task 98 planned restoration updated'
+const TREATMENT_PLAN_ITEM_DESCRIPTION = 'Plan item clinical notes'
+const TREATMENT_PLAN_ITEM_UPDATED_DESCRIPTION = 'Updated plan item clinical notes'
 const FINALIZATION_RETRY_REASON = 'Task 78 finalization retry check'
 const FINALIZATION_RETRY_PROCEDURE = 'Task 78 retry service procedure'
 const FINALIZATION_RETRY_NOTE = 'Task 78 finalization retry clinical note'
@@ -152,6 +160,47 @@ async function prepareFixture() {
     .from('performed_services')
     .delete()
     .in('patient_id', [PATIENT_ID, DEMO_SLUG_SUPABASE_PATIENT_ID])
+  const staleTreatmentPlans = await serviceClient
+    .from('treatment_plans')
+    .select('id')
+    .eq('patient_id', PATIENT_ID)
+    .like('title', 'Task 98 pilot treatment plan%')
+
+  if (staleTreatmentPlans.error) {
+    throw new Error(
+      staleTreatmentPlans.error.message ??
+        'Could not load stale Task 98 treatment plan fixtures.',
+    )
+  }
+
+  const staleTreatmentPlanIds =
+    staleTreatmentPlans.data?.map((plan) => plan.id) ?? []
+
+  if (staleTreatmentPlanIds.length > 0) {
+    const staleItemsDelete = await serviceClient
+      .from('treatment_plan_items')
+      .delete()
+      .in('treatment_plan_id', staleTreatmentPlanIds)
+
+    if (staleItemsDelete.error) {
+      throw new Error(
+        staleItemsDelete.error.message ??
+          'Could not delete stale Task 98 treatment plan item fixtures.',
+      )
+    }
+
+    const stalePlansDelete = await serviceClient
+      .from('treatment_plans')
+      .delete()
+      .in('id', staleTreatmentPlanIds)
+
+    if (stalePlansDelete.error) {
+      throw new Error(
+        stalePlansDelete.error.message ??
+          'Could not delete stale Task 98 treatment plan fixtures.',
+      )
+    }
+  }
   await serviceClient.from('appointments').delete().eq('patient_id', PATIENT_ID)
   await serviceClient
     .from('appointments')
@@ -290,6 +339,29 @@ async function getCreatedAppointmentId() {
   }
 
   return data.id
+}
+
+async function getCreatedAppointmentDateInputValue() {
+  const serviceClient = getServiceClient()
+  const { data, error } = await serviceClient
+    .from('appointments')
+    .select('scheduled_start')
+    .eq('patient_id', PATIENT_ID)
+    .eq('reason', EXPECTED_PREFILL)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data?.scheduled_start) {
+    throw new Error(error?.message ?? 'Created appointment schedule date was not found.')
+  }
+
+  const scheduledStart = new Date(data.scheduled_start)
+  const year = scheduledStart.getFullYear()
+  const month = String(scheduledStart.getMonth() + 1).padStart(2, '0')
+  const day = String(scheduledStart.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
 }
 
 async function getCreatedAppointmentCount() {
@@ -1873,6 +1945,7 @@ async function main() {
     )
 
     const appointmentId = await getCreatedAppointmentId()
+    const createdAppointmentDate = await getCreatedAppointmentDateInputValue()
     const createdAppointmentCount = await getCreatedAppointmentCount()
 
     if (createdAppointmentCount !== appointmentCountBeforeSubmit + 1) {
@@ -2640,6 +2713,13 @@ async function main() {
 
     await navigate(cdp, APPOINTMENTS_URL)
     await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'appointments page')
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', createdAppointmentDate)
+    await waitForDateInputValue(
+      cdp,
+      '[data-testid="appointments-date-input"]',
+      createdAppointmentDate,
+    )
+    await setSelectValue(cdp, '[data-testid="appointments-provider-filter"]', 'all')
     await waitFor(
       () => textIncludes(cdp, EXPECTED_PREFILL),
       'appointment appears in appointments list',
@@ -2667,6 +2747,13 @@ async function main() {
     )
     await clickByText(cdp, 'Back to schedule')
     await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'back to daily schedule')
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', createdAppointmentDate)
+    await waitForDateInputValue(
+      cdp,
+      '[data-testid="appointments-date-input"]',
+      createdAppointmentDate,
+    )
+    await setSelectValue(cdp, '[data-testid="appointments-provider-filter"]', 'all')
     await waitFor(
       () => textIncludes(cdp, EXPECTED_PREFILL),
       'appointment card visible after returning from weekly detail',
@@ -2764,6 +2851,13 @@ async function main() {
     )
     await navigate(cdp, APPOINTMENTS_URL)
     await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'schedule after no-show detail')
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', createdAppointmentDate)
+    await waitForDateInputValue(
+      cdp,
+      '[data-testid="appointments-date-input"]',
+      createdAppointmentDate,
+    )
+    await setSelectValue(cdp, '[data-testid="appointments-provider-filter"]', 'all')
     await waitFor(
       () => textIncludes(cdp, EXPECTED_PREFILL),
       'scheduled appointment card visible after cancelled detail',
@@ -2788,6 +2882,13 @@ async function main() {
     )
     await clickByText(cdp, 'Back to schedule')
     await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'back to schedule')
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', createdAppointmentDate)
+    await waitForDateInputValue(
+      cdp,
+      '[data-testid="appointments-date-input"]',
+      createdAppointmentDate,
+    )
+    await setSelectValue(cdp, '[data-testid="appointments-provider-filter"]', 'all')
     await waitFor(
       () => textIncludes(cdp, EXPECTED_PREFILL),
       'appointment card visible after returning to schedule',
@@ -2836,10 +2937,15 @@ async function main() {
       throw new Error('Expected appointments empty state after selecting empty date.')
     }
 
-    await clickByText(cdp, 'Today')
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', createdAppointmentDate)
+    await waitForDateInputValue(
+      cdp,
+      '[data-testid="appointments-date-input"]',
+      createdAppointmentDate,
+    )
     await waitFor(
       () => textIncludes(cdp, EXPECTED_PREFILL),
-      'appointments today shortcut returns to scheduled appointment',
+      'appointments date returns to scheduled appointment',
     )
 
     const scheduledCardButtonTexts = await getAppointmentCardButtonTexts(
@@ -2990,6 +3096,14 @@ async function main() {
 
     const visitCompletionUrl = await evaluate(cdp, 'location.href')
     await navigate(cdp, APPOINTMENTS_URL)
+    await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'schedule after draft save')
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', createdAppointmentDate)
+    await waitForDateInputValue(
+      cdp,
+      '[data-testid="appointments-date-input"]',
+      createdAppointmentDate,
+    )
+    await setSelectValue(cdp, '[data-testid="appointments-provider-filter"]', 'all')
     await waitForAppointmentCardState(
       cdp,
       EXPECTED_PREFILL,
@@ -3325,10 +3439,8 @@ async function main() {
               .filter(Boolean);
             return location.search.includes('section=treatment-plans') &&
               text.includes('Treatment Plan') &&
-              text.includes('Read-only') &&
-              !sectionActions.includes('Create treatment plan') &&
-              !sectionActions.includes('Edit plan') &&
-              !sectionActions.includes('Add item') &&
+              text.includes('Editable') &&
+              sectionActions.includes('Create treatment plan') &&
               (
                 text.includes('No treatment plan configured') ||
                 text.includes('Treatment plan exists but has no planned items') ||
@@ -3336,7 +3448,149 @@ async function main() {
               );
           })()`,
         ),
-      'patient treatment plan read-only entry point',
+      'patient treatment plan editable entry point',
+    )
+    await clickSelector(cdp, '[data-testid="treatment-plan-create-action"], [data-testid="treatment-plan-empty-create-action"]')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="treatment-plan-create-form"]') instanceof HTMLFormElement`,
+        ),
+      'treatment plan create form',
+    )
+    await typeInto(cdp, '[data-testid="treatment-plan-title-input"]', TREATMENT_PLAN_TITLE)
+    await typeInto(
+      cdp,
+      '[data-testid="treatment-plan-description-input"]',
+      TREATMENT_PLAN_DESCRIPTION,
+    )
+    await setSelectValue(cdp, '[data-testid="treatment-plan-status-select"]', 'accepted')
+    await clickEnabledButtonByText(cdp, 'Create treatment plan')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('#patient-treatment-plans-section');
+            const text = section?.textContent ?? '';
+            return text.includes(${JSON.stringify(TREATMENT_PLAN_TITLE)}) &&
+              text.includes(${JSON.stringify(TREATMENT_PLAN_DESCRIPTION)}) &&
+              text.includes('Accepted') &&
+              text.includes('Treatment plan was saved successfully.');
+          })()`,
+        ),
+      'created treatment plan displayed',
+    )
+    await clickSelector(cdp, '[data-testid="treatment-plan-item-add-action"]')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="treatment-plan-item-create-form"]') instanceof HTMLFormElement`,
+        ),
+      'treatment plan item create form',
+    )
+    await typeInto(cdp, '[data-testid="treatment-plan-item-tooth-input"]', '16')
+    await typeInto(cdp, '[data-testid="treatment-plan-item-title-input"]', TREATMENT_PLAN_ITEM_TITLE)
+    await typeInto(
+      cdp,
+      '[data-testid="treatment-plan-item-description-input"]',
+      TREATMENT_PLAN_ITEM_DESCRIPTION,
+    )
+    await setSelectValue(cdp, '[data-testid="treatment-plan-item-status-select"]', 'planned')
+    await clickEnabledButtonByText(cdp, 'Add item')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('#patient-treatment-plans-section');
+            const text = section?.textContent ?? '';
+            const forbiddenTerms = ['payment', 'balance', 'settlement', 'invoice', 'receipt', 'charge total'];
+            return text.includes(${JSON.stringify(TREATMENT_PLAN_ITEM_TITLE)}) &&
+              text.includes(${JSON.stringify(TREATMENT_PLAN_ITEM_DESCRIPTION)}) &&
+              text.includes('Tooth 16') &&
+              forbiddenTerms.every((term) => !text.toLowerCase().includes(term));
+          })()`,
+        ),
+      'created treatment plan item displayed',
+    )
+    await navigate(cdp, `${PATIENT_URL}?section=treatment-plans`)
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('#patient-treatment-plans-section');
+            const text = section?.textContent ?? '';
+            return text.includes(${JSON.stringify(TREATMENT_PLAN_TITLE)}) &&
+              text.includes(${JSON.stringify(TREATMENT_PLAN_ITEM_TITLE)});
+          })()`,
+        ),
+      'treatment plan persists after reload',
+    )
+    await clickSelector(cdp, '[data-testid="treatment-plan-edit-action"]')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="treatment-plan-edit-form"]') instanceof HTMLFormElement`,
+        ),
+      'treatment plan edit form',
+    )
+    await typeInto(cdp, '[data-testid="treatment-plan-title-input"]', TREATMENT_PLAN_UPDATED_TITLE)
+    await typeInto(
+      cdp,
+      '[data-testid="treatment-plan-description-input"]',
+      TREATMENT_PLAN_UPDATED_DESCRIPTION,
+    )
+    await setSelectValue(cdp, '[data-testid="treatment-plan-status-select"]', 'in_progress')
+    await clickEnabledButtonByText(cdp, 'Save plan')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('#patient-treatment-plans-section');
+            const text = section?.textContent ?? '';
+            return text.includes(${JSON.stringify(TREATMENT_PLAN_UPDATED_TITLE)}) &&
+              text.includes(${JSON.stringify(TREATMENT_PLAN_UPDATED_DESCRIPTION)}) &&
+              text.includes('In progress');
+          })()`,
+        ),
+      'updated treatment plan displayed',
+    )
+    await clickSelector(cdp, '[data-testid="treatment-plan-item-edit-action"]')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="treatment-plan-item-edit-form"]') instanceof HTMLFormElement`,
+        ),
+      'treatment plan item edit form',
+    )
+    await typeInto(cdp, '[data-testid="treatment-plan-item-title-input"]', TREATMENT_PLAN_ITEM_UPDATED_TITLE)
+    await typeInto(
+      cdp,
+      '[data-testid="treatment-plan-item-description-input"]',
+      TREATMENT_PLAN_ITEM_UPDATED_DESCRIPTION,
+    )
+    await setSelectValue(cdp, '[data-testid="treatment-plan-item-status-select"]', 'in_progress')
+    await clickEnabledButtonByText(cdp, 'Save item')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('#patient-treatment-plans-section');
+            const text = section?.textContent ?? '';
+            return text.includes(${JSON.stringify(TREATMENT_PLAN_ITEM_UPDATED_TITLE)}) &&
+              text.includes(${JSON.stringify(TREATMENT_PLAN_ITEM_UPDATED_DESCRIPTION)}) &&
+              text.includes('In progress');
+          })()`,
+        ),
+      'updated treatment plan item displayed',
     )
     await waitFor(
       () => textIncludes(cdp, 'No upcoming appointment scheduled'),
@@ -3407,6 +3661,14 @@ async function main() {
     )
 
     await navigate(cdp, APPOINTMENTS_URL)
+    await waitFor(() => textIncludes(cdp, 'Daily schedule'), 'schedule after completed detail')
+    await setDateInput(cdp, '[data-testid="appointments-date-input"]', createdAppointmentDate)
+    await waitForDateInputValue(
+      cdp,
+      '[data-testid="appointments-date-input"]',
+      createdAppointmentDate,
+    )
+    await setSelectValue(cdp, '[data-testid="appointments-provider-filter"]', 'all')
     await waitForAppointmentCardState(
       cdp,
       EXPECTED_PREFILL,
@@ -3625,6 +3887,11 @@ async function main() {
           patientOverviewFollowUpVerified: true,
           patientOverviewTreatmentPlanVerified: true,
           patientTreatmentPlanEntryPointVerified: true,
+          patientTreatmentPlanCreateVerified: true,
+          patientTreatmentPlanItemCreateVerified: true,
+          patientTreatmentPlanPersistenceVerified: true,
+          patientTreatmentPlanEditVerified: true,
+          patientTreatmentPlanItemEditVerified: true,
           patientPostedChargesSectionFrozenVerified: true,
           followUpSchedulingActionVerified: true,
           followUpSchedulingPrefillVerified: true,

@@ -358,11 +358,10 @@ active tasks should be:
 1. `Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization`
 2. `Task 97 - Treatment Plan Mutation Schema/RLS Hardening`
 3. `Task 98 - Patient Treatment Plan Creation/Edit UI`
-4. `Task 99 - Pilot Treatment Plan Smoke and Rebooking Entry-Point Polish`
-5. `Task 100 - Planner and Appointment Card Pilot Restyling`
-6. `Task 101 - Patient Detail Pilot Workflow Entry Restyling`
-7. `Task 102 - Visit Completion and Completed Visit Pilot Usability Pass`
-8. `Task 103 - Pilot Clinical Flow Validation Checkpoint`
+4. `Task 99 - Planner and Appointment Card Pilot UI/UX Restyling`
+5. `Task 100 - Patient Detail Pilot Workflow Entry Restyling`
+6. `Task 101 - Visit Completion and Completed Visit Pilot Usability Pass`
+7. `Task 102 - Pilot Clinical Flow Validation Checkpoint`
 
 Do not expose settlement UI or reconnect frozen ledger/payment/performed-service
 flows in the MVP stream.
@@ -435,28 +434,26 @@ Current status:
   completion handoff,
 - appointment operational state exists separately from lifecycle status with
   `not_arrived`, `arrived`, and `ready_for_doctor`,
-- Task 95 identifies treatment-plan creation/editing UI as the main
-  pilot-critical functional gap,
+- Task 98 implements the patient-scoped treatment-plan creation/editing UI, so
+  treatment-plan mutation is no longer the main pilot-critical functional gap,
 - Task 96 confirms treatment-plan tables, item tables, service write methods,
   and CRUD/RLS test coverage already exist, but plan-level write RLS needs
   same-clinic patient hardening before UI exposure,
 - Task 97 hardens treatment-plan plan/item mutation scope before Patient Detail
   write UI exposure,
+- Task 98 validates treatment-plan create/edit/item persistence through
+  authenticated browser smoke coverage,
 - Checkpoint B rebalanced the next roadmap around performed services before
   ledger and commissions.
 
 Next step:
 
-- Task 98 - Patient Treatment Plan Creation/Edit UI.
+- Task 99 - Planner and Appointment Card Pilot UI/UX Restyling.
 
 ---
 
 ## 15. Open Implementation Questions
 
-- Should treatment-plan patient reassignment be blocked by trigger as well as
-  service/UI scope?
-- What exact browser-smoke path should verify treatment-plan create/edit/archive
-  without making the pilot UI too large?
 - Which pilot restyling task should run immediately after treatment-plan writes
   are validated?
 - Is pilot commission performed-based, collected-based, or mixed?

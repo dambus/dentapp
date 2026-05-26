@@ -5480,6 +5480,70 @@ Initial stack:
 
 ---
 
+### Completed (Task 98 - Patient Detail Treatment Plan Creation/Edit UI)
+
+- Reused the existing Patient Detail / Full Record treatment-plan section as
+  the patient-scoped mutation surface.
+- Added create/edit controls for treatment plans and planned treatment items for
+  authorized clinical roles:
+  - `owner_admin`,
+  - `doctor`,
+  - `specialist`.
+- Preserved read-only treatment-plan visibility for `assistant` and
+  `reception_admin`, with no mutation controls.
+- Preserved blocked treatment-plan access for `inventory_responsible` through
+  existing RLS/read behavior.
+- Reused the existing treatment-plan service methods for plan and item
+  create/update/archive plus focused reload/read behavior.
+- Exposed only clinical planning fields:
+  - plan title,
+  - plan notes/objective,
+  - plan status,
+  - item tooth/region,
+  - item title,
+  - item notes,
+  - item status.
+- Kept legacy amount/service-code fields hidden and submitted empty values for
+  them from the pilot UI.
+- Added secondary confirmation-based soft archive actions for plans and items,
+  using the existing approved archive service model.
+- Fixed the treatment-plan read helper to accept the deterministic UUID-shaped
+  local seed IDs used by the project, so saved plans persist correctly after a
+  page reload.
+- Updated authenticated browser smoke coverage for treatment-plan create,
+  item create, reload persistence, plan edit, item edit, and finance-term
+  absence.
+- Stabilized existing appointment-list smoke assertions by restoring the
+  created appointment's actual local schedule date before schedule-card checks.
+- Added
+  `docs/design/task-98-patient-detail-treatment-plan-creation-edit-ui.md`.
+- Added no settlement/payment/ledger UI, prices, charges, balances, invoices,
+  receipts, fiscal behavior, performed-service reconnection, appointment
+  conversion, Visit Completion conversion, materials, reports, reminders, or
+  broad Patient Detail redesign.
+
+### Verification (Task 98)
+
+- `npx.cmd supabase migration up` passes; local database is up to date.
+- `npm.cmd run build` passes with the existing Vite large chunk warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testTreatmentPlanMutationRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against a fresh local Vite server on `http://127.0.0.1:5176`.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFreezeRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFeatureAccessRls.mjs`
+  passes.
+
+### Next Recommended Task
+
+- Task 99 - Planner and Appointment Card Pilot UI/UX Restyling.
+
+---
+
 ### Completed (Task 53 - Restore Appointment Lifecycle Secondary Actions)
 
 - Root cause found: the status transitions still existed, but recent action

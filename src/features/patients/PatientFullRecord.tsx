@@ -44,6 +44,7 @@ type PatientFullRecordProps = {
   canViewClinicalNotes: boolean
   canManageClinicalNotes: boolean
   canViewTreatmentPlans: boolean
+  canManageTreatmentPlans: boolean
   highlightedVisitId?: string | null
   isPatientArchived: boolean
   onEditMedicalRecord: () => void
@@ -108,6 +109,7 @@ export function PatientFullRecord({
   canViewClinicalNotes,
   canManageClinicalNotes,
   canViewTreatmentPlans,
+  canManageTreatmentPlans,
   highlightedVisitId,
   isPatientArchived,
   onEditMedicalRecord,
@@ -353,7 +355,7 @@ export function PatientFullRecord({
 
               <RecordSection
                 title="Active treatment plan summary"
-                description="Read-only foundation for future treatment plan modules."
+                description="Clinical planning summary for the patient record."
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge
@@ -411,6 +413,7 @@ export function PatientFullRecord({
           >
             <TreatmentPlansSection
               patientId={patient.id}
+              canManageTreatmentPlans={canManageTreatmentPlans}
               isPatientArchived={isPatientArchived}
             />
           </div>

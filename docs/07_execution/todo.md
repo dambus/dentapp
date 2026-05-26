@@ -315,12 +315,11 @@ Status legend:
 - [x] Task 95 - Pilot Clinical Flow Audit and UI/UX Restyling Foundation Planning
 - [x] Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization
 - [x] Task 97 - Treatment Plan Mutation Schema/RLS Hardening
-- [ ] Task 98 - Patient Treatment Plan Creation/Edit UI
-- [ ] Task 99 - Pilot Treatment Plan Smoke and Rebooking Entry-Point Polish
-- [ ] Task 100 - Planner and Appointment Card Pilot Restyling
-- [ ] Task 101 - Patient Detail Pilot Workflow Entry Restyling
-- [ ] Task 102 - Visit Completion and Completed Visit Pilot Usability Pass
-- [ ] Task 103 - Pilot Clinical Flow Validation Checkpoint
+- [x] Task 98 - Patient Treatment Plan Creation/Edit UI
+- [ ] Task 99 - Planner and Appointment Card Pilot UI/UX Restyling
+- [ ] Task 100 - Patient Detail Pilot Workflow Entry Restyling
+- [ ] Task 101 - Visit Completion and Completed Visit Pilot Usability Pass
+- [ ] Task 102 - Pilot Clinical Flow Validation Checkpoint
 - [ ] Doctor commission planning
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
@@ -1155,20 +1154,36 @@ Completed direction:
 - added no Treatment Plan UI, prices, settlement, payment, ledger, Visit
   Completion conversion, materials, reminders, or reports.
 
-### Next Recommended Task
+### Completed Recommended Task
 
 Task 98 - Patient Treatment Plan Creation/Edit UI
 
+Completed direction:
+
+- wired the existing treatment-plan service methods into Patient Detail /
+  TreatmentPlansSection;
+- exposed patient-scoped create/edit/archive controls to `owner_admin`,
+  `doctor`, and `specialist`;
+- kept assistant and reception treatment-plan access read-only;
+- kept `inventory_responsible` blocked through existing treatment-plan RLS;
+- hid legacy amount/service-code fields from the pilot UI;
+- added browser smoke coverage for plan create, item create, reload
+  persistence, plan edit, item edit, and finance-term absence;
+- preserved settlement/payment/ledger deferral and kept Visit Completion
+  mutation out of scope.
+
+### Next Recommended Task
+
+Task 99 - Planner and Appointment Card Pilot UI/UX Restyling
+
 Suggested direction:
 
-- wire the existing treatment-plan service methods into Patient Detail /
-  TreatmentPlansSection;
-- expose patient-scoped create/edit/archive controls to `owner_admin`, `doctor`,
-  and `specialist`;
-- keep assistant and reception treatment-plan access read-only;
-- hide or ignore `proposed_total`, `estimated_price`, and service-code fields;
-- preserve settlement/payment/ledger deferral and keep Visit Completion
-  mutation out of scope.
+- improve daily/weekly schedule scanning, appointment-card hierarchy, provider
+  and operational-state readability, and primary clinical actions;
+- preserve existing scheduling, provider assignment, operational-state,
+  appointment lifecycle, Visit Completion, and treatment-plan behavior;
+- avoid broad Patient Detail or Visit Completion redesign in this specific
+  planner/card pass.
 
 ### Completed Recommended Task
 
