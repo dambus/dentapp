@@ -5782,6 +5782,61 @@ Initial stack:
 
 ---
 
+### Completed (Task 102 - In-Clinic Pilot Workflow Walkthrough / UI Consistency and Blocking Defect Audit)
+
+- Reviewed the current pilot-critical implementation surfaces across Planner,
+  Patient Detail, Visit Completion, Treatment Plan, completed visit history,
+  and the existing patient-context rebooking path.
+- Confirmed the active pilot workflow can be walked through from scheduling to
+  reception progression, Patient Detail entry, Visit Completion, treatment-plan
+  access, and follow-up / next appointment creation without a blocking
+  transition.
+- Confirmed the three recent pilot surfaces remain visually coherent enough for
+  guided in-clinic testing:
+  - Planner emphasizes schedule scan clarity and reception progression,
+  - Patient Detail emphasizes identity, current workflow, treatment plan, and
+    rebooking,
+  - Visit Completion remains a focused clinical-only guided flow.
+- Confirmed Treatment Plan creation/editing remains reachable and supported by
+  the existing Task 98 and Task 97 write/RLS behavior.
+- Confirmed the rebooking / next-appointment entry point remains sufficiently
+  clear through the existing `Appointments / Rebooking` patient-context card.
+- Confirmed no finance, settlement, payment, charge, balance, invoice, or
+  receipt UI reappeared in the pilot path.
+- Identified no runtime blocking defect requiring a Task 102 code fix.
+- Decided the committed `tmp/task101-*.png` files should be removed later in a
+  normal repository-hygiene cleanup commit rather than treated as product
+  assets.
+- Documented the audit in
+  `docs/design/task-102-in-clinic-pilot-workflow-walkthrough-ui-consistency-blocking-defect-audit.md`.
+
+### Verification (Task 102)
+
+- `npm.cmd run build` passes with the existing Vite large chunk warning only.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes with
+  local `.env.local` loaded and `DENTAPP_APP_URL=http://127.0.0.1:5173`.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanMutationRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFreezeRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFeatureAccessRls.mjs` passes.
+- `git diff --check` passes.
+- Manual responsive inspection was completed at approximately `390 px`,
+  `768 px`, and `1280 px` across Planner, Patient Detail, and Visit
+  Completion, including the patient-context rebooking entry.
+- One browser-smoke timeout occurred during an earlier run on the Patient
+  Detail semantic wait, but a rerun passed cleanly without changes; it was
+  treated as transient rather than a product blocker.
+
+### Next Recommended Task
+
+- Task 103 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup.
+
+---
+
 ### Completed (Task 44 - Follow-up and Next Visit Recommendation Flow)
 
 - Polished follow-up display using existing Visit Completion `recommendation` and `next_step` fields.

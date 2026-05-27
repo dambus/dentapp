@@ -82,16 +82,30 @@ Completed:
   inspection;
 - kept settlement/payment behavior absent.
 
-## Ready Next
+## Completed Pilot Readiness Check
 
 ### Task 102 - In-Clinic Pilot Workflow Walkthrough / UI Consistency and Blocking Defect Audit
 
+Completed:
+
+- walked the current pilot path from scheduling through reception, Patient
+  Detail, Visit Completion, treatment-plan usage, and rebooking;
+- confirmed the recent pilot surfaces are coherent enough for guided in-clinic
+  testing;
+- confirmed no blocking runtime or workflow defect was found;
+- confirmed settlement/payment/ledger visibility remains absent.
+
+## Ready Next
+
+### Task 103 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup
+
 Scope:
 
-- manually walk the end-to-end pilot path from scheduling through reception,
-  patient detail, visit completion, treatment-plan mutation, and rebooking;
-- verify UI consistency across the now-restyled pilot surfaces;
-- identify only real blocking defects before in-clinic testing.
+- prepare the guided first in-clinic pilot run rather than add new product
+  modules;
+- define a short workflow checklist for staff/doctor use during the pilot;
+- define an observation log for blockers, confusion points, and consistency
+  feedback found during real guided usage.
 
 ## Later MVP Queue
 
