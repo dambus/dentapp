@@ -187,20 +187,14 @@ Priorities:
 
 ## Near-Term Recommended Tasks
 
-1. Task 95 - Pilot Clinical Flow Audit and UI/UX Restyling Foundation Planning
-2. Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization
-3. Task 97 - Treatment Plan Mutation Schema/RLS Hardening
-4. Task 98 - Patient Treatment Plan Creation/Edit UI
-5. Task 99 - Pilot Treatment Plan Smoke and Rebooking Entry-Point Polish
-6. Task 100 - Planner and Appointment Card Pilot Restyling
-7. Task 101 - Patient Detail Pilot Workflow Entry Restyling
-8. Task 102 - Visit Completion and Completed Visit Pilot Usability Pass
-9. Task 103 - Patient Workspace Information Architecture & Compact Clinical Design System Plan
-10. Task 104 - Compact Clinical UI Primitives / Action and Status System
-11. Task 105 - Patient Workspace Overview and Section Navigation Restructure
-12. Task 106 - Treatment Plan and Timeline Compact Detailed Presentation
-13. Task 107 - Pre-Pilot Visual Consistency Walkthrough
-14. Task 108 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup
+1. Task 104 - Compact Clinical UI Primitives / Action and Status System
+2. Task 105 - Patient Workspace Overview and Section Navigation Restructure
+3. Task 106 - Treatment Plan and Timeline Compact Detailed Presentation
+4. Task 107 - Pilot Forms and Secondary Interaction Consistency Pass
+5. Task 108 - Pre-Pilot Visual Consistency Walkthrough
+6. Task 109 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup
+
+Task 104 and Task 105 are now complete. The active next step is Task 106.
 
 ## Deferred Until After These Stages
 

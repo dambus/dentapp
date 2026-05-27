@@ -84,7 +84,7 @@ export function ActionMenu({
         disabled={disabled || items.length === 0}
         onClick={() => setIsOpen((current) => !current)}
         onKeyDown={handleTriggerKeyDown}
-        variant="secondary"
+        variant="ghost"
       >
         <MoreHorizontal aria-hidden className="h-4 w-4" />
       </IconButton>

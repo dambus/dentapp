@@ -84,6 +84,7 @@ const RESPONSIVE_OVERFLOW_VIEWPORTS = [
   { label: 'mobile 430', mobile: true, width: 430, height: 932, deviceScaleFactor: 3 },
   { label: 'mobile 500', mobile: true, width: 500, height: 900, deviceScaleFactor: 2 },
   { label: 'tablet 768', mobile: false, width: 768, height: 1024, deviceScaleFactor: 1 },
+  { label: 'tablet 1024', mobile: false, width: 1024, height: 1366, deviceScaleFactor: 1 },
   { label: 'tablet 912', mobile: false, width: 912, height: 1368, deviceScaleFactor: 1 },
   { label: 'desktop 1440', mobile: false, width: 1440, height: 1000, deviceScaleFactor: 1 },
 ]
@@ -953,25 +954,28 @@ async function assertRestyledPatientWorkflowSurface(cdp, expectedPrimaryAction) 
         `(() => {
           const requiredSelectors = [
             '[data-testid="patient-workflow-header"]',
+            '[data-testid="patient-overview-section"]',
+            '[data-testid="patient-section-navigation"]',
             '[data-testid="patient-clinical-workflow-entry"]',
             '[data-patient-workflow-region="current-workflow"]',
             '[data-testid="patient-primary-clinical-action"]',
             '[data-testid="patient-treatment-plan-summary"]',
             '[data-testid="patient-rebooking-entry"]',
             '[data-testid="patient-clinical-context"]',
-            '[data-testid="patient-workflow-shortcuts"]',
-            '[data-testid="patient-full-record-workspace"]',
           ];
           const primaryAction = document.querySelector('[data-testid="patient-primary-clinical-action"]');
+          const workflowShortcuts = document.querySelector('[data-testid="patient-workflow-shortcuts"]');
+          const fullRecordWorkspace = document.querySelector('[data-testid="patient-full-record-workspace"]');
           const bodyText = document.body?.innerText ?? '';
           const forbiddenTerms = ['posted charges', 'payment', 'balance', 'settlement', 'invoice', 'receipt'];
 
           return requiredSelectors.every((selector) => document.querySelector(selector)) &&
+            !workflowShortcuts &&
+            !fullRecordWorkspace &&
             primaryAction?.textContent?.includes(${JSON.stringify(expectedPrimaryAction)}) &&
-            bodyText.includes('Patient workspace') &&
-            bodyText.includes('Clinical workflow') &&
-            bodyText.includes('Appointments / Rebooking') &&
-            bodyText.includes('Clinical Record') &&
+            bodyText.includes('Current workflow') &&
+            bodyText.includes('Next appointment / Rebooking') &&
+            bodyText.includes('Recent clinical context') &&
             forbiddenTerms.every((term) => !bodyText.toLowerCase().includes(term));
         })()`,
       ),
@@ -1885,7 +1889,7 @@ async function main() {
       () =>
         evaluate(
           cdp,
-          `document.querySelector('[data-testid="patient-appointment-form"]') instanceof HTMLElement`,
+          `document.querySelector('[data-testid="patient-rebooking-entry"]') instanceof HTMLElement`,
         ),
       'patient appointment summary loaded',
     )
@@ -1900,8 +1904,8 @@ async function main() {
     )
 
     await waitFor(
-      () => textIncludes(cdp, 'Full Record'),
-      'patient full record',
+      () => textIncludes(cdp, 'Current workflow'),
+      'patient overview',
     )
     await assertRestyledPatientWorkflowSurface(cdp, 'View completed visit')
     await waitFor(
@@ -1938,6 +1942,15 @@ async function main() {
           `location.search.includes('section=medical-record') && document.querySelector('[data-testid="patient-section-selector"]')?.value === 'medical-record'`,
         ),
       'mobile section selector updates medical query',
+    )
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="patient-full-record-workspace"]') instanceof HTMLElement &&
+            document.body?.innerText.includes('Record')`,
+        ),
+      'record section visible after selector change',
     )
     await navigate(cdp, PATIENT_URL)
     await waitFor(
@@ -2081,6 +2094,15 @@ async function main() {
     await waitFor(
       () => textIncludes(cdp, 'Schedule appointment'),
       'demo slug patient appointment form',
+    )
+    await clickByText(cdp, 'Schedule appointment')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="patient-appointment-form"]') instanceof HTMLElement`,
+        ),
+      'demo slug patient appointment form opened',
     )
     await assertSelectValue(cdp, '[data-testid="patient-appointment-type"]', 'consultation')
     await setSelectValue(cdp, '[data-testid="patient-appointment-type"]', 'filling')
@@ -3539,6 +3561,11 @@ async function main() {
       () => textIncludes(cdp, BRIDGE_PROCEDURE),
       'back returns to patient timeline',
     )
+    await navigate(cdp, PATIENT_URL)
+    await waitFor(
+      () => textIncludes(cdp, 'Current workflow'),
+      'patient overview after timeline return',
+    )
     await waitFor(
       () =>
         evaluate(
@@ -3734,13 +3761,15 @@ async function main() {
         ),
       'updated treatment plan item displayed',
     )
+    await navigate(cdp, PATIENT_URL)
+    await waitFor(() => textIncludes(cdp, 'Current workflow'), 'patient overview after treatment plan work')
     await waitFor(
       () => textIncludes(cdp, 'No upcoming appointment scheduled'),
       'completed appointment removed from upcoming summary',
     )
 
     await navigate(cdp, PATIENT_URL)
-    await waitFor(() => textIncludes(cdp, 'Full Record'), 'patient detail after posted charges link')
+    await waitFor(() => textIncludes(cdp, 'Current workflow'), 'patient overview after posted charges link')
     const patientFinancialSectionVisible = await evaluate(
       cdp,
       `document.querySelector('[data-testid="patient-posted-charges-section"]') !== null`,
@@ -3879,9 +3908,9 @@ async function main() {
       {
         label: 'Patient overview',
         url: PATIENT_URL,
-        waitForText: 'Full Record',
+        waitForText: 'Current workflow',
         prepare: async (browser, label, viewport) => {
-          if (viewport.width === 768) {
+          if (viewport.width === 768 || viewport.width === 1024) {
             await assertRestyledPatientWorkflowSurface(browser, 'View completed visit')
             await assertNoHorizontalOverflow(browser, label, viewport.width)
           }

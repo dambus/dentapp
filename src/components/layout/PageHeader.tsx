@@ -4,17 +4,24 @@ type PageHeaderProps = {
   title: string
   description?: string
   actions?: ReactNode
+  navigation?: ReactNode
 }
 
-export function PageHeader({ title, description, actions }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+  navigation,
+}: PageHeaderProps) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="max-w-3xl">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
+        {navigation ? <div className="mb-2">{navigation}</div> : null}
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
           {title}
         </h1>
         {description ? (
-          <p className="mt-2 text-base leading-7 text-slate-600">
+          <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
             {description}
           </p>
         ) : null}

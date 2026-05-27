@@ -355,19 +355,12 @@ capability.
 Task 95 refocuses the active stream on the first in-clinic pilot flow. The next
 active tasks should be:
 
-1. `Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization`
-2. `Task 97 - Treatment Plan Mutation Schema/RLS Hardening`
-3. `Task 98 - Patient Treatment Plan Creation/Edit UI`
-4. `Task 99 - Planner and Appointment Card Pilot UI/UX Restyling` (complete)
-5. `Task 100 - Patient Detail Pilot Workflow Entry Restyling` (complete)
-6. `Task 101 - Visit Completion and Completed Visit Pilot Usability Pass` (complete)
-7. `Task 102 - In-Clinic Pilot Workflow Walkthrough / UI Consistency and Blocking Defect Audit` (complete)
-8. `Task 103 - Patient Workspace Information Architecture & Compact Clinical Design System Plan` (complete)
-9. `Task 104 - Compact Clinical UI Primitives / Action and Status System`
-10. `Task 105 - Patient Workspace Overview and Section Navigation Restructure`
-11. `Task 106 - Treatment Plan and Timeline Compact Detailed Presentation`
-12. `Task 107 - Pre-Pilot Visual Consistency Walkthrough`
-13. `Task 108 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup`
+1. `Task 104 - Compact Clinical UI Primitives / Action and Status System`
+2. `Task 105 - Patient Workspace Overview and Section Navigation Restructure`
+3. `Task 106 - Treatment Plan and Timeline Compact Detailed Presentation`
+4. `Task 107 - Pilot Forms and Secondary Interaction Consistency Pass`
+5. `Task 108 - Pre-Pilot Visual Consistency Walkthrough`
+6. `Task 109 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup`
 
 Do not expose settlement UI or reconnect frozen ledger/payment/performed-service
 flows in the MVP stream.
@@ -456,6 +449,13 @@ Current status:
 - Task 103 records that functional pilot readiness is not yet the desired
   presentation quality, and inserts one compact Patient Workspace / design
   system planning phase before the first serious guided doctor pilot,
+- Task 104 establishes the shared compact action/status/navigation foundation
+  and explicitly extends the pre-pilot sequence to hidden/secondary pilot
+  surfaces before any guided doctor pilot,
+- Task 105 restructures Patient Workspace around a short default Overview,
+  patient-level section navigation, a stable compact patient header/action
+  cluster, sticky mobile section navigation, and explicit relocation of
+  detail-heavy record/treatment-plan/timeline content out of Overview,
 - Task 96 confirms treatment-plan tables, item tables, service write methods,
   and CRUD/RLS test coverage already exist, but plan-level write RLS needs
   same-clinic patient hardening before UI exposure,
@@ -468,7 +468,7 @@ Current status:
 
 Next step:
 
-- Task 104 - Compact Clinical UI Primitives / Action and Status System.
+- Task 106 - Treatment Plan and Timeline Compact Detailed Presentation.
 
 ---
 

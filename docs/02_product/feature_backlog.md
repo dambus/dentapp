@@ -112,12 +112,61 @@ Completed:
 
 ### Task 104 - Compact Clinical UI Primitives / Action and Status System
 
+Completed:
+
+- implemented the compact shared action/status/navigation foundation;
+- documented migration rules for hidden pilot surfaces, including forms,
+  confirmations, and empty/loading/error states;
+- applied the new patterns only to a bounded patient-detail validation slice.
+
+### Task 105 - Patient Workspace Overview And Section Navigation Restructure
+
+Completed:
+
+- implemented the summary-first Patient Workspace overview direction selected
+  in Task 103 using the shared compact primitives from Task 104;
+- introduced patient-level navigation for Overview, Record, Treatment Plan,
+  Timeline, Odontogram, and Documents while preserving query-backed section
+  behavior;
+- shortened the default workspace by removing Workflow Shortcuts and relocating
+  detail-heavy record/treatment-plan/timeline content into dedicated sections;
+- stabilized the compact patient header action cluster and retained the approved
+  mobile dropdown inside sticky local patient navigation;
+- preserved workflow behavior, treatment-plan mutation, patient-context
+  scheduling, and finance-freeze boundaries.
+
+### Task 106 - Treatment Plan And Timeline Compact Detailed Presentation
+
 Scope:
 
-- implement the minimal shared visual-language updates needed for compact
-  buttons, badges, notices, back navigation, and overflow action patterns;
-- reduce generic framework-like density before restructuring Patient Workspace;
-- keep behavior and route semantics unchanged.
+- compact the detailed Treatment Plan and Timeline presentations after the
+  patient workspace navigation structure is in place;
+- reduce repeated badge emphasis and improve scan hierarchy without changing
+  treatment-plan or visit-history behavior.
+
+### Task 107 - Pilot Forms And Secondary Interaction Consistency Pass
+
+Scope:
+
+- align appointment creation/rebooking, treatment-plan mutation forms, Visit
+  Completion forms, confirmations, overflow menus, and empty/loading/error
+  states with the compact clinical action/status system.
+
+### Task 108 - Pre-Pilot Visual Consistency Walkthrough
+
+Scope:
+
+- run a focused visual consistency walkthrough across the pilot path after the
+  compact workspace, detailed sections, and form/secondary consistency pass.
+
+### Task 109 - Guided In-Clinic Pilot Session Checklist And Observation Log Setup
+
+Scope:
+
+- create the pilot checklist and observation-log setup only after the visual
+  consistency walkthrough is complete;
+- do not schedule the guided doctor pilot before Task 108 is accepted unless
+  the product owner explicitly overrides that sequence.
 
 ## Later MVP Queue
 

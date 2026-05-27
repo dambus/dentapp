@@ -5886,6 +5886,114 @@ Initial stack:
 
 ---
 
+### Completed (Task 104 - Compact Clinical UI Primitives / Action and Status System)
+
+- Audited the shared UI layer before editing, including button, icon button,
+  badge, notice, card, form-control, menu, loading, empty/error, and page-header
+  primitives.
+- Audited the pilot surfaces that consume those primitives, including
+  Appointments, AppointmentCard, Appointment Detail, Patient Detail, Patient
+  Snapshot, Patient Today, Patient Quick Actions, Patient Full Record,
+  Treatment Plans, Visit Completion, completed visit summary, and browser smoke
+  selectors.
+- Added a compact reusable action foundation:
+  - tightened shared button density,
+  - added a dedicated `tertiary` action variant,
+  - quieted the default overflow trigger treatment.
+- Added a compact reusable status/navigation foundation:
+  - reduced default badge size,
+  - added reusable text-style `BackLink`,
+  - added reusable compact `SectionTabs`,
+  - extended `PageHeader` with a separate navigation slot.
+- Applied the new patterns only to a bounded validation slice:
+  - Patient Workspace header now uses text-style back navigation,
+  - Patient Snapshot now reduces competing visible actions and moves infrequent
+    admin actions into overflow,
+  - Patient Snapshot now treats warning details as part of the alert panel
+    rather than casual warning pills,
+  - Patient Full Record now uses reusable compact section tabs on desktop while
+    preserving the existing mobile selector and state/query behavior.
+- Preserved validated workflow behavior, route behavior, section query-param
+  behavior, treatment-plan mutation behavior, Visit Completion behavior,
+  security boundaries, and stable smoke selectors.
+- Documented the action hierarchy, badge/status mapping, icon rules,
+  back-navigation pattern, section-navigation primitive, form/secondary
+  interaction migration rules, bounded rollout, deferred scope, and updated
+  pre-pilot sequence in
+  `docs/design/task-104-compact-clinical-ui-primitives-action-status-system.md`.
+- Updated the pre-pilot sequence so hidden and secondary pilot surfaces are
+  explicitly covered before any guided in-clinic pilot:
+  - Task 104 - Compact Clinical UI Primitives / Action and Status System
+  - Task 105 - Patient Workspace Overview and Section Navigation Restructure
+  - Task 106 - Treatment Plan and Timeline Compact Detailed Presentation
+  - Task 107 - Pilot Forms and Secondary Interaction Consistency Pass
+  - Task 108 - Pre-Pilot Visual Consistency Walkthrough
+  - Task 109 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup
+- Kept schema, migrations, RLS, RPCs, service contracts, appointment lifecycle
+  logic, operational-state logic, Visit Completion persistence, treatment-plan
+  mutation behavior, role/permission behavior, and settlement freeze behavior
+  unchanged.
+
+### Verification (Task 104)
+
+- `npm.cmd run build` passes with the existing Vite large chunk warning.
+- `npm.cmd run lint` passes.
+- Remaining browser smoke, RLS validation, and diff hygiene checks should run
+  against the updated Task 104 branch state.
+
+### Next Recommended Task
+
+- Task 105 - Patient Workspace Overview and Section Navigation Restructure.
+
+---
+
+### Completed (Task 105 - Patient Workspace Overview and Section Navigation Restructure)
+
+- Reworked Patient Workspace to a short default `Overview` plus patient-level
+  sections for `Record`, `Treatment plan`, `Timeline`, `Odontogram`, and
+  `Documents` using the shared Task 104 compact primitives.
+- Added a shared patient-workspace section mapping layer so query-backed deep
+  links remain stable, including compatibility mapping from legacy
+  `section=clinical-notes` into the `Record` section.
+- Shortened the default patient screen by removing the full-record workspace and
+  Workflow Shortcuts grid from Overview.
+- Kept Overview focused on:
+  - patient identity and safety,
+  - current workflow,
+  - Treatment Plan summary,
+  - appointment / rebooking summary,
+  - recent clinical activity and follow-up summary.
+- Stabilized the patient header action cluster so the overflow trigger remains
+  in a predictable upper-right position and low-frequency admin actions no
+  longer stack under the identity block on mobile.
+- Retained the approved mobile section dropdown and moved it into a sticky local
+  patient navigation bar for long patient-scoped sections.
+- Added a bounded mobile-only `Back to top` control for long patient workspace
+  views.
+- Moved detailed Treatment Plan, Timeline, Record, Odontogram, and Documents
+  content behind patient-level navigation without changing mutation or
+  permission behavior.
+- Changed patient-context appointment scheduling to a summary-first card with
+  the form hidden by default and opened explicitly or via follow-up prefill.
+- Updated browser smoke coverage for the new default Overview, sticky/mobile
+  section navigation, Record reachability, Workflow Shortcuts removal, and the
+  continued absence of finance/settlement terminology.
+- Documented the restructure in
+  `docs/design/task-105-patient-workspace-overview-section-navigation-restructure.md`.
+
+### Verification (Task 105)
+
+- `npm.cmd run build` passes with the existing Vite large chunk warning.
+- `npm.cmd run lint` passes.
+- Remaining browser smoke, RLS validation, and diff hygiene checks should run
+  against the combined Task 104/105 working tree.
+
+### Next Recommended Task
+
+- Task 106 - Treatment Plan and Timeline Compact Detailed Presentation.
+
+---
+
 ### Completed (Task 44 - Follow-up and Next Visit Recommendation Flow)
 
 - Polished follow-up display using existing Visit Completion `recommendation` and `next_step` fields.

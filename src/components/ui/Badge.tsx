@@ -10,6 +10,7 @@ export type BadgeVariant =
   | 'info'
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
+  size?: 'sm' | 'md'
   variant?: BadgeVariant
 }
 
@@ -23,13 +24,15 @@ const variantClasses: Record<BadgeVariant, string> = {
 
 export function Badge({
   className,
+  size = 'sm',
   variant = 'neutral',
   ...props
 }: BadgeProps) {
   return (
     <span
       className={classNames(
-        'inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium',
+        'inline-flex items-center rounded-full border font-medium',
+        size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1 text-sm',
         variantClasses[variant],
         className,
       )}
