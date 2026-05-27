@@ -5837,6 +5837,55 @@ Initial stack:
 
 ---
 
+### Completed (Task 103 - Patient Workspace Information Architecture & Compact Clinical Design System Plan)
+
+- Reviewed the current Patient Workspace, Planner, Visit Completion,
+  Treatment Plan, Timeline/history, odontogram entry, and shared UI primitives
+  from a compact-clinical design-system and information-architecture angle.
+- Recorded that Task 102 still stands as functional pilot readiness, but the
+  product owner elected to insert one limited UI/UX refinement phase before the
+  first serious guided doctor pilot session.
+- Defined a substantially more compact patient-level navigation model centered
+  on:
+  - a persistent compact patient header,
+  - a shorter `Overview`,
+  - first-class patient sections for `Record`, `Treatment plan`, `Timeline`,
+    `Odontogram`, and optional `Documents`,
+  - reuse of stable query-backed section state before any route expansion.
+- Defined a compact action hierarchy that demotes administrative and destructive
+  actions into overflow patterns and reduces repeated primary/secondary button
+  competition.
+- Defined a restrained badge/status system that limits colored pills to genuine
+  warning, workflow, and action-required states.
+- Defined a summary-first Treatment Plan overview plus a cleaner dedicated
+  detailed treatment-plan section.
+- Defined a compact event-list direction for Timeline/history and moved the
+  existing large Workflow Shortcuts grid out of the future default overview.
+- Explicitly documented odontogram as a separate future workstream rather than a
+  cosmetic pre-pilot polish target.
+- Replaced the previously recommended pilot checklist next-step with a short
+  design-led implementation sequence:
+  - `Task 104 - Compact Clinical UI Primitives / Action and Status System`
+  - `Task 105 - Patient Workspace Overview and Section Navigation Restructure`
+  - `Task 106 - Treatment Plan and Timeline Compact Detailed Presentation`
+  - `Task 107 - Pre-Pilot Visual Consistency Walkthrough`
+- Documented the planning decisions in
+  `docs/design/task-103-patient-workspace-information-architecture-compact-clinical-design-system-plan.md`.
+
+### Verification (Task 103)
+
+- `git diff --name-only` reviewed.
+- `git diff --check` passes.
+- `git status --short` reviewed.
+- No runtime, service, schema, test, route, or styling-token files were
+  modified.
+
+### Next Recommended Task
+
+- Task 104 - Compact Clinical UI Primitives / Action and Status System.
+
+---
+
 ### Completed (Task 44 - Follow-up and Next Visit Recommendation Flow)
 
 - Polished follow-up display using existing Visit Completion `recommendation` and `next_step` fields.

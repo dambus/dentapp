@@ -320,6 +320,7 @@ Status legend:
 - [x] Task 100 - Patient Detail Pilot Workflow Entry Restyling
 - [x] Task 101 - Visit Completion and Completed Visit Pilot Usability Pass
 - [x] Task 102 - In-Clinic Pilot Workflow Walkthrough / UI Consistency and Blocking Defect Audit
+- [x] Task 103 - Patient Workspace Information Architecture & Compact Clinical Design System Plan
 - [ ] Doctor commission planning
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering
@@ -1572,6 +1573,31 @@ Suggested direction:
   wording issues,
 - keep the next step focused on pilot execution readiness rather than new
   feature development.
+
+### Completed Recommended Task
+
+Task 103 - Patient Workspace Information Architecture & Compact Clinical Design System Plan
+
+Completed direction:
+
+- confirmed Task 102 functional readiness remains valid;
+- recorded the product-owner decision to run one compact Patient Workspace and
+  design-system refinement phase before the first serious guided doctor pilot;
+- defined the target patient information architecture, action system,
+  badge/status reduction, Treatment Plan structure, Timeline structure, shortcut
+  reduction, and odontogram boundary;
+- split the redesign into focused follow-up tasks rather than one broad refactor.
+
+### Next Recommended Task
+
+Task 104 - Compact Clinical UI Primitives / Action and Status System
+
+Suggested direction:
+
+- reduce button and badge density across shared primitives;
+- introduce the compact back-navigation and overflow-action language;
+- prepare the shared UI foundation required before Patient Workspace
+  restructuring.
 
 
 

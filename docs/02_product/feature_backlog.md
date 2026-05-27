@@ -95,17 +95,29 @@ Completed:
 - confirmed no blocking runtime or workflow defect was found;
 - confirmed settlement/payment/ledger visibility remains absent.
 
+## Completed Pilot Design Checkpoint
+
+### Task 103 - Patient Workspace Information Architecture & Compact Clinical Design System Plan
+
+Completed:
+
+- accepted that Task 102 functional readiness is not yet the desired pilot
+  presentation standard;
+- defined a shorter Patient Workspace overview and patient-level section model;
+- defined compact button/action and badge/status rules;
+- defined clearer Treatment Plan and Timeline presentation targets;
+- deferred the guided pilot checklist until after the limited redesign sequence.
+
 ## Ready Next
 
-### Task 103 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup
+### Task 104 - Compact Clinical UI Primitives / Action and Status System
 
 Scope:
 
-- prepare the guided first in-clinic pilot run rather than add new product
-  modules;
-- define a short workflow checklist for staff/doctor use during the pilot;
-- define an observation log for blockers, confusion points, and consistency
-  feedback found during real guided usage.
+- implement the minimal shared visual-language updates needed for compact
+  buttons, badges, notices, back navigation, and overflow action patterns;
+- reduce generic framework-like density before restructuring Patient Workspace;
+- keep behavior and route semantics unchanged.
 
 ## Later MVP Queue
 

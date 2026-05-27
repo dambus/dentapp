@@ -362,7 +362,12 @@ active tasks should be:
 5. `Task 100 - Patient Detail Pilot Workflow Entry Restyling` (complete)
 6. `Task 101 - Visit Completion and Completed Visit Pilot Usability Pass` (complete)
 7. `Task 102 - In-Clinic Pilot Workflow Walkthrough / UI Consistency and Blocking Defect Audit` (complete)
-8. `Task 103 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup`
+8. `Task 103 - Patient Workspace Information Architecture & Compact Clinical Design System Plan` (complete)
+9. `Task 104 - Compact Clinical UI Primitives / Action and Status System`
+10. `Task 105 - Patient Workspace Overview and Section Navigation Restructure`
+11. `Task 106 - Treatment Plan and Timeline Compact Detailed Presentation`
+12. `Task 107 - Pre-Pilot Visual Consistency Walkthrough`
+13. `Task 108 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup`
 
 Do not expose settlement UI or reconnect frozen ledger/payment/performed-service
 flows in the MVP stream.
@@ -448,6 +453,9 @@ Current status:
   navigation while preserving existing persistence and completion behavior,
 - Task 102 validates the end-to-end pilot path, confirms the clinical-only
   freeze remains intact, and finds no blocking defect before guided pilot use,
+- Task 103 records that functional pilot readiness is not yet the desired
+  presentation quality, and inserts one compact Patient Workspace / design
+  system planning phase before the first serious guided doctor pilot,
 - Task 96 confirms treatment-plan tables, item tables, service write methods,
   and CRUD/RLS test coverage already exist, but plan-level write RLS needs
   same-clinic patient hardening before UI exposure,
@@ -460,7 +468,7 @@ Current status:
 
 Next step:
 
-- Task 103 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup.
+- Task 104 - Compact Clinical UI Primitives / Action and Status System.
 
 ---
 

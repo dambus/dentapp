@@ -195,7 +195,12 @@ Priorities:
 6. Task 100 - Planner and Appointment Card Pilot Restyling
 7. Task 101 - Patient Detail Pilot Workflow Entry Restyling
 8. Task 102 - Visit Completion and Completed Visit Pilot Usability Pass
-9. Task 103 - Pilot Clinical Flow Validation Checkpoint
+9. Task 103 - Patient Workspace Information Architecture & Compact Clinical Design System Plan
+10. Task 104 - Compact Clinical UI Primitives / Action and Status System
+11. Task 105 - Patient Workspace Overview and Section Navigation Restructure
+12. Task 106 - Treatment Plan and Timeline Compact Detailed Presentation
+13. Task 107 - Pre-Pilot Visual Consistency Walkthrough
+14. Task 108 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup
 
 ## Deferred Until After These Stages
 
