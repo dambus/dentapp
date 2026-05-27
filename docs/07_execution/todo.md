@@ -318,8 +318,8 @@ Status legend:
 - [x] Task 98 - Patient Treatment Plan Creation/Edit UI
 - [x] Task 99 - Planner and Appointment Card Pilot UI/UX Restyling
 - [x] Task 100 - Patient Detail Pilot Workflow Entry Restyling
-- [ ] Task 101 - Visit Completion and Completed Visit Pilot Usability Pass
-- [ ] Task 102 - Pilot Clinical Flow Validation Checkpoint
+- [x] Task 101 - Visit Completion and Completed Visit Pilot Usability Pass
+- [ ] Task 102 - In-Clinic Pilot Workflow Walkthrough / UI Consistency and Blocking Defect Audit
 - [ ] Doctor commission planning
 - [ ] Doctor commission workflow
 - [ ] Refine treatment plan UX and filtering

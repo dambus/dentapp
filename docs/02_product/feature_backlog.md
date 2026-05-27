@@ -67,23 +67,31 @@ Completed:
   browser smoke, RLS coverage, and responsive manual inspection;
 - kept payment and settlement UI absent.
 
-## Ready Next
+## Completed Pilot Usability Step
 
 ### Task 101 - Visit Completion And Completed Visit Pilot Usability Pass
 
+Completed:
+
+- restyled Visit Completion as a clearer clinical workflow shell with preserved
+  patient/appointment context, draft state, review, confirmation, and success
+  navigation;
+- preserved persistence, appointment-linked completion, completed-history, and
+  freeze behavior;
+- extended browser smoke semantic assertions and completed responsive manual
+  inspection;
+- kept settlement/payment behavior absent.
+
+## Ready Next
+
+### Task 102 - In-Clinic Pilot Workflow Walkthrough / UI Consistency and Blocking Defect Audit
+
 Scope:
 
-- polish the clinical-only Visit Completion and completed visit review surfaces;
-- improve follow-up/rebooking action clarity;
-- keep settlement/payment behavior absent.
-
-### Task 102 - Pilot Clinical Flow Validation Checkpoint
-
-Scope:
-
-- manually validate the end-to-end pilot path;
-- run the existing smoke/RLS guard set appropriate for pilot readiness;
-- document remaining blockers before real in-clinic testing.
+- manually walk the end-to-end pilot path from scheduling through reception,
+  patient detail, visit completion, treatment-plan mutation, and rebooking;
+- verify UI consistency across the now-restyled pilot surfaces;
+- identify only real blocking defects before in-clinic testing.
 
 ## Later MVP Queue
 

@@ -979,6 +979,45 @@ async function assertRestyledPatientWorkflowSurface(cdp, expectedPrimaryAction) 
   )
 }
 
+async function assertRestyledVisitCompletionSurface(
+  cdp,
+  expectsAppointmentContext,
+) {
+  await waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `(() => {
+          const requiredSelectors = [
+            '[data-testid="visit-clinical-workflow-shell"]',
+            '[data-testid="visit-workflow-context"]',
+            '[data-testid="visit-workflow-status"]',
+            '[data-testid="visit-step-workspace"]',
+            '[data-testid="visit-persistence-feedback"]',
+          ];
+          const hasProgressRegion =
+            document.querySelector('[data-testid="visit-progress-region"]') ||
+            document.querySelector('[data-testid="visit-mobile-progress-header"]');
+          const hasActionRegion =
+            document.querySelector('[data-testid="visit-mobile-action-bar"]') ||
+            document.querySelector('[data-testid="visit-mobile-confirm-action-bar"]');
+          const bodyText = document.body?.innerText?.toLowerCase() ?? '';
+          const forbiddenTerms = ['services & charges', 'payment', 'balance', 'settlement', 'invoice', 'receipt', 'posted charges', 'ledger posting'];
+
+          return requiredSelectors.every((selector) => document.querySelector(selector)) &&
+            Boolean(hasProgressRegion) &&
+            Boolean(hasActionRegion) &&
+            (!${JSON.stringify(expectsAppointmentContext)} ||
+              document.querySelector('[data-testid="visit-appointment-context"]')) &&
+            bodyText.includes('visit completion') &&
+            bodyText.includes('clinical workflow') &&
+            forbiddenTerms.every((term) => !bodyText.includes(term));
+        })()`,
+      ),
+    'restyled visit completion surface',
+  )
+}
+
 async function getAppointmentCardMenuTexts(cdp, cardText) {
   await openAppointmentCardMenu(cdp, cardText)
 
@@ -1842,6 +1881,14 @@ async function main() {
 
     await navigate(cdp, PATIENT_URL)
     await assertRestyledPatientWorkflowSurface(cdp, 'View completed visit')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="patient-appointment-form"]') instanceof HTMLElement`,
+        ),
+      'patient appointment summary loaded',
+    )
 
     await waitFor(
       () => textIncludes(cdp, 'No upcoming appointment scheduled'),
@@ -3131,6 +3178,7 @@ async function main() {
         ),
       'appointment context details visible in Visit Completion',
     )
+    await assertRestyledVisitCompletionSurface(cdp, true)
     await waitFor(
       () => textIncludes(cdp, 'No open draft found for this appointment.'),
       'new appointment visit completion ready',
@@ -3164,6 +3212,15 @@ async function main() {
     await setSelectValue(cdp, '[data-testid="visit-next-step"]', BRIDGE_NEXT_STEP)
     await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'Review and complete'), 'review step')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="visit-review-stage"]') instanceof HTMLElement &&
+           document.querySelector('[data-testid="visit-review-readiness-summary"]') instanceof HTMLElement`,
+        ),
+      'review stage semantic regions',
+    )
     await clickEnabledButtonByText(cdp, 'Save Draft')
     await waitForDraftSaveSuccess(cdp, 'draft save success feedback')
     await waitFor(
@@ -3272,6 +3329,14 @@ async function main() {
     )
     await clickByText(cdp, 'Confirm completion')
     await waitFor(() => textIncludes(cdp, 'Visit Completed'), 'visit completed')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `document.querySelector('[data-testid="visit-completion-success"]') instanceof HTMLElement`,
+        ),
+      'visit completion success surface',
+    )
     await waitFor(
       () => textIncludes(cdp, 'Visit was completed successfully.'),
       'visit completion success message',
@@ -3838,6 +3903,7 @@ async function main() {
           `${PATIENT_URL}/visit-completion?responsiveSmoke=${viewport.width}`,
         waitForText: 'Visit Completion',
         prepare: async (browser, label) => {
+          await assertRestyledVisitCompletionSurface(browser, false)
           const atProceduresStep = await textIncludes(browser, 'What was done?')
 
           if (!atProceduresStep) {
@@ -3871,6 +3937,7 @@ async function main() {
 
     await navigate(cdp, `${PATIENT_URL}/visit-completion`)
     await waitFor(() => textIncludes(cdp, 'Visit Completion'), 'normal visit route')
+    await assertRestyledVisitCompletionSurface(cdp, false)
     await waitFor(
       () =>
         evaluate(

@@ -492,18 +492,34 @@ export function VisitCompletionFlow({
 
   if (completionState === 'completed') {
     return (
-      <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm">
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <CardTitle>Visit Completed</CardTitle>
-            <Badge variant="success">Completed</Badge>
+      <Card
+        className="border-emerald-200 bg-emerald-50/50 shadow-md"
+        data-testid="visit-completion-success"
+      >
+        <CardHeader className="p-4 pb-0 sm:p-5 sm:pb-0">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>Visit Completed</CardTitle>
+                <Badge variant="success">Completed</Badge>
+                <Badge variant="info">Clinical-only workflow</Badge>
+              </div>
+              <CardDescription>
+                The clinical visit for {patientName} was completed. Existing
+                patient history and appointment navigation remain available.
+              </CardDescription>
+            </div>
+            <div className="rounded-md border border-emerald-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600">
+              <div className="font-semibold text-slate-950">Completion state</div>
+              <p className="mt-1">
+                {lastSavedAt
+                  ? `Confirmed ${formatPatientDateTime(lastSavedAt)}.`
+                  : 'Completion accepted by the visit service.'}
+              </p>
+            </div>
           </div>
-          <CardDescription>
-            The completion service accepted this clinical visit. Files,
-            treatment plan changes, and odontogram changes were not created.
-          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-4 sm:p-5">
           <ServiceFeedback
             draftReloadMessage={draftReloadMessage}
             isCompleting={isCompleting}
@@ -513,6 +529,30 @@ export function VisitCompletionFlow({
             serviceMessage={serviceMessage}
             serviceWarnings={serviceWarnings}
           />
+          <div className="grid gap-3 md:grid-cols-3">
+            <MetricTile
+              label="Patient"
+              value={patientName}
+              description={linkedAppointmentId ? 'Linked appointment retained in visit history.' : 'Recorded from the patient route.'}
+              tone="success"
+            />
+            <MetricTile
+              label="Procedures"
+              value={String(procedureCount)}
+              description={
+                procedureCount > 0
+                  ? 'Completed work was saved with this visit.'
+                  : 'No procedures were recorded for this visit.'
+              }
+              tone={procedureCount > 0 ? 'info' : 'default'}
+            />
+            <MetricTile
+              label="Next step"
+              value={hasNextStep ? nextStepLabel : 'Not selected'}
+              description="Clinical follow-up guidance only."
+              tone={hasNextStep ? 'warning' : 'default'}
+            />
+          </div>
           <VisitCompletionSummary
             procedureCount={procedureCount}
             hasClinicalNote={hasClinicalNote}
@@ -521,21 +561,29 @@ export function VisitCompletionFlow({
             isReady={isReady}
             warnings={warnings}
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Button
+              className="min-h-10"
               onClick={onBackToPatient}
-              variant="secondary"
               disabled={!onBackToPatient}
             >
               View patient timeline
             </Button>
             {onBackToAppointment ? (
-              <Button onClick={onBackToAppointment} variant="secondary">
+              <Button
+                className="min-h-10"
+                onClick={onBackToAppointment}
+                variant="secondary"
+              >
                 Return to appointment
               </Button>
             ) : null}
             {onBackToSchedule ? (
-              <Button onClick={onBackToSchedule} variant="secondary">
+              <Button
+                className="min-h-10"
+                onClick={onBackToSchedule}
+                variant="secondary"
+              >
                 Daily schedule
               </Button>
             ) : null}
@@ -546,28 +594,39 @@ export function VisitCompletionFlow({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 pb-28 sm:gap-6 sm:pb-0">
+    <div
+      className="mx-auto flex w-full max-w-6xl flex-col gap-4 pb-28 sm:gap-5 sm:pb-0 lg:gap-6"
+      data-testid="visit-clinical-workflow-shell"
+    >
       {isLoadingDraft ? (
         <InlineNotice variant="info">Loading open visit draft...</InlineNotice>
       ) : null}
 
-      <ServiceFeedback
-        draftReloadMessage={draftReloadMessage}
-        isCompleting={isCompleting}
-        isSavingDraft={isSavingDraft}
-        lastSavedAt={lastSavedAt}
-        serviceError={serviceError}
-        serviceMessage={serviceMessage}
-        serviceWarnings={serviceWarnings}
-      />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <CompactVisitContext
+          age={age}
+          appointmentContext={appointmentContext}
+          patient={patient}
+          patientName={patientName}
+          plannedWork={plannedWork}
+          warnings={warnings}
+        />
 
-      <CompactVisitContext
-        age={age}
-        patient={patient}
-        patientName={patientName}
-        plannedWork={plannedWork}
-        warnings={warnings}
-      />
+        <WorkflowStatusPanel
+          activeStep={activeStep}
+          activeStepIndex={activeStepIndex}
+          completionState={completionState}
+          draftReloadMessage={draftReloadMessage}
+          hasMeaningfulDraftData={hasMeaningfulDraftData}
+          isCompleting={isCompleting}
+          isReady={isReady}
+          isSavingDraft={isSavingDraft}
+          lastSavedAt={lastSavedAt}
+          serviceError={serviceError}
+          serviceMessage={serviceMessage}
+          serviceWarnings={serviceWarnings}
+        />
+      </div>
 
       {appointmentContext ? (
         <AppointmentContextNotice
@@ -582,10 +641,17 @@ export function VisitCompletionFlow({
         isReady={isReady}
       />
 
-      <Stepper activeStepIndex={activeStepIndex} />
+      <Stepper
+        activeStepIndex={activeStepIndex}
+        completionState={completionState}
+        isReady={isReady}
+      />
 
-      <Card className="min-w-0 border-teal-100 shadow-md">
-        <CardHeader>
+      <Card
+        className="min-w-0 border-teal-100 shadow-md"
+        data-testid="visit-step-workspace"
+      >
+        <CardHeader className="p-4 pb-0 sm:p-5 sm:pb-0">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -595,6 +661,7 @@ export function VisitCompletionFlow({
                 <Badge variant={isReady ? 'success' : 'neutral'}>
                   {isReady ? 'Minimum met' : 'Needs one entry'}
                 </Badge>
+                <Badge variant="neutral">Clinical-only</Badge>
               </div>
               <CardTitle className="mt-3 text-2xl">
                 {activeStep.title}
@@ -662,6 +729,7 @@ export function VisitCompletionFlow({
               hasRecommendation={hasRecommendation}
               isReady={isReady}
               nextStepLabel={nextStepLabel}
+              procedures={procedures}
               procedureCount={procedureCount}
               recommendation={recommendation}
               warnings={warnings}
@@ -787,6 +855,99 @@ function ServiceFeedback({
   )
 }
 
+function WorkflowStatusPanel({
+  activeStep,
+  activeStepIndex,
+  completionState,
+  draftReloadMessage,
+  hasMeaningfulDraftData,
+  isCompleting,
+  isReady,
+  isSavingDraft,
+  lastSavedAt,
+  serviceError,
+  serviceMessage,
+  serviceWarnings,
+}: {
+  activeStep: WorkflowStep
+  activeStepIndex: number
+  completionState: CompletionState
+  draftReloadMessage: string | null
+  hasMeaningfulDraftData: boolean
+  isCompleting: boolean
+  isReady: boolean
+  isSavingDraft: boolean
+  lastSavedAt: string | null
+  serviceError: string | null
+  serviceMessage: string | null
+  serviceWarnings: VisitCompletionServiceWarning[]
+}) {
+  return (
+    <Card className="border-slate-200 shadow-sm" data-testid="visit-workflow-status">
+      <CardHeader className="p-4 pb-0 sm:p-5 sm:pb-0">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle>Clinical workflow</CardTitle>
+            <Badge variant="info">
+              Step {activeStepIndex + 1} of {workflowSteps.length}
+            </Badge>
+            <Badge variant={isReady ? 'success' : 'warning'}>
+              {isReady ? 'Review-ready' : 'Needs one entry'}
+            </Badge>
+          </div>
+          <CardDescription>
+            {activeStep.title}. {activeStep.description}
+          </CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 p-4 sm:p-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">
+              Draft state
+            </div>
+            <div className="mt-2 text-sm font-semibold text-slate-950">
+              {completionState === 'confirming'
+                ? 'Confirming completion'
+                : lastSavedAt
+                  ? 'Saved draft available'
+                  : hasMeaningfulDraftData
+                    ? 'Unsaved edits visible'
+                    : 'New visit draft'}
+            </div>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              {lastSavedAt
+                ? `Last saved ${formatPatientDateTime(lastSavedAt)}.`
+                : 'Save Draft remains secondary to the active workflow step.'}
+            </p>
+          </div>
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">
+              Current focus
+            </div>
+            <div className="mt-2 text-sm font-semibold text-slate-950">
+              {getStepPrompt(activeStep.id)}
+            </div>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Review and completion stay separate from draft-saving.
+            </p>
+          </div>
+        </div>
+
+        <ServiceFeedback
+          draftReloadMessage={draftReloadMessage}
+          isCompleting={isCompleting}
+          isSavingDraft={isSavingDraft}
+          lastSavedAt={lastSavedAt}
+          serviceError={serviceError}
+          serviceMessage={serviceMessage}
+          serviceWarnings={serviceWarnings}
+        />
+      </CardContent>
+    </Card>
+  )
+}
+
 function AppointmentContextNotice({
   appointment,
   patientName,
@@ -803,16 +964,31 @@ function AppointmentContextNotice({
       className="border-cyan-200 bg-cyan-50/50 shadow-sm"
       data-testid="visit-appointment-context"
     >
-      <CardContent className="p-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="info">Appointment context</Badge>
-            <Badge variant={appointmentStatusBadgeVariants[appointment.status]}>
-              {appointmentStatusLabels[appointment.status] ?? appointment.status}
-            </Badge>
+      <CardContent className="p-4 sm:p-5">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="info">Appointment context</Badge>
+                <Badge variant={appointmentStatusBadgeVariants[appointment.status]}>
+                  {appointmentStatusLabels[appointment.status] ?? appointment.status}
+                </Badge>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Linked scheduling context remains read-only during Visit
+                Completion.
+              </p>
+            </div>
+            <div className="rounded-md border border-cyan-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600">
+              <div className="font-semibold text-slate-950">Clinical handoff</div>
+              <p className="mt-1">
+                Completing this visit saves the latest draft first and marks the
+                linked appointment completed.
+              </p>
+            </div>
           </div>
         </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-1 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div>
             <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
               Scheduled
@@ -869,10 +1045,6 @@ function AppointmentContextNotice({
             </div>
           ) : null}
         </div>
-        <InlineNotice className="mt-3" variant="info">
-          Completing this visit saves the latest draft first and marks the linked
-          appointment completed.
-        </InlineNotice>
       </CardContent>
     </Card>
   )
@@ -900,7 +1072,7 @@ function MobileWorkflowHeader({
             Visit Completion
           </div>
           <div className="truncate text-sm font-semibold text-slate-950">
-            Step {activeStepIndex + 1} of {workflowSteps.length} -{' '}
+            Step {activeStepIndex + 1} of {workflowSteps.length} /
             {activeStep.label}
           </div>
           <div className="truncate text-base font-semibold text-slate-950">
@@ -953,7 +1125,7 @@ function VisitCompletionEditingActions({
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur sm:static sm:mx-0 sm:rounded-lg sm:border sm:border-slate-200 sm:bg-white sm:p-4 sm:shadow-sm"
       data-testid="visit-mobile-action-bar"
     >
       <div className="mx-auto grid max-w-5xl gap-2 sm:flex sm:items-center sm:justify-between">
@@ -1008,7 +1180,7 @@ function VisitCompletionConfirmActions({
 }) {
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-amber-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-amber-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur sm:static sm:rounded-lg sm:border sm:border-amber-200 sm:bg-amber-50/50 sm:p-4 sm:shadow-sm"
       data-testid="visit-mobile-confirm-action-bar"
     >
       <div className="mx-auto grid max-w-5xl gap-2 sm:flex">
@@ -1034,19 +1206,24 @@ function VisitCompletionConfirmActions({
 
 function CompactVisitContext({
   age,
+  appointmentContext,
   patient,
   patientName,
   plannedWork,
   warnings,
 }: {
   age: number
+  appointmentContext?: Appointment | null
   patient: DemoPatient
   patientName: string
   plannedWork: string
   warnings: string[]
 }) {
   return (
-    <Card className="min-w-0 border-cyan-100 bg-cyan-50/40 shadow-sm">
+    <Card
+      className="min-w-0 border-cyan-100 bg-cyan-50/40 shadow-sm"
+      data-testid="visit-workflow-context"
+    >
       <CardContent className="p-4 sm:p-5">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.6fr)]">
           <div className="flex min-w-0 gap-3">
@@ -1062,6 +1239,9 @@ function CompactVisitContext({
                 <Badge variant={patientStatusBadgeVariants[patient.status]}>
                   {patientStatusLabels[patient.status]}
                 </Badge>
+                <Badge variant="info">
+                  {appointmentContext ? 'Linked appointment' : 'Patient route'}
+                </Badge>
                 {warnings.length > 0 ? (
                   <Badge variant="warning">{warnings.length} warning</Badge>
                 ) : (
@@ -1069,22 +1249,41 @@ function CompactVisitContext({
                 )}
               </div>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                {age} years old - appointment:{' '}
-                {formatPatientDateTime(patient.nextAppointment)}
+                {age} years old - born {formatPatientDate(patient.dateOfBirth)}
               </p>
             </div>
           </div>
 
-          <div className="hidden sm:block rounded-md border border-cyan-200 bg-white px-4 py-3">
-            <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
-              Planned today
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="rounded-md border border-cyan-200 bg-white px-4 py-3">
+              <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
+                Planned today
+              </div>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-950">
+                {patient.activeTreatmentPlan ?? 'No active plan'}
+              </p>
+              <p className="mt-1 text-sm leading-5 text-slate-600">
+                {plannedWork}
+              </p>
             </div>
-            <p className="mt-1 text-sm font-semibold leading-6 text-slate-950">
-              {patient.activeTreatmentPlan ?? 'No active plan'}
-            </p>
-            <p className="mt-1 text-sm leading-5 text-slate-600">
-              {plannedWork}
-            </p>
+            <div className="rounded-md border border-cyan-200 bg-white px-4 py-3">
+              <div className="text-xs font-semibold uppercase tracking-normal text-cyan-800">
+                Visit context
+              </div>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-950">
+                {appointmentContext
+                  ? formatAppointmentTimeRange(
+                      appointmentContext.scheduled_start,
+                      appointmentContext.scheduled_end,
+                    )
+                  : formatPatientDateTime(patient.nextAppointment)}
+              </p>
+              <p className="mt-1 text-sm leading-5 text-slate-600">
+                {appointmentContext
+                  ? appointmentContext.reason?.trim() || 'No appointment reason recorded.'
+                  : 'Route-based visit completion without linked appointment context.'}
+              </p>
+            </div>
           </div>
         </div>
       </CardContent>
@@ -1092,10 +1291,40 @@ function CompactVisitContext({
   )
 }
 
-function Stepper({ activeStepIndex }: { activeStepIndex: number }) {
+function Stepper({
+  activeStepIndex,
+  completionState,
+  isReady,
+}: {
+  activeStepIndex: number
+  completionState: CompletionState
+  isReady: boolean
+}) {
   return (
-    <div className="hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:block">
-      <ol className="grid gap-2 sm:grid-cols-6">
+    <div
+      className="hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:block"
+      data-testid="visit-progress-region"
+    >
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-slate-950">
+            Guided progress
+          </div>
+          <p className="text-sm leading-6 text-slate-600">
+            Review, document, and confirm the visit without leaving the
+            clinical workflow.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={isReady ? 'success' : 'neutral'}>
+            {isReady ? 'Ready for review' : 'Still collecting context'}
+          </Badge>
+          {completionState === 'confirming' ? (
+            <Badge variant="warning">Confirming completion</Badge>
+          ) : null}
+        </div>
+      </div>
+      <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
         {workflowSteps.map((step, index) => {
           const isActive = index === activeStepIndex
           const isComplete = index < activeStepIndex
@@ -1203,6 +1432,20 @@ function ProceduresStep({
 }) {
   return (
     <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-sm font-semibold text-slate-950">
+            Procedures performed today
+          </div>
+          <p className="text-sm leading-6 text-slate-600">
+            Record only completed clinical work. Empty helper rows are ignored
+            until a procedure name is entered.
+          </p>
+        </div>
+        <Badge variant="info">
+          {getCompletedProcedureCount(procedures)} recorded
+        </Badge>
+      </div>
       <InlineNotice variant="info">
         If this was only a consult or check, you can skip procedures and record
         the visit in Notes or Next Step.
@@ -1216,7 +1459,7 @@ function ProceduresStep({
 
       {procedures.map((procedure, index) => (
         <div
-          className="rounded-md border border-slate-200 bg-slate-50 p-4"
+          className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm"
           key={procedure.id}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1320,26 +1563,36 @@ function NotesStep({
 }) {
   return (
     <div className="grid gap-4">
-      <label>
-        <FieldLabel>Clinical note</FieldLabel>
-        <Textarea
-          data-testid="visit-clinical-note"
-          disabled={disabled}
-          value={clinicalNote}
-          onChange={(event) => onClinicalNoteChange(event.target.value)}
-          placeholder="What was observed and completed today?"
-        />
-      </label>
-      <label>
-        <FieldLabel>Recommendation / next instruction</FieldLabel>
-        <Textarea
-          data-testid="visit-recommendation"
-          disabled={disabled}
-          value={recommendation}
-          onChange={(event) => onRecommendationChange(event.target.value)}
-          placeholder="Home care, warning signs, control visit timing, or plan instructions."
-        />
-      </label>
+      <div className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
+        <label>
+          <FieldLabel>Clinical note</FieldLabel>
+          <p className="mb-3 text-sm leading-6 text-slate-600">
+            Record the visit narrative and what was observed or completed today.
+          </p>
+          <Textarea
+            data-testid="visit-clinical-note"
+            disabled={disabled}
+            value={clinicalNote}
+            onChange={(event) => onClinicalNoteChange(event.target.value)}
+            placeholder="What was observed and completed today?"
+          />
+        </label>
+      </div>
+      <div className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
+        <label>
+          <FieldLabel>Recommendation / next instruction</FieldLabel>
+          <p className="mb-3 text-sm leading-6 text-slate-600">
+            Capture home care, warnings, control timing, or planning guidance.
+          </p>
+          <Textarea
+            data-testid="visit-recommendation"
+            disabled={disabled}
+            value={recommendation}
+            onChange={(event) => onRecommendationChange(event.target.value)}
+            placeholder="Home care, warning signs, control visit timing, or plan instructions."
+          />
+        </label>
+      </div>
     </div>
   )
 }
@@ -1355,21 +1608,26 @@ function NextStep({
 }) {
   return (
     <div className="space-y-4">
-      <label>
-        <FieldLabel>Next step</FieldLabel>
-        <Select
-          data-testid="visit-next-step"
-          disabled={disabled}
-          value={nextStep}
-          onChange={(event) => onNextStepChange(event.target.value)}
-        >
-          {nextStepOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-      </label>
+      <div className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
+        <label>
+          <FieldLabel>Next step</FieldLabel>
+          <p className="mb-3 text-sm leading-6 text-slate-600">
+            Choose the safest follow-up direction for this patient.
+          </p>
+          <Select
+            data-testid="visit-next-step"
+            disabled={disabled}
+            value={nextStep}
+            onChange={(event) => onNextStepChange(event.target.value)}
+          >
+            {nextStepOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </label>
+      </div>
 
       {nextStep && nextStep !== 'no_follow_up' ? (
         <InlineNotice variant="info">
@@ -1409,6 +1667,7 @@ function ReviewStep({
   hasRecommendation,
   isReady,
   nextStepLabel,
+  procedures,
   procedureCount,
   recommendation,
   warnings,
@@ -1421,12 +1680,13 @@ function ReviewStep({
   hasRecommendation: boolean
   isReady: boolean
   nextStepLabel: string
+  procedures: ProcedureRow[]
   procedureCount: number
   recommendation: string
   warnings: string[]
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="visit-review-stage">
       <VisitCompletionSummary
         procedureCount={procedureCount}
         hasClinicalNote={hasClinicalNote}
@@ -1436,17 +1696,68 @@ function ReviewStep({
         warnings={warnings}
       />
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <MetricTile
-          label="Clinical note preview"
-          value={hasClinicalNote ? clinicalNote : 'No note entered'}
-          description="Saved with the visit when the current role can write clinical notes."
-        />
-        <MetricTile
-          label="Instruction preview"
-          value={hasRecommendation ? recommendation : 'No instruction entered'}
-          description="Saved with the visit draft and completion record."
-        />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-semibold text-slate-950">
+              Procedure review
+            </div>
+            <Badge variant={procedureCount > 0 ? 'info' : 'neutral'}>
+              {procedureCount > 0 ? `${procedureCount} recorded` : 'Optional'}
+            </Badge>
+          </div>
+          {procedureCount > 0 ? (
+            <ol className="mt-4 space-y-3">
+              {procedures
+                .filter((procedure) => procedure.name.trim())
+                .map((procedure, index) => (
+                  <li
+                    className="rounded-md border border-white/80 bg-white p-3"
+                    key={procedure.id}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="neutral">#{index + 1}</Badge>
+                      <div className="font-semibold text-slate-950">
+                        {procedure.name}
+                      </div>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      {procedure.toothOrRegion.trim() || 'No tooth or region recorded.'}
+                    </p>
+                    {procedure.note.trim() ? (
+                      <p className="mt-1 text-sm leading-6 text-slate-600">
+                        {procedure.note}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+            </ol>
+          ) : (
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              No procedures were entered. This visit can still complete if a
+              clinical note or next step is recorded.
+            </p>
+          )}
+        </div>
+
+        <div className="grid gap-3">
+          <MetricTile
+            label="Clinical note preview"
+            value={hasClinicalNote ? clinicalNote : 'No note entered'}
+            description="Saved with the visit when the current role can write clinical notes."
+          />
+          <MetricTile
+            label="Instruction preview"
+            value={hasRecommendation ? recommendation : 'No instruction entered'}
+            description="Saved with the visit draft and completion record."
+          />
+          <MetricTile
+            label="Next step preview"
+            value={nextStepLabel}
+            description="Follow-up guidance stays clinical-only."
+            tone={hasNextStep ? 'warning' : 'default'}
+          />
+        </div>
       </div>
 
       {attemptedCompletion && !isReady ? (

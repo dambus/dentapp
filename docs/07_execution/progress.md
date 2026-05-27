@@ -5666,6 +5666,77 @@ Initial stack:
 
 ---
 
+### Completed (Task 101 - Visit Completion Clinical Flow Pilot UI/UX Restyling)
+
+- Reviewed the current Visit Completion runtime, route shell, child summary
+  surface, patient-detail entry points, completed-visit detail/timeline
+  surfaces, prior mobile sticky workflow decisions, and existing browser smoke
+  coverage before editing.
+- Confirmed the current Visit Completion step sequence remains clinical-only:
+  `Plan`, `Done`, `Notes`, `Next`, `Review`.
+- Confirmed `Services & Charges` remains absent from the runtime workflow and
+  kept settlement/payment/ledger/posting UI frozen out of ordinary usage.
+- Restyled `VisitCompletionFlow` as a clearer clinical workspace while
+  preserving behavior:
+  - patient context remains first,
+  - workflow status and draft confidence moved into a separate context panel,
+  - progress presentation is calmer on tablet/desktop and still compact on
+    mobile,
+  - step content cards are less cluttered,
+  - review now summarizes procedures, note, recommendation, and next step more
+    clearly,
+  - success state now gives clearer existing next-navigation options.
+- Restyled `VisitCompletionSummary` so review readiness reads as a focused
+  clinical checkpoint rather than a generic metric strip.
+- Preserved all existing draft-save, reload, completion, appointment-linked,
+  completed-visit, provider-context, and warning/error behavior.
+- Extended `testPatientAppointmentBrowserSmoke.mjs` with stable Visit
+  Completion semantic assertions:
+  - restyled workflow shell,
+  - workflow context/status regions,
+  - progress region,
+  - review-stage semantic regions,
+  - success-state semantic region,
+  - continued absence of financial/settlement terminology.
+- Added
+  `docs/design/task-101-visit-completion-clinical-flow-pilot-ui-ux-restyling.md`.
+
+### Verification (Task 101)
+
+- `npm.cmd run build` passes with the existing Vite large chunk warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `DENTAPP_APP_URL=http://127.0.0.1:5173`.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanMutationRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFreezeRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFeatureAccessRls.mjs`
+  passes.
+- `git diff --check` passes with only standard LF/CRLF warnings.
+- Manual screenshot inspection was completed at approximately:
+  - 390 px mobile,
+  - 768 px tablet,
+  - 1280 px desktop.
+- Manual inspection covered:
+  - initial Visit Completion step,
+  - populated procedures step,
+  - review stage,
+  - draft save confirmation,
+  - confirmation/completion stage,
+  - success state,
+  - populated content readability,
+  - mobile sticky progress/action behavior,
+  - absence of financial or settlement UI.
+
+### Next Recommended Task
+
+- Task 102 - In-Clinic Pilot Workflow Walkthrough / UI Consistency and Blocking Defect Audit.
+
+---
+
 ### Completed (Task 53 - Restore Appointment Lifecycle Secondary Actions)
 
 - Root cause found: the status transitions still existed, but recent action

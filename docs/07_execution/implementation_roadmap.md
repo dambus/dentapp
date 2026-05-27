@@ -360,8 +360,8 @@ active tasks should be:
 3. `Task 98 - Patient Treatment Plan Creation/Edit UI`
 4. `Task 99 - Planner and Appointment Card Pilot UI/UX Restyling` (complete)
 5. `Task 100 - Patient Detail Pilot Workflow Entry Restyling` (complete)
-6. `Task 101 - Visit Completion and Completed Visit Pilot Usability Pass`
-7. `Task 102 - Pilot Clinical Flow Validation Checkpoint`
+6. `Task 101 - Visit Completion and Completed Visit Pilot Usability Pass` (complete)
+7. `Task 102 - In-Clinic Pilot Workflow Walkthrough / UI Consistency and Blocking Defect Audit`
 
 Do not expose settlement UI or reconnect frozen ledger/payment/performed-service
 flows in the MVP stream.
@@ -442,6 +442,9 @@ Current status:
 - Task 100 restyles Patient Detail around patient identity, current workflow,
   treatment-plan/rebooking entry, clinical context, and Full Record hierarchy
   while preserving the existing behavior and treatment-plan write flow,
+- Task 101 restyles Visit Completion around patient/visit context, guided
+  progress, clearer draft-save confidence, review readiness, and success-state
+  navigation while preserving existing persistence and completion behavior,
 - Task 96 confirms treatment-plan tables, item tables, service write methods,
   and CRUD/RLS test coverage already exist, but plan-level write RLS needs
   same-clinic patient hardening before UI exposure,
@@ -454,7 +457,7 @@ Current status:
 
 Next step:
 
-- Task 101 - Visit Completion Clinical Flow Pilot UI/UX Restyling.
+- Task 102 - In-Clinic Pilot Workflow Walkthrough / UI Consistency and Blocking Defect Audit.
 
 ---
 
