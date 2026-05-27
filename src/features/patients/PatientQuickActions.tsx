@@ -120,17 +120,16 @@ function QuickActionCard({
   return (
     <div
       className={classNames(
-        'flex min-h-56 flex-col justify-between rounded-md border bg-white p-4 shadow-sm transition sm:p-5',
+        'flex min-w-0 flex-col gap-3 rounded-md border bg-white p-3 shadow-sm transition sm:p-4',
         isInteractive
-          ? 'border-teal-200 hover:-translate-y-0.5 hover:shadow-md'
+          ? 'border-teal-200 hover:shadow-md'
           : 'border-slate-200 opacity-80',
       )}
     >
-      <div>
-        <div className="flex items-start justify-between gap-3">
+      <div className="flex min-w-0 items-start gap-3">
           <div
             className={classNames(
-              'flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-base font-semibold',
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-sm font-semibold',
               isInteractive
                 ? 'bg-teal-700 text-white'
                 : action.status === 'readonly'
@@ -140,26 +139,26 @@ function QuickActionCard({
           >
             {actionMarkers[action.id] ?? 'A'}
           </div>
-          <Badge variant={statusVariants[action.status]}>
-            {statusLabels[action.status]}
-          </Badge>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-base font-semibold leading-6 text-slate-950">
+              {action.title}
+            </h3>
+            <Badge variant={statusVariants[action.status]}>
+              {statusLabels[action.status]}
+            </Badge>
+            {isArchived && action.status !== 'planned' ? (
+              <Badge variant="warning">Archived</Badge>
+            ) : null}
+          </div>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            {action.description}
+          </p>
         </div>
-
-        <div className="mt-5 flex flex-wrap items-center gap-2">
-          <h3 className="text-lg font-semibold leading-6 text-slate-950">
-            {action.title}
-          </h3>
-          {isArchived && action.status !== 'planned' ? (
-            <Badge variant="warning">Archived</Badge>
-          ) : null}
-        </div>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          {action.description}
-        </p>
       </div>
 
       <Button
-        className="mt-5 min-h-10 w-full"
+        className="min-h-10 w-full sm:w-auto sm:self-start"
         disabled={isDisabled}
         onClick={action.onSelect}
         size="md"
@@ -278,16 +277,16 @@ export function PatientQuickActions({
   }
 
   return (
-    <Card className="border-slate-200 bg-white shadow-sm">
-      <CardHeader>
+    <Card className="border-slate-200 bg-white shadow-sm" data-testid="patient-workflow-shortcuts">
+      <CardHeader className="p-4 pb-0 sm:p-5 sm:pb-0">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Quick Actions</CardTitle>
+              <CardTitle>Workflow Shortcuts</CardTitle>
               <Badge variant="info">Role shortcuts</Badge>
             </div>
             <CardDescription>
-              Role-aware shortcuts into common patient workflows.
+              Secondary paths into patient record sections and scheduling.
             </CardDescription>
           </div>
           {role ? (
@@ -298,7 +297,7 @@ export function PatientQuickActions({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4 sm:space-y-5">
+      <CardContent className="space-y-4 p-4 sm:space-y-5 sm:p-5">
         {isArchived ? (
           <InlineNotice variant="warning">
             Patient is archived. Restore the patient before making changes.
@@ -306,7 +305,7 @@ export function PatientQuickActions({
         ) : null}
 
         {actions.length > 0 ? (
-          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2">
             {actions.map((action) => (
               <QuickActionCard
                 action={action}

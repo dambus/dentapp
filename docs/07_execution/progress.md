@@ -5598,6 +5598,74 @@ Initial stack:
 
 ---
 
+### Completed (Task 100 - Patient Detail Clinical Workflow Entry UI/UX Restyling)
+
+- Reviewed the interrupted uncommitted Task 100 diff before extending it and
+  confirmed the retained UI changes were largely usable:
+  `PatientSnapshot`, `PatientTodayPanel`, `PatientQuickActions`,
+  `PatientAppointmentSummary`, `PatientFullRecord`, `PatientDetailPage`, and
+  `testPatientAppointmentBrowserSmoke.mjs`.
+- Confirmed Task 99 was already present as the baseline and no unrelated
+  tracked implementation files were added to the Task 100 diff.
+- Kept the interrupted patient-detail restyle because it already fit the
+  intended Task 100 hierarchy:
+  - patient identity and safety in `PatientSnapshot`,
+  - current workflow and primary action in `PatientTodayPanel`,
+  - treatment-plan and rebooking entry directly under workflow context,
+  - recent activity/follow-up as supporting clinical context,
+  - role-aware shortcuts as secondary paths,
+  - deeper Full Record access as the `Clinical Record` workspace.
+- Confirmed Task 98 Treatment Plan behavior remains intact:
+  create, edit, archive, role restrictions, and archived-patient mutation
+  limits remain on the existing treatment-plan section.
+- Confirmed no payment, balance, ledger, invoice, receipt, settlement, or
+  internal-finance UI returned on Patient Detail.
+- Added
+  `docs/design/task-100-patient-detail-clinical-workflow-entry-ui-ux-restyling.md`
+  to document the interrupted implementation, retained recovery result, manual
+  responsive inspection, and final validation outcome.
+- Final validation required one narrow smoke-test stabilization inside
+  `testPatientAppointmentBrowserSmoke.mjs`:
+  - wait for the restyled patient workflow surface before asserting the empty
+    appointment state,
+  - wait for the normal Visit Completion route first-step `Next` action to be
+    enabled before advancing.
+- No runtime Patient Detail behavior, schema, RLS, RPC, finance, settlement, or
+  Visit Completion product scope was expanded during validation finalization.
+
+### Verification (Task 100)
+
+- `npm.cmd run build` passes with the existing Vite large chunk warning and the
+  existing Tailwind/Vite timing warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `DENTAPP_APP_URL=http://127.0.0.1:5173`.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanMutationRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFreezeRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFeatureAccessRls.mjs`
+  passes.
+- `git diff --check` passes with only standard LF/CRLF warnings.
+- Manual responsive inspection was already completed at approximately:
+  - 390 px mobile,
+  - 768 px tablet,
+  - 1280 px desktop.
+- Manual inspection confirmed:
+  - patient identity/workflow/action hierarchy is clear,
+  - treatment-plan access and authorized mutation controls remain reachable,
+  - Full Record remains readable and intentionally denser than the top workflow
+    section,
+  - no finance or settlement UI was visible.
+
+### Next Recommended Task
+
+- Task 101 - Visit Completion Clinical Flow Pilot UI/UX Restyling.
+
+---
+
 ### Completed (Task 53 - Restore Appointment Lifecycle Secondary Actions)
 
 - Root cause found: the status transitions still existed, but recent action

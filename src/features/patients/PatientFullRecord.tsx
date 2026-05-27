@@ -128,16 +128,21 @@ export function PatientFullRecord({
     : 'medical-record'
 
   return (
-    <Card className="scroll-mt-6 border-slate-200" id="patient-full-record">
-      <CardHeader>
+    <Card
+      className="scroll-mt-6 border-slate-200"
+      data-testid="patient-full-record-workspace"
+      id="patient-full-record"
+    >
+      <CardHeader className="p-4 pb-0 sm:p-5 sm:pb-0">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Full Record</CardTitle>
-              <Badge variant="neutral">Detailed modules</Badge>
+              <CardTitle>Clinical Record</CardTitle>
+              <Badge variant="neutral">Full Record</Badge>
             </div>
             <CardDescription>
-              Detailed patient information and clinical modules.
+              Deeper medical, planning, notes, document, and visit-history
+              sections.
             </CardDescription>
           </div>
           {isPatientArchived ? (
@@ -146,7 +151,7 @@ export function PatientFullRecord({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-5 p-4 sm:p-5">
         <div className="sticky top-0 z-10 -mx-4 border-y border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:hidden">
           <label>
             <FieldLabel>Section</FieldLabel>

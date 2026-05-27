@@ -602,18 +602,18 @@ export function PatientAppointmentSummary({
   return (
     <Card
       className="scroll-mt-6 border-cyan-100 bg-cyan-50/30 shadow-sm"
+      data-testid="patient-rebooking-entry"
       id="patient-appointments"
     >
       <CardHeader>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Appointments</CardTitle>
+              <CardTitle>Appointments / Rebooking</CardTitle>
               <Badge variant="info">Patient scheduling</Badge>
             </div>
             <CardDescription>
-              Lightweight patient appointment context. Full calendar views are
-              not implemented yet.
+              Review the next appointment or manually schedule the next visit.
             </CardDescription>
           </div>
           <Button

@@ -317,7 +317,7 @@ Status legend:
 - [x] Task 97 - Treatment Plan Mutation Schema/RLS Hardening
 - [x] Task 98 - Patient Treatment Plan Creation/Edit UI
 - [x] Task 99 - Planner and Appointment Card Pilot UI/UX Restyling
-- [ ] Task 100 - Patient Detail Pilot Workflow Entry Restyling
+- [x] Task 100 - Patient Detail Pilot Workflow Entry Restyling
 - [ ] Task 101 - Visit Completion and Completed Visit Pilot Usability Pass
 - [ ] Task 102 - Pilot Clinical Flow Validation Checkpoint
 - [ ] Doctor commission planning

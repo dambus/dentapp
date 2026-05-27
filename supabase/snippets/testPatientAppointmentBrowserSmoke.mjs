@@ -945,6 +945,40 @@ async function assertRestyledPlannerSurface(cdp, cardText, expectedPrimaryAction
   )
 }
 
+async function assertRestyledPatientWorkflowSurface(cdp, expectedPrimaryAction) {
+  await waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `(() => {
+          const requiredSelectors = [
+            '[data-testid="patient-workflow-header"]',
+            '[data-testid="patient-clinical-workflow-entry"]',
+            '[data-patient-workflow-region="current-workflow"]',
+            '[data-testid="patient-primary-clinical-action"]',
+            '[data-testid="patient-treatment-plan-summary"]',
+            '[data-testid="patient-rebooking-entry"]',
+            '[data-testid="patient-clinical-context"]',
+            '[data-testid="patient-workflow-shortcuts"]',
+            '[data-testid="patient-full-record-workspace"]',
+          ];
+          const primaryAction = document.querySelector('[data-testid="patient-primary-clinical-action"]');
+          const bodyText = document.body?.innerText ?? '';
+          const forbiddenTerms = ['posted charges', 'payment', 'balance', 'settlement', 'invoice', 'receipt'];
+
+          return requiredSelectors.every((selector) => document.querySelector(selector)) &&
+            primaryAction?.textContent?.includes(${JSON.stringify(expectedPrimaryAction)}) &&
+            bodyText.includes('Patient workspace') &&
+            bodyText.includes('Clinical workflow') &&
+            bodyText.includes('Appointments / Rebooking') &&
+            bodyText.includes('Clinical Record') &&
+            forbiddenTerms.every((term) => !bodyText.toLowerCase().includes(term));
+        })()`,
+      ),
+    'restyled patient workflow surface',
+  )
+}
+
 async function getAppointmentCardMenuTexts(cdp, cardText) {
   await openAppointmentCardMenu(cdp, cardText)
 
@@ -1807,6 +1841,7 @@ async function main() {
     )
 
     await navigate(cdp, PATIENT_URL)
+    await assertRestyledPatientWorkflowSurface(cdp, 'View completed visit')
 
     await waitFor(
       () => textIncludes(cdp, 'No upcoming appointment scheduled'),
@@ -1821,6 +1856,7 @@ async function main() {
       () => textIncludes(cdp, 'Full Record'),
       'patient full record',
     )
+    await assertRestyledPatientWorkflowSurface(cdp, 'View completed visit')
     await waitFor(
       () =>
         evaluate(
@@ -3779,6 +3815,12 @@ async function main() {
         label: 'Patient overview',
         url: PATIENT_URL,
         waitForText: 'Full Record',
+        prepare: async (browser, label, viewport) => {
+          if (viewport.width === 768) {
+            await assertRestyledPatientWorkflowSurface(browser, 'View completed visit')
+            await assertNoHorizontalOverflow(browser, label, viewport.width)
+          }
+        },
       },
       {
         label: 'Patient timeline',
@@ -3829,6 +3871,20 @@ async function main() {
 
     await navigate(cdp, `${PATIENT_URL}/visit-completion`)
     await waitFor(() => textIncludes(cdp, 'Visit Completion'), 'normal visit route')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const nextButton = Array.from(document.querySelectorAll('button'))
+              .find((element) => element.textContent?.trim() === 'Next');
+            return document.body?.innerText.includes('Review today') &&
+              nextButton instanceof HTMLButtonElement &&
+              !nextButton.disabled;
+          })()`,
+        ),
+      'normal route first step ready',
+    )
     await clickByText(cdp, 'Next')
     await waitFor(() => textIncludes(cdp, 'What was done?'), 'normal route procedures step')
     await clickByText(cdp, 'Next')
@@ -3935,6 +3991,7 @@ async function main() {
           patientTreatmentPlanItemEditVerified: true,
           patientPostedChargesSectionFrozenVerified: true,
           plannerRestyledToolbarAndCardRegionsVerified: true,
+          patientDetailWorkflowEntryRestyleVerified: true,
           followUpSchedulingActionVerified: true,
           followUpSchedulingPrefillVerified: true,
           printActionVerified: true,

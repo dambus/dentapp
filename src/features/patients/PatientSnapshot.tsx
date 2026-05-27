@@ -7,12 +7,10 @@ import {
   CardHeader,
   CardTitle,
   InlineNotice,
-  MetricTile,
 } from '../../components/ui'
 import type { AppRole } from '../../types/navigation'
 import {
   formatPatientDate,
-  formatPatientDateTime,
   getPatientAge,
   getPatientFullName,
   patientStatusBadgeVariants,
@@ -62,18 +60,21 @@ export function PatientSnapshot({
     hasMedicalWarnings || hasAllergies || hasImportantNote
 
   return (
-    <Card className="overflow-hidden border-teal-100 shadow-md">
+    <Card
+      className="overflow-hidden border-teal-100 shadow-sm"
+      data-testid="patient-workflow-header"
+    >
       <div className="border-b border-teal-100 bg-white">
-        <CardHeader>
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+        <CardHeader className="p-4 pb-4 sm:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="flex min-w-0 gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-teal-700 text-xl font-semibold text-white shadow-sm">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-teal-700 text-lg font-semibold text-white shadow-sm sm:h-16 sm:w-16 sm:text-xl">
                 {patient.firstName.slice(0, 1)}
                 {patient.lastName.slice(0, 1)}
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle className="text-3xl leading-tight">
+                  <CardTitle className="text-2xl leading-tight sm:text-3xl">
                     {patientName}
                   </CardTitle>
                   <Badge variant={patientStatusBadgeVariants[patient.status]}>
@@ -84,7 +85,7 @@ export function PatientSnapshot({
                   ) : null}
                   <Badge variant="info">{dataSourceLabel}</Badge>
                 </div>
-                <CardDescription className="text-base">
+                <CardDescription className="text-sm sm:text-base">
                   {age} years old - born {formatPatientDate(patient.dateOfBirth)}
                 </CardDescription>
               </div>
@@ -140,7 +141,7 @@ export function PatientSnapshot({
         </CardHeader>
       </div>
 
-      <CardContent className="space-y-6 bg-slate-50/60">
+      <CardContent className="space-y-4 bg-slate-50/60 p-4 sm:p-5">
         {lifecycleSuccess ? (
           <InlineNotice variant="success">
             {lifecycleSuccess}
@@ -152,7 +153,7 @@ export function PatientSnapshot({
           </InlineNotice>
         ) : null}
 
-        <div className="rounded-md border border-amber-200 bg-white p-5 shadow-sm">
+        <div className="rounded-md border border-amber-200 bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div
@@ -165,7 +166,7 @@ export function PatientSnapshot({
                 {hasAnyCriticalContext ? '!' : 'OK'}
               </div>
               <div>
-                <div className="text-lg font-semibold text-slate-950">
+                <div className="text-base font-semibold text-slate-950">
                   Safety and priority notes
                 </div>
                 <p className="text-sm leading-6 text-slate-600">
@@ -178,7 +179,7 @@ export function PatientSnapshot({
             </Badge>
           </div>
           {hasAnyCriticalContext ? (
-            <div className="mt-5 grid gap-3 lg:grid-cols-3">
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
               <div className="rounded-md border border-amber-100 bg-amber-50 px-4 py-3">
                 <div className="text-xs font-semibold uppercase tracking-normal text-amber-900">
                   Allergies
@@ -224,49 +225,50 @@ export function PatientSnapshot({
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <MetricTile
-            className="min-h-36"
-            label="Active plan"
-            tone={patient.activeTreatmentPlan ? 'info' : 'default'}
-            value={activePlanLabel}
-            description={patient.activeTreatmentPlanSummary}
-          />
-          <MetricTile
-            className="min-h-36"
-            label="Last note"
-            value={patient.lastClinicalNote}
-            description="Most recent clinical context available in the current model."
-          />
-          <MetricTile
-            className="min-h-36"
-            label="Next step"
-            tone="info"
-            value={patient.nextRecommendedStep}
-            description={`Next appointment: ${formatPatientDateTime(
-              patient.nextAppointment,
-            )}`}
-          />
-          <MetricTile
-            className="min-h-36"
-            label="Contact"
-            value={patient.phone}
-            description={patient.email || 'No email recorded.'}
-          />
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2">
-          <MetricTile
-            label="Last visit"
-            tone="success"
-            value={formatPatientDate(patient.lastVisit)}
-            description={patient.recentVisitSummary}
-          />
-          <MetricTile
-            label="Status"
-            tone={patient.status === 'active' ? 'success' : 'warning'}
-            value={patientStatusLabels[patient.status]}
-            description="Patient profile lifecycle state."
-          />
+          <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">
+              Contact
+            </div>
+            <div className="mt-1 text-sm font-semibold text-slate-950">
+              {patient.phone}
+            </div>
+            <p className="mt-1 truncate text-sm text-slate-600">
+              {patient.email || 'No email recorded.'}
+            </p>
+          </div>
+          <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">
+              Active plan
+            </div>
+            <div className="mt-1 text-sm font-semibold text-slate-950">
+              {activePlanLabel}
+            </div>
+            <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+              {patient.activeTreatmentPlanSummary}
+            </p>
+          </div>
+          <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">
+              Last visit
+            </div>
+            <div className="mt-1 text-sm font-semibold text-slate-950">
+              {formatPatientDate(patient.lastVisit)}
+            </div>
+            <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+              {patient.recentVisitSummary}
+            </p>
+          </div>
+          <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">
+              Profile status
+            </div>
+            <div className="mt-1 text-sm font-semibold text-slate-950">
+              {patientStatusLabels[patient.status]}
+            </div>
+            <p className="mt-1 text-sm text-slate-600">
+              Patient lifecycle state.
+            </p>
+          </div>
         </div>
 
         {isArchived ? (

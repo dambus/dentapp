@@ -53,31 +53,21 @@ Completed:
   clinical actions;
 - preserved existing behavior and smoke guards.
 
-## Ready Next
+## Completed Pilot Usability Step
 
 ### Task 100 - Patient Detail Pilot Workflow Entry Restyling
 
-Scope:
+Completed:
 
-- refine Patient Today, Quick Actions, Appointments, Treatment Plan, and
-  Timeline entry points for the pilot path;
-- clarify how staff move from patient context into today's appointment, Visit
-  Completion, treatment-plan work, timeline review, and rebooking.
+- restyled Patient Detail around patient identity, current workflow, treatment
+  plan, rebooking, supporting clinical context, and deeper record access;
+- preserved existing appointment, Visit Completion, provider, and
+  treatment-plan behavior;
+- validated the retained interrupted implementation after recovery, including
+  browser smoke, RLS coverage, and responsive manual inspection;
+- kept payment and settlement UI absent.
 
-Non-goals:
-
-- settlement records;
-- payments;
-- balances;
-- ledger UI;
-- invoices or receipts;
-- fiscalization;
-- commissions;
-- material usage;
-- automatic treatment-plan mutation from Visit Completion;
-- broad app shell or Visit Completion redesign.
-
-## Next Planning Queue
+## Ready Next
 
 ### Task 101 - Visit Completion And Completed Visit Pilot Usability Pass
 

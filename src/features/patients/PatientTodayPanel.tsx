@@ -14,6 +14,7 @@ import {
 import {
   appointmentOperationalStateLabels,
   fetchAppointmentsForPatient,
+  getAssignedProviderDisplayName,
   type Appointment,
 } from '../appointments/appointmentService'
 import {
@@ -149,9 +150,12 @@ export function PatientTodayPanel({
             onClick: () => onStartVisit(todayAppointment.id),
           }
         : {
-            label: 'Start visit',
-            onClick: () => onStartVisit(null),
-          }
+        label: 'Start visit',
+        onClick: () => onStartVisit(null),
+      }
+  const providerLabel = todayAppointment
+    ? getAssignedProviderDisplayName(todayAppointment)
+    : 'Not assigned'
 
   useEffect(() => {
     let isCurrent = true
@@ -194,16 +198,17 @@ export function PatientTodayPanel({
   return (
     <Card
       className="overflow-hidden border-cyan-100 bg-cyan-50/40 shadow-sm"
+      data-patient-workflow-region="current-workflow"
       data-testid="patient-today-panel"
     >
-      <CardHeader>
+      <CardHeader className="p-4 pb-4 sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-md bg-cyan-700 text-sm font-semibold text-white">
                 TD
               </div>
-              <CardTitle>Today / Active Workflow</CardTitle>
+              <CardTitle>Current Workflow</CardTitle>
               <Badge
                 variant={
                   completedToday
@@ -219,7 +224,7 @@ export function PatientTodayPanel({
               </Badge>
             </div>
             <CardDescription>
-              Current appointment and Visit Completion state for this patient.
+              Appointment context and next clinical action for this patient.
             </CardDescription>
           </div>
 
@@ -236,6 +241,7 @@ export function PatientTodayPanel({
             ) : null}
             <Button
               className="min-h-10 w-full sm:w-auto"
+              data-testid="patient-primary-clinical-action"
               disabled={isArchived || !canCompleteVisit}
               onClick={primaryAction.onClick}
               size="sm"
@@ -246,7 +252,7 @@ export function PatientTodayPanel({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4 sm:space-y-5">
+      <CardContent className="space-y-4 p-4 sm:p-5">
         {workflowError ? (
           <InlineNotice variant="warning">{workflowError}</InlineNotice>
         ) : null}
@@ -331,6 +337,9 @@ export function PatientTodayPanel({
               <Badge variant={patient.activeTreatmentPlan ? 'info' : 'neutral'}>
                 {activePlanLabel}
               </Badge>
+              <Badge variant="neutral">
+                Assigned provider: {providerLabel}
+              </Badge>
             </div>
           </div>
         </div>
@@ -357,11 +366,6 @@ export function PatientTodayPanel({
             tone={latestCompletedVisit ? 'success' : 'default'}
           />
           <MetricTile
-            label="Last clinical note"
-            value={lastNote}
-            description="Most recent patient-level note summary currently available."
-          />
-          <MetricTile
             label="Clinical reminder"
             tone={patient.medicalWarnings.length > 0 ? 'warning' : 'success'}
             value={
@@ -373,11 +377,13 @@ export function PatientTodayPanel({
             }
             description={warningReminder}
           />
-          <MetricTile
-            label="Visit completion"
-            value={workflowVisit ? workflowStatus : 'Ready when needed'}
-            description="Drafts and completed visits use the existing Visit Completion records."
-          />
+        </div>
+
+        <div className="rounded-md border border-slate-200 bg-white p-4">
+          <div className="text-sm font-semibold text-slate-950">
+            Last clinical note
+          </div>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{lastNote}</p>
         </div>
 
         <InlineNotice className="border-dashed bg-white/70" variant="info">
