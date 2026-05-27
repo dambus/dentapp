@@ -358,7 +358,7 @@ active tasks should be:
 1. `Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization`
 2. `Task 97 - Treatment Plan Mutation Schema/RLS Hardening`
 3. `Task 98 - Patient Treatment Plan Creation/Edit UI`
-4. `Task 99 - Planner and Appointment Card Pilot UI/UX Restyling`
+4. `Task 99 - Planner and Appointment Card Pilot UI/UX Restyling` (complete)
 5. `Task 100 - Patient Detail Pilot Workflow Entry Restyling`
 6. `Task 101 - Visit Completion and Completed Visit Pilot Usability Pass`
 7. `Task 102 - Pilot Clinical Flow Validation Checkpoint`
@@ -436,6 +436,9 @@ Current status:
   `not_arrived`, `arrived`, and `ready_for_doctor`,
 - Task 98 implements the patient-scoped treatment-plan creation/editing UI, so
   treatment-plan mutation is no longer the main pilot-critical functional gap,
+- Task 99 restyles the Planner and appointment cards around scan clarity,
+  reception operational state, provider context, and clinical next-action
+  hierarchy while preserving existing planner behavior,
 - Task 96 confirms treatment-plan tables, item tables, service write methods,
   and CRUD/RLS test coverage already exist, but plan-level write RLS needs
   same-clinic patient hardening before UI exposure,
@@ -448,7 +451,7 @@ Current status:
 
 Next step:
 
-- Task 99 - Planner and Appointment Card Pilot UI/UX Restyling.
+- Task 100 - Patient Detail Clinical Workflow Entry UI/UX Restyling.
 
 ---
 

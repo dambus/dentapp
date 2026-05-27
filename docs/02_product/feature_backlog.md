@@ -42,16 +42,27 @@ Scope:
 - advanced reminders, recall automation, external calendar sync, online
   booking, patient portal, room/chair scheduling, and waiting-time analytics.
 
-## Ready Next
+## Completed Pilot Usability Step
 
 ### Task 99 - Planner And Appointment Card Pilot UI/UX Restyling
 
-Scope:
+Completed:
 
-- restyle Appointments daily/weekly views and appointment cards around scan
+- restyled Appointments daily/weekly views and appointment cards around scan
   clarity, provider/status visibility, reception progression, and primary
   clinical actions;
-- preserve existing behavior and smoke guards.
+- preserved existing behavior and smoke guards.
+
+## Ready Next
+
+### Task 100 - Patient Detail Pilot Workflow Entry Restyling
+
+Scope:
+
+- refine Patient Today, Quick Actions, Appointments, Treatment Plan, and
+  Timeline entry points for the pilot path;
+- clarify how staff move from patient context into today's appointment, Visit
+  Completion, treatment-plan work, timeline review, and rebooking.
 
 Non-goals:
 
@@ -64,16 +75,9 @@ Non-goals:
 - commissions;
 - material usage;
 - automatic treatment-plan mutation from Visit Completion;
-- broad Patient Detail or Visit Completion redesign.
+- broad app shell or Visit Completion redesign.
 
 ## Next Planning Queue
-
-### Task 100 - Patient Detail Pilot Workflow Entry Restyling
-
-Scope:
-
-- refine Patient Today, Quick Actions, Appointments, Treatment Plan, and
-  Timeline entry points for the pilot path.
 
 ### Task 101 - Visit Completion And Completed Visit Pilot Usability Pass
 

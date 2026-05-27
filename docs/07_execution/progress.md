@@ -5544,6 +5544,60 @@ Initial stack:
 
 ---
 
+### Completed (Task 99 - Planner and Appointment Card Pilot UI/UX Restyling)
+
+- Restyled the Appointments page as the pilot `Planner` workspace, with clearer
+  operational page copy, selected day/week context, visible appointment count,
+  and one grouped `Planner controls` toolbar.
+- Preserved daily/weekly view switching, date/week navigation, provider filter
+  semantics, provider URL persistence, invalid provider fallback, refresh,
+  lifecycle actions, operational-state progression/correction, and
+  Start/Continue/View visit behavior.
+- Restyled appointment cards around a dedicated time anchor, patient identity,
+  appointment type/reason, assigned provider, operational/lifecycle status, and
+  separated reception versus clinical action zones.
+- Kept cancel/no-show and operational correction actions in the existing
+  secondary appointment menu where current eligibility rules allow them.
+- Reduced mobile card clutter by hiding low-priority notes on the narrowest
+  cards while keeping notes visible on tablet/desktop.
+- Expanded browser smoke coverage with stable semantic assertions for the
+  planner toolbar, key appointment card regions, operational indicator, primary
+  visit action area, and secondary action menu reachability.
+- Expanded the responsive overflow smoke viewport set to include 768 px tablet
+  portrait.
+- Performed screenshot-based visual inspection at 390 px, 768 px, and 1280 px
+  for daily schedule, weekly schedule, provider toolbar state, scheduled,
+  cancelled, no-show, completed, ready/completed linked-visit states, and empty
+  schedule layout.
+- Added
+  `docs/design/task-99-planner-appointment-card-pilot-ui-ux-restyling.md`.
+- Added no schema, migration, RLS, RPC, service write, appointment lifecycle,
+  operational-state model, provider assignment, Visit Completion,
+  treatment-plan, settlement, payment, ledger, invoice, receipt, fiscal, report,
+  or broad Patient Detail behavior changes.
+
+### Verification (Task 99)
+
+- `npm.cmd run build` passes with the existing Vite large chunk warning and the
+  existing Tailwind/Vite timing warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes
+  against `DENTAPP_APP_URL=http://127.0.0.1:5173`.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanMutationRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFreezeRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFeatureAccessRls.mjs`
+  passes.
+
+### Next Recommended Task
+
+- Task 100 - Patient Detail Clinical Workflow Entry UI/UX Restyling.
+
+---
+
 ### Completed (Task 53 - Restore Appointment Lifecycle Secondary Actions)
 
 - Root cause found: the status transitions still existed, but recent action

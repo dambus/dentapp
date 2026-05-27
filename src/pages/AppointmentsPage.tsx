@@ -44,6 +44,13 @@ import {
   getPatientVisitDetailPath,
   getPatientVisitCompletionPath,
 } from '../routes/routePaths'
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  RefreshCw,
+} from 'lucide-react'
 
 type StatusUpdateState = {
   appointmentId: string
@@ -538,32 +545,64 @@ export function AppointmentsPage() {
   return (
     <Page>
       <PageHeader
-        title="Appointments"
+        title="Planner"
         description={
           viewMode === 'day'
-            ? 'Daily operational schedule.'
-            : 'Weekly operational schedule.'
+            ? 'Today-focused clinical schedule for reception and visit handoff.'
+            : 'Weekly planning view for clinic schedule coverage.'
         }
       />
 
-      <Card className="min-w-0 max-w-full border-slate-200 shadow-sm">
-        <CardHeader className="space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+      <Card className="min-w-0 max-w-full overflow-hidden border-slate-200 shadow-sm">
+        <CardHeader className="space-y-4 border-b border-slate-100 bg-white p-4 pb-4 sm:p-5">
+          <div
+            className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+            data-testid="appointments-schedule-context"
+          >
             <div className="min-w-0">
-              <CardTitle>{selectedRange.title}</CardTitle>
-              <CardDescription>{selectedRange.label}</CardDescription>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-cyan-100 bg-cyan-50 text-cyan-700">
+                  <CalendarDays aria-hidden className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <CardTitle>{selectedRange.title}</CardTitle>
+                  <CardDescription className="mt-0.5">
+                    {selectedRange.label}
+                  </CardDescription>
+                </div>
+              </div>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                Track arrival state, assigned provider, and the next clinical
+                action from one schedule workspace.
+              </p>
             </div>
-            <Badge variant="info">
-              {filteredAppointments.length}{' '}
-              {filteredAppointments.length === 1 ? 'appointment' : 'appointments'}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <Badge variant="info">
+                {filteredAppointments.length}{' '}
+                {filteredAppointments.length === 1
+                  ? 'visible appointment'
+                  : 'visible appointments'}
+              </Badge>
+              {appointments.length !== filteredAppointments.length ? (
+                <Badge variant="neutral">
+                  {appointments.length} loaded before filter
+                </Badge>
+              ) : null}
+            </div>
           </div>
 
-          <div className="min-w-0 max-w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <div className="grid min-w-0 max-w-full grid-cols-1 gap-2.5 lg:grid-cols-[auto_minmax(0,15rem)_minmax(0,18rem)_minmax(0,1fr)] lg:items-end">
+          <div
+            className="min-w-0 max-w-full rounded-lg border border-slate-200 bg-slate-50/80 p-3"
+            data-testid="appointments-planner-toolbar"
+          >
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <Filter aria-hidden className="h-4 w-4 text-slate-500" />
+              Planner controls
+            </div>
+            <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-end">
               <div className="min-w-0">
                 <FieldLabel>View</FieldLabel>
-                <div className="mt-2 flex rounded-md border border-slate-200 bg-white p-1">
+                <div className="mt-2 flex rounded-md border border-slate-200 bg-white p-1 shadow-sm">
                   <Button
                     className="flex-1 sm:flex-none"
                     onClick={() => setViewMode('day')}
@@ -614,7 +653,7 @@ export function AppointmentsPage() {
                 </Select>
               </label>
 
-              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap lg:col-span-3 lg:justify-start">
                 {viewMode === 'day' ? (
                   <>
                     <Button
@@ -639,16 +678,17 @@ export function AppointmentsPage() {
                 ) : (
                   <>
                     <Button
-                      className="min-h-10"
+                      className="min-h-10 gap-1.5"
                       disabled={isLoading}
                       onClick={() => setSelectedDate(addDays(weekStart, -7))}
                       size="sm"
                       variant="secondary"
                     >
+                      <ChevronLeft aria-hidden className="h-4 w-4" />
                       Previous week
                     </Button>
                     <Button
-                      className="min-h-10"
+                      className="min-h-10 gap-1.5"
                       disabled={isLoading}
                       onClick={() => setSelectedDate(todayDateValue)}
                       size="sm"
@@ -664,23 +704,25 @@ export function AppointmentsPage() {
                       variant="secondary"
                     >
                       Next week
+                      <ChevronRight aria-hidden className="h-4 w-4" />
                     </Button>
                   </>
                 )}
                 <Button
-                  className="min-h-10"
+                  className="min-h-10 gap-1.5"
                   disabled={isLoading}
                   onClick={() => void loadAppointments()}
                   size="sm"
                   variant="ghost"
                 >
+                  <RefreshCw aria-hidden className="h-4 w-4" />
                   {isLoading ? 'Refreshing...' : 'Refresh'}
                 </Button>
               </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3.5 sm:space-y-4">
+        <CardContent className="space-y-3.5 bg-slate-50/40 p-4 sm:space-y-4 sm:p-5">
           {!loadError && providerLoadError ? (
             <InlineNotice variant="warning">{providerLoadError}</InlineNotice>
           ) : null}
@@ -745,7 +787,10 @@ export function AppointmentsPage() {
           !loadError &&
           filteredAppointments.length > 0 &&
           viewMode === 'day' ? (
-            <div className="min-w-0 max-w-full space-y-3 sm:space-y-4" data-testid="appointments-list">
+            <div
+              className="min-w-0 max-w-full space-y-3 sm:space-y-4"
+              data-testid="appointments-list"
+            >
               {filteredAppointments.map((appointment) =>
                 renderAppointmentCard(appointment),
               )}
@@ -756,13 +801,16 @@ export function AppointmentsPage() {
           !loadError &&
           !hasFilteredOutLoadedAppointments &&
           viewMode === 'week' ? (
-            <div className="min-w-0 max-w-full space-y-3" data-testid="appointments-week-list">
+            <div
+              className="min-w-0 max-w-full space-y-3"
+              data-testid="appointments-week-list"
+            >
               {weekDays.map((dayValue) => {
                 const dayAppointments = appointmentsByDay[dayValue] ?? []
 
                 return (
                   <section
-                    className="min-w-0 max-w-full rounded-md border border-slate-200 bg-slate-50 p-3"
+                    className="min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
                     data-testid="appointments-week-day"
                     key={dayValue}
                   >

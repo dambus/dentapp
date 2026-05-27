@@ -83,6 +83,7 @@ const RESPONSIVE_OVERFLOW_VIEWPORTS = [
   { label: 'mobile 390', mobile: true, width: 390, height: 844, deviceScaleFactor: 3 },
   { label: 'mobile 430', mobile: true, width: 430, height: 932, deviceScaleFactor: 3 },
   { label: 'mobile 500', mobile: true, width: 500, height: 900, deviceScaleFactor: 2 },
+  { label: 'tablet 768', mobile: false, width: 768, height: 1024, deviceScaleFactor: 1 },
   { label: 'tablet 912', mobile: false, width: 912, height: 1368, deviceScaleFactor: 1 },
   { label: 'desktop 1440', mobile: false, width: 1440, height: 1000, deviceScaleFactor: 1 },
 ]
@@ -902,6 +903,45 @@ async function waitForAppointmentCardState(
       )
     },
     label,
+  )
+}
+
+async function assertRestyledPlannerSurface(cdp, cardText, expectedPrimaryAction) {
+  await waitFor(
+    () =>
+      evaluate(
+        cdp,
+        `(() => {
+          const toolbar = document.querySelector('[data-testid="appointments-planner-toolbar"]');
+          const context = document.querySelector('[data-testid="appointments-schedule-context"]');
+          const cards = Array.from(document.querySelectorAll(${JSON.stringify(APPOINTMENT_CARD_SELECTOR)}));
+          const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(cardText)}));
+
+          if (!toolbar || !context || !card) {
+            return false;
+          }
+
+          const requiredCardRegions = [
+            '[data-testid="appointment-card-time"]',
+            '[data-testid="appointment-card-patient"]',
+            '[data-testid="appointment-card-context"]',
+            '[data-testid="appointment-card-provider"]',
+            '[data-testid="appointment-card-status-area"]',
+            '[data-testid="appointment-operational-state"]',
+            '[data-testid="appointment-operational-area"]',
+            '[data-testid="appointment-card-primary-actions"]',
+          ];
+          const primaryActions = card.querySelector('[data-testid="appointment-card-primary-actions"]');
+          const menu = card.querySelector(${JSON.stringify(`[aria-label="${APPOINTMENT_CARD_MENU_LABEL}"]`)});
+
+          return toolbar.textContent?.includes('Planner controls') &&
+            context.textContent?.includes('visible appointment') &&
+            requiredCardRegions.every((selector) => card.querySelector(selector)) &&
+            primaryActions?.textContent?.includes(${JSON.stringify(expectedPrimaryAction)}) &&
+            menu instanceof HTMLButtonElement;
+        })()`,
+      ),
+    'restyled planner toolbar and appointment card regions',
   )
 }
 
@@ -2291,6 +2331,7 @@ async function main() {
       },
       'manual appointment starts not arrived',
     )
+    await assertRestyledPlannerSurface(cdp, MANUAL_CREATION_REASON, 'Start visit')
     await clickAppointmentCardAction(cdp, MANUAL_CREATION_REASON, 'Mark arrived')
     await waitFor(
       () => textIncludes(cdp, 'Patient marked as arrived.'),
@@ -3893,6 +3934,7 @@ async function main() {
           patientTreatmentPlanEditVerified: true,
           patientTreatmentPlanItemEditVerified: true,
           patientPostedChargesSectionFrozenVerified: true,
+          plannerRestyledToolbarAndCardRegionsVerified: true,
           followUpSchedulingActionVerified: true,
           followUpSchedulingPrefillVerified: true,
           printActionVerified: true,

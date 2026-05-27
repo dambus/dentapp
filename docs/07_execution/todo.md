@@ -316,7 +316,7 @@ Status legend:
 - [x] Task 96 - Treatment Plan Creation/Edit Pilot Workflow Finalization
 - [x] Task 97 - Treatment Plan Mutation Schema/RLS Hardening
 - [x] Task 98 - Patient Treatment Plan Creation/Edit UI
-- [ ] Task 99 - Planner and Appointment Card Pilot UI/UX Restyling
+- [x] Task 99 - Planner and Appointment Card Pilot UI/UX Restyling
 - [ ] Task 100 - Patient Detail Pilot Workflow Entry Restyling
 - [ ] Task 101 - Visit Completion and Completed Visit Pilot Usability Pass
 - [ ] Task 102 - Pilot Clinical Flow Validation Checkpoint
@@ -1184,6 +1184,36 @@ Suggested direction:
   appointment lifecycle, Visit Completion, and treatment-plan behavior;
 - avoid broad Patient Detail or Visit Completion redesign in this specific
   planner/card pass.
+
+### Completed Recommended Task
+
+Task 99 - Planner and Appointment Card Pilot UI/UX Restyling
+
+Completed direction:
+
+- restyled the Appointments page as a clearer pilot Planner workspace;
+- grouped view/date/provider/refresh controls into one planner toolbar while
+  preserving provider URL persistence and filter semantics;
+- restyled daily and weekly appointment cards around time, patient, provider,
+  operational/lifecycle status, and next action hierarchy;
+- kept reception progression visible and kept safe corrections plus
+  cancel/no-show actions in the existing secondary menu;
+- added browser smoke assertions for the planner toolbar and card semantic
+  regions, and added 768 px tablet coverage to responsive overflow checks;
+- verified build, lint, browser smoke, and the appointment/provider/visit/
+  treatment-plan/internal-settlement RLS guard set.
+
+### Next Recommended Task
+
+Task 100 - Patient Detail Clinical Workflow Entry UI/UX Restyling
+
+Suggested direction:
+
+- improve the patient-context entry points into today's appointment, Visit
+  Completion, treatment-plan work, timeline review, and rebooking;
+- keep the work focused on patient workflow clarity, not a broad app redesign;
+- keep settlement, payment, ledger, balance, invoice, receipt, and fiscal scope
+  deferred.
 
 ### Completed Recommended Task
 

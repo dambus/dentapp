@@ -22,6 +22,8 @@ import {
   getPreviousAppointmentOperationalState,
 } from './appointmentService'
 import {
+  Activity,
+  ArrowRight,
   CalendarClock,
   CalendarX,
   Clock3,
@@ -201,9 +203,9 @@ export function AppointmentCard({
   return (
     <article
       className={classNames(
-        'group relative min-w-0 max-w-full rounded-md border border-l-4 border-slate-200 bg-white shadow-sm transition-colors hover:border-slate-300',
+        'group relative min-w-0 max-w-full rounded-lg border border-l-4 border-slate-200 bg-white shadow-sm transition-colors hover:border-slate-300',
         statusToneClass,
-        variant === 'compact' ? 'p-3.5 sm:p-4' : 'p-4',
+        variant === 'compact' ? 'p-3 sm:p-4' : 'p-4 sm:p-5',
         className,
       )}
       data-testid="appointment-card"
@@ -220,29 +222,34 @@ export function AppointmentCard({
         </div>
       ) : null}
 
-      <div className="flex min-w-0 flex-col gap-3.5">
-        <div className="grid min-w-0 max-w-full gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,auto)] md:items-start">
-          <div className="min-w-0 pr-12">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <div className="flex items-center gap-2 text-base font-semibold leading-6 text-slate-950 sm:text-lg">
-                <Clock3 aria-hidden className="h-4 w-4 shrink-0 text-cyan-700" />
-                <span>
-                  {formatAppointmentClockRange(
-                    appointment.scheduled_start,
-                    appointment.scheduled_end,
-                  )}
-                </span>
-              </div>
-              {durationLabel ? (
-                <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-500">
-                  {durationLabel}
-                </span>
-              ) : null}
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="grid min-w-0 max-w-full gap-3 pr-12 sm:grid-cols-[8.5rem_minmax(0,1fr)] lg:grid-cols-[9rem_minmax(0,1fr)_minmax(14rem,auto)] lg:items-start">
+          <div
+            className="min-w-0 rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
+            data-testid="appointment-card-time"
+          >
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+              <Clock3 aria-hidden className="h-4 w-4 shrink-0 text-cyan-700" />
+              Time
             </div>
+            <div className="mt-1 text-lg font-semibold leading-6 text-slate-950">
+              {formatAppointmentClockRange(
+                appointment.scheduled_start,
+                appointment.scheduled_end,
+              )}
+            </div>
+            {durationLabel ? (
+              <div className="mt-1 text-xs font-medium text-slate-500">
+                {durationLabel}
+              </div>
+            ) : null}
+          </div>
 
+          <div className="min-w-0" data-testid="appointment-card-identity">
             {onOpenPatient ? (
               <button
-                className="mt-1.5 block max-w-full text-left text-base font-semibold leading-6 text-slate-950 underline-offset-4 hover:text-teal-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 sm:text-lg"
+                className="block max-w-full text-left text-lg font-semibold leading-7 text-slate-950 underline-offset-4 hover:text-teal-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 sm:text-xl"
+                data-testid="appointment-card-patient"
                 disabled={isBusy}
                 onClick={onOpenPatient}
                 type="button"
@@ -250,20 +257,58 @@ export function AppointmentCard({
                 <span className="wrap-break-word">{displayPatientName}</span>
               </button>
             ) : (
-              <div className="wrap-break-word mt-1.5 text-base font-semibold leading-6 text-slate-950 sm:text-lg">
+              <div
+                className="wrap-break-word text-lg font-semibold leading-7 text-slate-950 sm:text-xl"
+                data-testid="appointment-card-patient"
+              >
                 {displayPatientName}
               </div>
             )}
+
+            <div
+              className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-sm text-slate-600"
+              data-testid="appointment-card-context"
+            >
+              <TypeBadge
+                className="max-w-full truncate"
+                label={typeBadge.label}
+                variant={typeBadge.variant}
+              />
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md bg-slate-100/80 px-2 py-1">
+                <Stethoscope aria-hidden className="h-4 w-4 shrink-0 text-slate-400" />
+                <span
+                  className="min-w-0 max-w-full truncate"
+                  data-testid="appointment-card-provider"
+                  title={`Assigned provider: ${providerLabel}`}
+                >
+                  Assigned provider: {providerLabel}
+                </span>
+              </span>
+              {appointment.notes?.trim() ? (
+                <span className="hidden min-w-0 max-w-full items-center gap-1 rounded-md bg-white px-2 py-1 text-slate-500 ring-1 ring-slate-200 sm:inline-flex">
+                  <FileText
+                    aria-hidden
+                    className="h-4 w-4 shrink-0 text-slate-400"
+                  />
+                  <span className="truncate">{appointment.notes.trim()}</span>
+                </span>
+              ) : null}
+            </div>
           </div>
 
-          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 md:justify-end md:pr-12">
-            <StatusBadge status={appointment.status} />
+          <div
+            className="flex min-w-0 max-w-full flex-wrap items-center gap-2 lg:justify-end"
+            data-testid="appointment-card-status-area"
+          >
             <Badge
+              className="gap-1.5"
               data-testid="appointment-operational-state"
               variant={operationalBadgeVariant}
             >
+              <Activity aria-hidden className="h-3.5 w-3.5" />
               {operationalLabel}
             </Badge>
+            <StatusBadge status={appointment.status} />
             {hasOpenVisit ? (
               <Badge variant="warning">Visit in progress</Badge>
             ) : null}
@@ -271,32 +316,6 @@ export function AppointmentCard({
               <Badge variant="success">Visit completed</Badge>
             ) : null}
           </div>
-        </div>
-
-        <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md bg-slate-100/70 px-2 py-1">
-              <Stethoscope aria-hidden className="h-4 w-4 shrink-0 text-slate-400" />
-              <span
-                className="min-w-0 max-w-full truncate"
-                data-testid="appointment-card-provider"
-                title={`Assigned provider: ${providerLabel}`}
-              >
-                Assigned provider: {providerLabel}
-              </span>
-            </span>
-            <TypeBadge
-              className="max-w-full truncate"
-              label={typeBadge.label}
-              variant={typeBadge.variant}
-            />
-          </div>
-          {appointment.notes?.trim() ? (
-            <span className="inline-flex min-w-0 max-w-full items-center gap-1 text-slate-500 sm:justify-end">
-              <FileText aria-hidden className="h-4 w-4 shrink-0 text-slate-400" />
-              <span className="truncate">{appointment.notes.trim()}</span>
-            </span>
-          ) : null}
         </div>
 
         {hasOpenVisit ? (
@@ -332,30 +351,44 @@ export function AppointmentCard({
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-2.5 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-            <CalendarClock aria-hidden className="h-4 w-4" />
-            Clinical schedule item
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+        <div className="grid gap-3 border-t border-slate-100 pt-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div
+            className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
+            data-testid="appointment-operational-area"
+          >
+            <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-600">
+              <CalendarClock aria-hidden className="h-4 w-4 shrink-0" />
+              <span className="truncate">Reception state: {operationalLabel}</span>
+            </div>
             {canUpdateOperationalState && nextOperationalState ? (
               <Button
-                className="w-full min-h-10 sm:w-auto"
+                className="min-h-10 w-full gap-1.5 sm:w-auto"
                 data-testid="appointment-operational-action"
                 disabled={isBusy}
                 onClick={() => onOperationalStateChange(nextOperationalState)}
                 size="sm"
                 variant="secondary"
               >
-                {operationalStateUpdateStatus === nextOperationalState
-                  ? 'Updating...'
-                  : getAppointmentOperationalActionLabel(nextOperationalState)}
+                {operationalStateUpdateStatus === nextOperationalState ? (
+                  'Updating...'
+                ) : (
+                  <>
+                    <ArrowRight aria-hidden className="h-4 w-4" />
+                    {getAppointmentOperationalActionLabel(nextOperationalState)}
+                  </>
+                )}
               </Button>
             ) : null}
+          </div>
+
+          <div
+            className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end"
+            data-testid="appointment-card-primary-actions"
+          >
             {canStartOrContinueVisit ? (
               <Button
-                className="w-full min-h-10 sm:w-auto"
+                className="min-h-10 w-full sm:w-auto"
+                data-testid="appointment-primary-visit-action"
                 disabled={isBusy}
                 onClick={onStartVisit}
                 size="sm"
@@ -365,7 +398,8 @@ export function AppointmentCard({
             ) : null}
             {canViewVisit ? (
               <Button
-                className="w-full min-h-10 sm:w-auto"
+                className="min-h-10 w-full sm:w-auto"
+                data-testid="appointment-primary-visit-action"
                 disabled={isBusy}
                 onClick={onViewVisit}
                 size="sm"
@@ -375,7 +409,7 @@ export function AppointmentCard({
               </Button>
             ) : null}
             <Button
-              className="w-full min-h-10 sm:w-auto"
+              className="min-h-10 w-full sm:w-auto"
               disabled={isBusy}
               onClick={onOpenDetails}
               size="sm"
