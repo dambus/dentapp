@@ -123,14 +123,15 @@ export function PatientSnapshot({
             <div className="min-w-0">{backNavigation}</div>
             <div className="flex shrink-0 items-start justify-end gap-2">
               {canEditMedicalRecord ? (
-                <Button
-                  className="hidden lg:inline-flex"
-                  onClick={onEditMedicalRecord}
-                  size="sm"
-                  variant="secondary"
-                >
-                  Edit medical record
-                </Button>
+                <div className="hidden xl:block">
+                  <Button
+                    onClick={onEditMedicalRecord}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Edit medical record
+                  </Button>
+                </div>
               ) : null}
               <ActionMenu
                 disabled={isLifecycleSubmitting}
