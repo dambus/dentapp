@@ -324,7 +324,7 @@ Status legend:
 - [x] Task 104 - Compact Clinical UI Primitives / Action and Status System
 - [x] Task 105 - Patient Workspace Overview and Section Navigation Restructure
 - [x] Task 106 - Treatment Plan and Timeline Compact Detailed Presentation
-- [ ] Task 107 - Pilot Forms and Secondary Interaction Consistency Pass
+- [x] Task 107 - Pilot Forms and Secondary Interaction Consistency Pass
 - [ ] Task 108 - Pre-Pilot Visual Consistency Walkthrough
 - [ ] Task 109 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup
 - [ ] Doctor commission planning

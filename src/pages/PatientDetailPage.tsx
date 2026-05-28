@@ -468,8 +468,12 @@ export function PatientDetailPage() {
         </div>
       </section>
 
-      {activeSection === 'overview' ? (
-        <div className="space-y-5" data-testid="patient-overview-section">
+      <div
+        className="space-y-5 sm:min-h-[calc(100dvh-22rem)]"
+        data-testid="patient-workspace-section-shell"
+      >
+        {activeSection === 'overview' ? (
+          <div className="space-y-5" data-testid="patient-overview-section">
           <section
             className="space-y-4 sm:space-y-5"
             data-testid="patient-clinical-workflow-entry"
@@ -542,28 +546,29 @@ export function PatientDetailPage() {
               />
             </div>
           </section>
-        </div>
-      ) : (
-        <PatientFullRecord
-          patient={patient}
-          patientName={patientName}
-          activePlanLabel={activePlanLabel}
-          activeSection={activeSection}
-          canEditMedicalRecord={canEditMedicalRecord}
-          canViewOdontogram={canViewOdontogram}
-          canEditOdontogram={canEditOdontogram}
-          canViewClinicalNotes={canViewClinicalNotes}
-          canManageClinicalNotes={canViewClinicalNotes}
-          canViewTreatmentPlans={canViewTreatmentPlans}
-          canManageTreatmentPlans={canManageTreatmentPlans}
-          highlightedVisitId={highlightedVisitId}
-          isPatientArchived={isArchived}
-          onEditMedicalRecord={() =>
-            navigate(getPatientMedicalRecordEditPath(patient.id))
-          }
-          recordFocus={recordFocus}
-        />
-      )}
+          </div>
+        ) : (
+          <PatientFullRecord
+            patient={patient}
+            patientName={patientName}
+            activePlanLabel={activePlanLabel}
+            activeSection={activeSection}
+            canEditMedicalRecord={canEditMedicalRecord}
+            canViewOdontogram={canViewOdontogram}
+            canEditOdontogram={canEditOdontogram}
+            canViewClinicalNotes={canViewClinicalNotes}
+            canManageClinicalNotes={canViewClinicalNotes}
+            canViewTreatmentPlans={canViewTreatmentPlans}
+            canManageTreatmentPlans={canManageTreatmentPlans}
+            highlightedVisitId={highlightedVisitId}
+            isPatientArchived={isArchived}
+            onEditMedicalRecord={() =>
+              navigate(getPatientMedicalRecordEditPath(patient.id))
+            }
+            recordFocus={recordFocus}
+          />
+        )}
+      </div>
 
       {showBackToTop ? (
         <Button

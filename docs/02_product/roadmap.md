@@ -194,8 +194,8 @@ Priorities:
 5. Task 108 - Pre-Pilot Visual Consistency Walkthrough
 6. Task 109 - Guided In-Clinic Pilot Session Checklist and Observation Log Setup
 
-Task 104, Task 105, and Task 106 are now complete. The active next step is
-Task 107.
+Task 104, Task 105, Task 106, and Task 107 are now complete. The active next
+step is Task 108.
 
 ## Deferred Until After These Stages
 

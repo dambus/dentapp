@@ -8,7 +8,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  FieldHint,
   FieldLabel,
+  FormActions,
   InlineNotice,
   MetricTile,
   Select,
@@ -569,24 +571,24 @@ export function VisitCompletionFlow({
             >
               View patient timeline
             </Button>
-            {onBackToAppointment ? (
-              <Button
-                className="min-h-10"
-                onClick={onBackToAppointment}
-                variant="secondary"
-              >
-                Return to appointment
-              </Button>
-            ) : null}
-            {onBackToSchedule ? (
-              <Button
-                className="min-h-10"
-                onClick={onBackToSchedule}
-                variant="secondary"
-              >
-                Daily schedule
-              </Button>
-            ) : null}
+          {onBackToAppointment ? (
+            <Button
+              className="min-h-10"
+              onClick={onBackToAppointment}
+              variant="tertiary"
+            >
+              Return to appointment
+            </Button>
+          ) : null}
+          {onBackToSchedule ? (
+            <Button
+              className="min-h-10"
+              onClick={onBackToSchedule}
+              variant="tertiary"
+            >
+              Daily schedule
+            </Button>
+          ) : null}
           </div>
         </CardContent>
       </Card>
@@ -1134,7 +1136,7 @@ function VisitCompletionEditingActions({
             className="min-h-11"
             disabled={activeStepIndex === 0 || isBusy}
             onClick={onBack}
-            variant="secondary"
+            variant="tertiary"
           >
             Back
           </Button>
@@ -1183,7 +1185,7 @@ function VisitCompletionConfirmActions({
       className="fixed inset-x-0 bottom-0 z-30 border-t border-amber-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur sm:static sm:rounded-lg sm:border sm:border-amber-200 sm:bg-amber-50/50 sm:p-4 sm:shadow-sm"
       data-testid="visit-mobile-confirm-action-bar"
     >
-      <div className="mx-auto grid max-w-5xl gap-2 sm:flex">
+      <FormActions className="mx-auto mt-0 max-w-5xl">
         <Button
           className="min-h-11"
           disabled={isCompleting}
@@ -1195,11 +1197,11 @@ function VisitCompletionConfirmActions({
           className="min-h-11"
           disabled={isCompleting}
           onClick={onContinueReview}
-          variant="secondary"
+          variant="tertiary"
         >
           Continue review
         </Button>
-      </div>
+      </FormActions>
     </div>
   )
 }
@@ -1459,7 +1461,7 @@ function ProceduresStep({
 
       {procedures.map((procedure, index) => (
         <div
-          className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm"
+          className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
           key={procedure.id}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1470,7 +1472,7 @@ function ProceduresStep({
               disabled={disabled}
               onClick={() => onRemoveProcedure(procedure.id)}
               size="sm"
-              variant="ghost"
+              variant="tertiary"
             >
               Remove
             </Button>
@@ -1563,13 +1565,14 @@ function NotesStep({
 }) {
   return (
     <div className="grid gap-4">
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <label>
           <FieldLabel>Clinical note</FieldLabel>
-          <p className="mb-3 text-sm leading-6 text-slate-600">
+          <FieldHint className="mb-3">
             Record the visit narrative and what was observed or completed today.
-          </p>
+          </FieldHint>
           <Textarea
+            className="min-h-32"
             data-testid="visit-clinical-note"
             disabled={disabled}
             value={clinicalNote}
@@ -1578,13 +1581,14 @@ function NotesStep({
           />
         </label>
       </div>
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <label>
           <FieldLabel>Recommendation / next instruction</FieldLabel>
-          <p className="mb-3 text-sm leading-6 text-slate-600">
+          <FieldHint className="mb-3">
             Capture home care, warnings, control timing, or planning guidance.
-          </p>
+          </FieldHint>
           <Textarea
+            className="min-h-32"
             data-testid="visit-recommendation"
             disabled={disabled}
             value={recommendation}
@@ -1608,12 +1612,12 @@ function NextStep({
 }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <label>
           <FieldLabel>Next step</FieldLabel>
-          <p className="mb-3 text-sm leading-6 text-slate-600">
+          <FieldHint className="mb-3">
             Choose the safest follow-up direction for this patient.
-          </p>
+          </FieldHint>
           <Select
             data-testid="visit-next-step"
             disabled={disabled}

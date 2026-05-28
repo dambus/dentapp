@@ -11,7 +11,9 @@ import {
   CardTitle,
   ErrorState,
   FieldError,
+  FieldHint,
   FieldLabel,
+  FormActions,
   InlineNotice,
   LoadingState,
   MetricTile,
@@ -728,7 +730,7 @@ export function PatientAppointmentSummary({
 
         {isFormOpen ? (
           <div
-            className="rounded-md border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+            className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
             data-testid="patient-appointment-form"
             id="patient-appointment-form"
           >
@@ -736,8 +738,9 @@ export function PatientAppointmentSummary({
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="text-base font-semibold text-slate-950">
-                    Create appointment
+                    {nextAppointment ? 'Schedule next visit' : 'Create appointment'}
                   </div>
+                  <Badge variant="info">Manual scheduling</Badge>
                   {prefillNotice ? (
                     <Badge variant="warning">Follow-up context</Badge>
                   ) : null}
@@ -760,126 +763,146 @@ export function PatientAppointmentSummary({
               </InlineNotice>
             ) : null}
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <label>
-                <FieldLabel>Date</FieldLabel>
-                <TextInput
-                  disabled={isSubmitting}
-                  data-testid="patient-appointment-date"
-                  type="date"
-                  value={formValues.date}
-                  onChange={(event) => updateFormValue('date', event.target.value)}
-                />
-              </label>
-              <label>
-                <FieldLabel>Time</FieldLabel>
-                <TextInput
-                  disabled={isSubmitting}
-                  data-testid="patient-appointment-time"
-                  type="time"
-                  value={formValues.time}
-                  onChange={(event) => updateFormValue('time', event.target.value)}
-                />
-              </label>
-              <label>
-                <FieldLabel>Type</FieldLabel>
-                <Select
-                  disabled={isSubmitting}
-                  data-testid="patient-appointment-type"
-                  value={formValues.appointmentTypeId}
-                  onChange={(event) => updateAppointmentType(event.target.value)}
-                >
-                  {appointmentTypes.map((appointmentType) => (
-                    <option key={appointmentType.id} value={appointmentType.id}>
-                      {appointmentType.label}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <label>
-                <FieldLabel>Duration</FieldLabel>
-                <Select
-                  disabled={isSubmitting}
-                  data-testid="patient-appointment-duration"
-                  value={formValues.duration}
-                  onChange={(event) =>
-                    updateFormValue('duration', event.target.value)
-                  }
-                >
-                  {appointmentDurationOptions.map((durationMinutes) => (
-                    <option key={durationMinutes} value={durationMinutes}>
-                      {durationMinutes} min
-                    </option>
-                  ))}
-                </Select>
-              </label>
-            </div>
+            <div className="mt-5 space-y-4">
+              <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+                <div className="text-sm font-semibold text-slate-950">
+                  Schedule details
+                </div>
+                <FieldHint className="mt-1">
+                  Confirm the visit date, time, type, and duration before
+                  assigning context.
+                </FieldHint>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <label>
+                    <FieldLabel>Date</FieldLabel>
+                    <TextInput
+                      disabled={isSubmitting}
+                      data-testid="patient-appointment-date"
+                      type="date"
+                      value={formValues.date}
+                      onChange={(event) => updateFormValue('date', event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <FieldLabel>Time</FieldLabel>
+                    <TextInput
+                      disabled={isSubmitting}
+                      data-testid="patient-appointment-time"
+                      type="time"
+                      value={formValues.time}
+                      onChange={(event) => updateFormValue('time', event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <FieldLabel>Type</FieldLabel>
+                    <Select
+                      disabled={isSubmitting}
+                      data-testid="patient-appointment-type"
+                      value={formValues.appointmentTypeId}
+                      onChange={(event) => updateAppointmentType(event.target.value)}
+                    >
+                      {appointmentTypes.map((appointmentType) => (
+                        <option key={appointmentType.id} value={appointmentType.id}>
+                          {appointmentType.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                  <label>
+                    <FieldLabel>Duration</FieldLabel>
+                    <Select
+                      disabled={isSubmitting}
+                      data-testid="patient-appointment-duration"
+                      value={formValues.duration}
+                      onChange={(event) =>
+                        updateFormValue('duration', event.target.value)
+                      }
+                    >
+                      {appointmentDurationOptions.map((durationMinutes) => (
+                        <option key={durationMinutes} value={durationMinutes}>
+                          {durationMinutes} min
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                </div>
+              </div>
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-              <label>
-                <FieldLabel>Assigned provider</FieldLabel>
-                <Select
-                  data-testid="patient-appointment-provider"
-                  disabled={isSubmitting}
-                  value={formValues.assignedProviderId}
-                  onChange={(event) =>
-                    updateFormValue('assignedProviderId', event.target.value)
-                  }
-                >
-                  <option value="">Not assigned</option>
-                  {providerOptions.map((provider) => (
-                    <option key={provider.id} value={provider.id}>
-                      {provider.fullName} ({provider.role})
-                    </option>
-                  ))}
-                </Select>
-                {providerLoadError ? (
-                  <p className="mt-1 text-xs leading-5 text-amber-700">
-                    {providerLoadError}
-                  </p>
-                ) : null}
-              </label>
-            </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+                <div className="text-sm font-semibold text-slate-950">
+                  Provider and context
+                </div>
+                <FieldHint className="mt-1">
+                  Provider assignment remains optional unless the schedule
+                  context needs it.
+                </FieldHint>
+                <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                  <label>
+                    <FieldLabel>Assigned provider</FieldLabel>
+                    <Select
+                      data-testid="patient-appointment-provider"
+                      disabled={isSubmitting}
+                      value={formValues.assignedProviderId}
+                      onChange={(event) =>
+                        updateFormValue('assignedProviderId', event.target.value)
+                      }
+                    >
+                      <option value="">Not assigned</option>
+                      {providerOptions.map((provider) => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.fullName} ({provider.role})
+                        </option>
+                      ))}
+                    </Select>
+                    {providerLoadError ? (
+                      <FieldHint className="text-amber-700">
+                        {providerLoadError}
+                      </FieldHint>
+                    ) : null}
+                  </label>
+                </div>
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-              <label>
-                <FieldLabel>Reason / context</FieldLabel>
-                <TextInput
-                  data-testid="patient-appointment-reason"
-                  disabled={isSubmitting}
-                  maxLength={APPOINTMENT_REASON_MAX_LENGTH}
-                  placeholder="Optional context for this appointment"
-                  value={formValues.reason}
-                  onChange={(event) =>
-                    updateFormValue('reason', event.target.value)
-                  }
-                />
-                {prefillNotice ? (
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Prefilled from follow-up guidance. You can edit it before
-                    scheduling.
-                  </p>
-                ) : null}
-              </label>
-              <label>
-                <FieldLabel>Notes</FieldLabel>
-                <Textarea
-                  className="min-h-16"
-                  data-testid="patient-appointment-notes"
-                  disabled={isSubmitting}
-                  maxLength={APPOINTMENT_NOTES_MAX_LENGTH}
-                  placeholder="Optional scheduling notes"
-                  value={formValues.notes}
-                  onChange={(event) => updateFormValue('notes', event.target.value)}
-                />
-              </label>
+                <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                  <label>
+                    <FieldLabel>Reason / context</FieldLabel>
+                    <TextInput
+                      data-testid="patient-appointment-reason"
+                      disabled={isSubmitting}
+                      maxLength={APPOINTMENT_REASON_MAX_LENGTH}
+                      placeholder="Optional context for this appointment"
+                      value={formValues.reason}
+                      onChange={(event) =>
+                        updateFormValue('reason', event.target.value)
+                      }
+                    />
+                    {prefillNotice ? (
+                      <FieldHint>
+                        Prefilled from follow-up guidance. You can edit it
+                        before scheduling.
+                      </FieldHint>
+                    ) : null}
+                  </label>
+                  <label>
+                    <FieldLabel>Notes</FieldLabel>
+                    <Textarea
+                      className="min-h-24"
+                      data-testid="patient-appointment-notes"
+                      disabled={isSubmitting}
+                      maxLength={APPOINTMENT_NOTES_MAX_LENGTH}
+                      placeholder="Optional scheduling notes"
+                      value={formValues.notes}
+                      onChange={(event) => updateFormValue('notes', event.target.value)}
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
 
             {schedulePreview.error ? (
               <FieldError message={schedulePreview.error} />
             ) : null}
 
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <FormActions>
               <Button
                 className="min-h-11 sm:w-auto"
                 data-testid="patient-appointment-submit"
@@ -892,11 +915,11 @@ export function PatientAppointmentSummary({
                 className="min-h-11 sm:w-auto"
                 disabled={isSubmitting}
                 onClick={resetAppointmentForm}
-                variant="secondary"
+                variant="tertiary"
               >
                 Cancel
               </Button>
-            </div>
+            </FormActions>
           </div>
         ) : null}
       </CardContent>

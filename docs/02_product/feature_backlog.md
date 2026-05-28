@@ -149,11 +149,15 @@ Completed:
 
 ### Task 107 - Pilot Forms And Secondary Interaction Consistency Pass
 
-Scope:
+Completed:
 
-- align appointment creation/rebooking, treatment-plan mutation forms, Visit
-  Completion forms, confirmations, overflow menus, and empty/loading/error
-  states with the compact clinical action/status system.
+- aligned patient-context scheduling, treatment-plan mutation forms, Visit
+  Completion controls, and pilot-path secondary interactions with the compact
+  shared clinical system;
+- replaced treatment-plan browser confirm dialogs with inline compact
+  confirmation panels while preserving archive semantics and permissions;
+- preserved all treatment-plan, appointment, Visit Completion, and
+  finance-freeze behavior while advancing the pre-pilot consistency pass.
 
 ### Task 108 - Pre-Pilot Visual Consistency Walkthrough
 

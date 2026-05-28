@@ -6047,6 +6047,54 @@ Initial stack:
 
 ---
 
+### Completed (Task 107 - Pilot Forms and Secondary Interaction Consistency Pass)
+
+- Aligned the patient-context appointment / rebooking form with the compact
+  shared form language while preserving the Task 105 summary-first expansion
+  model.
+- Reworked scheduling presentation into clearer compact field groups with
+  quieter secondary actions, restrained hints, and unchanged scheduling
+  behavior.
+- Tightened Treatment Plan plan/item create and edit forms so mode, ownership,
+  and field purpose are clearer without changing Task 98 persistence,
+  permissions, or archive semantics.
+- Added a small shared form-consistency layer in `src/components/ui`:
+  - `FieldHint`,
+  - `FormActions`,
+  - `InlineConfirm`.
+- Replaced raw treatment-plan browser confirm dialogs with inline compact
+  confirmation panels tied to the owning plan or item row.
+- Applied a narrow Visit Completion alignment pass to inputs, explanatory copy,
+  action hierarchy, and completion-review secondary actions without changing the
+  Task 101 workflow structure or persistence semantics.
+- Updated browser smoke to cover the inline treatment-plan archive confirmation
+  path while preserving prior pilot-path assertions.
+- Kept finance/settlement/payment/balance UI absent and unchanged.
+- Documented the task in
+  `docs/design/task-107-pilot-forms-secondary-interaction-consistency-pass.md`.
+
+### Verification (Task 107)
+
+- `npm.cmd run build` passes with the existing Vite large chunk warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanMutationRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFreezeRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFeatureAccessRls.mjs`
+  passes.
+- Manual browser inspection passed at approximately `390px`, `768px`,
+  `1024px`, and `1280px`.
+
+### Next Recommended Task
+
+- Task 108 - Pre-Pilot Visual Consistency Walkthrough.
+
+---
+
 ### Completed (Task 44 - Follow-up and Next Visit Recommendation Flow)
 
 - Polished follow-up display using existing Visit Completion `recommendation` and `next_step` fields.

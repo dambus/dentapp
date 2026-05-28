@@ -471,7 +471,7 @@ Current status:
 
 Next step:
 
-- Task 107 - Pilot Forms and Secondary Interaction Consistency Pass.
+- Task 108 - Pre-Pilot Visual Consistency Walkthrough.
 
 ---
 

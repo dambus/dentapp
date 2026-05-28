@@ -3678,7 +3678,7 @@ async function main() {
       TREATMENT_PLAN_ITEM_DESCRIPTION,
     )
     await setSelectValue(cdp, '[data-testid="treatment-plan-item-status-select"]', 'planned')
-    await clickEnabledButtonByText(cdp, 'Add item')
+    await clickEnabledButtonByText(cdp, 'Add treatment')
     await waitFor(
       () =>
         evaluate(
@@ -3756,7 +3756,7 @@ async function main() {
       TREATMENT_PLAN_ITEM_UPDATED_DESCRIPTION,
     )
     await setSelectValue(cdp, '[data-testid="treatment-plan-item-status-select"]', 'in_progress')
-    await clickEnabledButtonByText(cdp, 'Save item')
+    await clickEnabledButtonByText(cdp, 'Save treatment')
     await waitFor(
       () =>
         evaluate(
@@ -3770,6 +3770,64 @@ async function main() {
           })()`,
         ),
       'updated treatment plan item displayed',
+    )
+    await clickSelector(cdp, '[aria-label="Treatment item actions"]')
+    await clickByText(cdp, 'Archive item')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('#patient-treatment-plans-section');
+            const text = section?.textContent ?? '';
+            return text.includes('Archive this planned treatment?') &&
+              text.includes(${JSON.stringify(TREATMENT_PLAN_ITEM_UPDATED_TITLE)});
+          })()`,
+        ),
+      'treatment plan item archive confirmation',
+    )
+    await clickEnabledButtonByText(cdp, 'Archive item')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('#patient-treatment-plans-section');
+            const text = section?.textContent ?? '';
+            return text.includes('Treatment plan item was archived successfully.') &&
+              text.includes('Treatment plan exists but has no planned items.');
+          })()`,
+        ),
+      'archived treatment plan item removed',
+    )
+    await clickSelector(cdp, '[aria-label="Treatment plan actions"]')
+    await clickByText(cdp, 'Archive plan')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('#patient-treatment-plans-section');
+            const text = section?.textContent ?? '';
+            return text.includes('Archive this treatment plan?') &&
+              text.includes(${JSON.stringify(TREATMENT_PLAN_UPDATED_TITLE)});
+          })()`,
+        ),
+      'treatment plan archive confirmation',
+    )
+    await clickEnabledButtonByText(cdp, 'Archive plan')
+    await waitFor(
+      () =>
+        evaluate(
+          cdp,
+          `(() => {
+            const section = document.querySelector('#patient-treatment-plans-section');
+            const text = section?.textContent ?? '';
+            return text.includes('Treatment plan was archived successfully.') &&
+              text.includes('No treatment plan configured');
+          })()`,
+        ),
+      'archived treatment plan removed',
     )
     await navigate(cdp, PATIENT_URL)
     await waitFor(() => textIncludes(cdp, 'Current workflow'), 'patient overview after treatment plan work')

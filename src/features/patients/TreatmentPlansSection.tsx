@@ -13,8 +13,11 @@ import {
   EmptyState,
   ErrorState,
   FieldError,
+  FieldHint,
   FieldLabel,
+  FormActions,
   InlineNotice,
+  InlineConfirm,
   LoadingState,
   RequiredMark,
   Select,
@@ -60,9 +63,15 @@ type ItemFormProps = {
   initialValue: TreatmentPlanItemInput
   isSubmitting: boolean
   mode: 'create' | 'edit'
+  parentPlanTitle?: string
   onCancel?: () => void
   onSubmit: (input: TreatmentPlanItemInput) => void
 }
+
+type ArchiveRequest =
+  | { kind: 'plan'; planId: string; title: string }
+  | { kind: 'item'; itemId: string; planId: string; title: string }
+  | null
 
 const planStatusValues: TreatmentPlanStatus[] = [
   'draft',
@@ -170,6 +179,10 @@ function getItemCountLabel(count: number) {
 }
 
 function getVisiblePlanBadgeLabel(count: number) {
+  if (count === 0) {
+    return 'No active plan'
+  }
+
   return count === 1 ? '1 active plan' : `${count} active plans`
 }
 
@@ -236,12 +249,28 @@ function PlanForm({
 
   return (
     <form
-      className="rounded-md border border-slate-200 bg-slate-50 p-4"
+      className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
       data-testid={
         mode === 'create' ? 'treatment-plan-create-form' : 'treatment-plan-edit-form'
       }
       onSubmit={submitForm}
     >
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-base font-semibold text-slate-950">
+              {mode === 'create' ? 'Create treatment plan' : 'Edit treatment plan'}
+            </div>
+            <Badge variant={mode === 'create' ? 'info' : 'neutral'}>
+              {mode === 'create' ? 'New plan' : 'Plan update'}
+            </Badge>
+          </div>
+          <FieldHint className="mt-1">
+            Keep the plan summary concise. Item-level detail belongs in the
+            planned-treatment rows below.
+          </FieldHint>
+        </div>
+      </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
         <label>
           <FieldLabel>
@@ -261,6 +290,7 @@ function PlanForm({
             value={input.title}
           />
           <FieldError message={validationError} />
+          <FieldHint>Use the clinical plan name shown to the patient team.</FieldHint>
         </label>
         <label>
           <FieldLabel>Status</FieldLabel>
@@ -281,6 +311,7 @@ function PlanForm({
               </option>
             ))}
           </Select>
+          <FieldHint>Archive stays outside this form as a separate action.</FieldHint>
         </label>
       </div>
       <label className="mt-4 block">
@@ -296,8 +327,12 @@ function PlanForm({
           }
           value={input.description}
         />
+        <FieldHint>
+          Capture the plan objective or the core treatment summary only where it
+          helps the next clinician.
+        </FieldHint>
       </label>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <FormActions>
         <Button disabled={isSubmitting} type="submit">
           {isSubmitting
             ? 'Saving...'
@@ -310,12 +345,12 @@ function PlanForm({
             disabled={isSubmitting}
             onClick={onCancel}
             type="button"
-            variant="secondary"
+            variant="tertiary"
           >
             Cancel
           </Button>
         ) : null}
-      </div>
+      </FormActions>
     </form>
   )
 }
@@ -324,6 +359,7 @@ function ItemForm({
   initialValue,
   isSubmitting,
   mode,
+  parentPlanTitle,
   onCancel,
   onSubmit,
 }: ItemFormProps) {
@@ -347,7 +383,7 @@ function ItemForm({
 
   return (
     <form
-      className="rounded-md border border-slate-200 bg-white p-4"
+      className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
       data-testid={
         mode === 'create'
           ? 'treatment-plan-item-create-form'
@@ -355,6 +391,23 @@ function ItemForm({
       }
       onSubmit={submitForm}
     >
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-base font-semibold text-slate-950">
+              {mode === 'create' ? 'Add planned treatment' : 'Edit planned treatment'}
+            </div>
+            <Badge variant={mode === 'create' ? 'info' : 'neutral'}>
+              {mode === 'create' ? 'New row' : 'Row update'}
+            </Badge>
+          </div>
+          <FieldHint className="mt-1">
+            {parentPlanTitle
+              ? `This row belongs to ${parentPlanTitle}.`
+              : 'Keep item details tied to the specific planned treatment row.'}
+          </FieldHint>
+        </div>
+      </div>
       <div className="grid gap-4 lg:grid-cols-[160px_1fr_220px]">
         <label>
           <FieldLabel>Tooth / region</FieldLabel>
@@ -365,10 +418,11 @@ function ItemForm({
               setInput((current) => ({
                 ...current,
                 toothNumber: event.target.value,
-              }))
-            }
-            value={input.toothNumber}
-          />
+            }))
+          }
+          value={input.toothNumber}
+        />
+          <FieldHint>Optional. Use only when the treatment is tooth-specific.</FieldHint>
         </label>
         <label>
           <FieldLabel>
@@ -388,6 +442,7 @@ function ItemForm({
             value={input.title}
           />
           <FieldError message={validationError} />
+          <FieldHint>Use the row title clinicians will scan in the plan list.</FieldHint>
         </label>
         <label>
           <FieldLabel>Status</FieldLabel>
@@ -408,6 +463,7 @@ function ItemForm({
               </option>
             ))}
           </Select>
+          <FieldHint>Archive stays in the row action menu, not in this editor.</FieldHint>
         </label>
       </div>
       <label className="mt-4 block">
@@ -423,26 +479,29 @@ function ItemForm({
           }
           value={input.description}
         />
+        <FieldHint>
+          Add short planning notes only when they clarify the row for later care.
+        </FieldHint>
       </label>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <FormActions>
         <Button disabled={isSubmitting} type="submit">
           {isSubmitting
             ? 'Saving...'
             : mode === 'create'
-              ? 'Add item'
-              : 'Save item'}
+              ? 'Add treatment'
+              : 'Save treatment'}
         </Button>
         {onCancel ? (
           <Button
             disabled={isSubmitting}
             onClick={onCancel}
             type="button"
-            variant="secondary"
+            variant="tertiary"
           >
             Cancel
           </Button>
         ) : null}
-      </div>
+      </FormActions>
     </form>
   )
 }
@@ -462,6 +521,7 @@ export function TreatmentPlansSection({
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
   const [addingItemPlanId, setAddingItemPlanId] = useState<string | null>(null)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const [archiveRequest, setArchiveRequest] = useState<ArchiveRequest>(null)
 
   const canMutate = canManageTreatmentPlans && !isPatientArchived
 
@@ -634,11 +694,11 @@ export function TreatmentPlansSection({
   }
 
   async function handleArchivePlan(plan: TreatmentPlan) {
-    if (!window.confirm(`Archive treatment plan "${plan.title}"?`)) {
-      return
-    }
-
-    await runWrite(() => archiveTreatmentPlan(patientId, plan.id))
+    setArchiveRequest({
+      kind: 'plan',
+      planId: plan.id,
+      title: plan.title,
+    })
   }
 
   async function handleCreateItem(plan: TreatmentPlan, input: TreatmentPlanItemInput) {
@@ -656,11 +716,30 @@ export function TreatmentPlansSection({
   }
 
   async function handleArchiveItem(plan: TreatmentPlan, item: TreatmentPlanItem) {
-    if (!window.confirm(`Archive planned item "${item.title}"?`)) {
+    setArchiveRequest({
+      kind: 'item',
+      itemId: item.id,
+      planId: plan.id,
+      title: item.title,
+    })
+  }
+
+  async function confirmArchiveRequest() {
+    if (!archiveRequest) {
       return
     }
 
-    await runWrite(() => archiveTreatmentPlanItem(patientId, plan.id, item.id))
+    const request = archiveRequest
+    setArchiveRequest(null)
+
+    if (request.kind === 'plan') {
+      await runWrite(() => archiveTreatmentPlan(patientId, request.planId))
+      return
+    }
+
+    await runWrite(() =>
+      archiveTreatmentPlanItem(patientId, request.planId, request.itemId),
+    )
   }
 
   const currentPlan = sortedPlans[0] ?? null
@@ -887,8 +966,23 @@ export function TreatmentPlansSection({
                             initialValue={getNewItemInput(plan)}
                             isSubmitting={isSubmitting}
                             mode="create"
+                            parentPlanTitle={plan.title}
                             onCancel={() => setAddingItemPlanId(null)}
                             onSubmit={(input) => void handleCreateItem(plan, input)}
+                          />
+                        </div>
+                      ) : null}
+
+                      {archiveRequest?.kind === 'plan' &&
+                      archiveRequest.planId === plan.id ? (
+                        <div className="mt-4">
+                          <InlineConfirm
+                            confirmLabel="Archive plan"
+                            description={`Archive ${archiveRequest.title} and keep it as read-only history. This does not delete the plan.`}
+                            isSubmitting={isSubmitting}
+                            onCancel={() => setArchiveRequest(null)}
+                            onConfirm={() => void confirmArchiveRequest()}
+                            title="Archive this treatment plan?"
                           />
                         </div>
                       ) : null}
@@ -920,6 +1014,7 @@ export function TreatmentPlansSection({
                                     initialValue={getItemInput(item)}
                                     isSubmitting={isSubmitting}
                                     mode="edit"
+                                    parentPlanTitle={plan.title}
                                     onCancel={() => setEditingItemId(null)}
                                     onSubmit={(input) =>
                                       void handleUpdateItem(plan, item, input)
@@ -989,6 +1084,19 @@ export function TreatmentPlansSection({
                                   ) : null}
                                 </div>
                               )}
+                              {archiveRequest?.kind === 'item' &&
+                              archiveRequest.itemId === item.id ? (
+                                <div className="mt-4">
+                                  <InlineConfirm
+                                    confirmLabel="Archive item"
+                                    description={`Archive ${archiveRequest.title} from this plan and keep it as read-only history. This does not delete the item.`}
+                                    isSubmitting={isSubmitting}
+                                    onCancel={() => setArchiveRequest(null)}
+                                    onConfirm={() => void confirmArchiveRequest()}
+                                    title="Archive this planned treatment?"
+                                  />
+                                </div>
+                              ) : null}
                             </li>
                           ))}
                         </ol>
