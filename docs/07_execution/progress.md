@@ -5994,6 +5994,59 @@ Initial stack:
 
 ---
 
+### Completed (Task 106 - Treatment Plan and Timeline Compact Detailed Presentation)
+
+- Restyled the dedicated `Treatment plan` patient section into a compact
+  clinical planning workspace while preserving the Task 98 create/edit/archive
+  plan and item flows.
+- Added a section-level introduction and retained only one appropriate
+  top-level primary action state instead of multiple competing section actions.
+- Reworked treatment-plan presentation so each plan has:
+  - a compact structured header,
+  - restrained status and count badges,
+  - readable clinical summary text,
+  - clearly owned plan-level actions.
+- Moved plan archive actions into the shared compact overflow pattern and kept
+  item-level actions attached to each planned-treatment row.
+- Rebuilt the planned-treatment area into a compact structured list so item
+  sequence, title, tooth/region, note, status, and item actions scan cleanly on
+  mobile, tablet, and desktop.
+- Restyled the dedicated `Timeline` section into a compact chronological
+  completed-visit history rather than large nested dashboard cards.
+- Added a compact timeline summary strip and converted each visit to a tighter
+  event entry with concise metadata, short clinical excerpts, follow-up context,
+  and the existing `View details` action.
+- Kept Overview summary-first and did not restore full Treatment Plan or full
+  Timeline content there.
+- Preserved patient workspace section routing, completed-visit detail access,
+  treatment-plan service behavior, role restrictions, rebooking reachability,
+  sticky mobile section navigation, and `Back to top`.
+- Kept all finance/settlement/payment/balance UI out of scope and absent.
+- Documented the task in
+  `docs/design/task-106-treatment-plan-timeline-compact-detailed-presentation.md`.
+
+### Verification (Task 106)
+
+- `npm.cmd run build` passes with the existing Vite large chunk warning.
+- `npm.cmd run lint` passes.
+- `node .\supabase\snippets\testPatientAppointmentBrowserSmoke.mjs` passes.
+- `node .\supabase\snippets\testAppointmentOperationalStateRls.mjs` passes.
+- `node .\supabase\snippets\testAppointmentProviderAssignmentRls.mjs` passes.
+- `node .\supabase\snippets\testVisitCompletionRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanMutationRls.mjs` passes.
+- `node .\supabase\snippets\testTreatmentPlanReadRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFreezeRls.mjs` passes.
+- `node .\supabase\snippets\testInternalSettlementFeatureAccessRls.mjs`
+  passes.
+- Manual browser inspection passed at approximately `390px`, `768px`,
+  `1024px`, and `1280px`.
+
+### Next Recommended Task
+
+- Task 107 - Pilot Forms and Secondary Interaction Consistency Pass.
+
+---
+
 ### Completed (Task 44 - Follow-up and Next Visit Recommendation Flow)
 
 - Polished follow-up display using existing Visit Completion `recommendation` and `next_step` fields.

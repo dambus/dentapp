@@ -137,12 +137,15 @@ Completed:
 
 ### Task 106 - Treatment Plan And Timeline Compact Detailed Presentation
 
-Scope:
+Completed:
 
-- compact the detailed Treatment Plan and Timeline presentations after the
-  patient workspace navigation structure is in place;
-- reduce repeated badge emphasis and improve scan hierarchy without changing
-  treatment-plan or visit-history behavior.
+- compacted the dedicated Treatment Plan section into a structured clinical plan
+  workspace with clearer plan-level versus item-level action ownership;
+- compacted the dedicated Timeline section into a chronological clinical event
+  list while preserving completed-visit detail access;
+- preserved treatment-plan create/edit/archive behavior, responsive patient
+  navigation, and finance-freeze boundaries while deferring broad form-system
+  polish to Task 107.
 
 ### Task 107 - Pilot Forms And Secondary Interaction Consistency Pass
 

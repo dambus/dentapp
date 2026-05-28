@@ -3403,10 +3403,14 @@ async function main() {
         evaluate(
           cdp,
           `(() => {
+            const timelineSummary = document.querySelector('[data-testid="patient-timeline-summary"]');
+            const timelineList = document.querySelector('[data-testid="patient-timeline-event-list"]');
             const cards = Array.from(document.querySelectorAll('[data-testid="completed-visit-card"]'));
             const card = cards.find((element) => element.textContent?.includes(${JSON.stringify(BRIDGE_PROCEDURE)}));
             const text = card?.textContent ?? '';
-            return text.includes('Completed visit') &&
+            return timelineSummary &&
+              timelineList &&
+              text.includes('Completed visit') &&
               text.includes('Completed') &&
               text.includes('Performed work') &&
               text.includes(${JSON.stringify(BRIDGE_NOTE)}) &&
@@ -3606,14 +3610,20 @@ async function main() {
             const sectionActions = Array.from(section?.querySelectorAll('button, a') ?? [])
               .map((element) => element.textContent?.trim())
               .filter(Boolean);
+            const hasPlanDetail = Boolean(
+              section?.querySelector('[data-testid="patient-treatment-plan-detail"]'),
+            );
+            const hasCreateEntry = sectionActions.includes('Create treatment plan');
+            const hasAddEntry = sectionActions.includes('Add treatment');
             return location.search.includes('section=treatment-plans') &&
+              section?.querySelector('[data-testid="patient-treatment-plan-workspace"]') &&
               text.includes('Treatment Plan') &&
               text.includes('Editable') &&
-              sectionActions.includes('Create treatment plan') &&
+              (hasCreateEntry || hasAddEntry) &&
               (
                 text.includes('No treatment plan configured') ||
                 text.includes('Treatment plan exists but has no planned items') ||
-                Boolean(section.querySelector('[data-testid="patient-treatment-plan-detail"]'))
+                (hasPlanDetail && text.includes('Planned treatments'))
               );
           })()`,
         ),

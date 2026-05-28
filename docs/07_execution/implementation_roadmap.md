@@ -456,6 +456,9 @@ Current status:
   patient-level section navigation, a stable compact patient header/action
   cluster, sticky mobile section navigation, and explicit relocation of
   detail-heavy record/treatment-plan/timeline content out of Overview,
+- Task 106 compacts the dedicated Treatment Plan and Timeline sections into
+  structured clinical workspaces while preserving Task 98 mutation access,
+  completed-visit detail access, responsive navigation, and the finance freeze,
 - Task 96 confirms treatment-plan tables, item tables, service write methods,
   and CRUD/RLS test coverage already exist, but plan-level write RLS needs
   same-clinic patient hardening before UI exposure,
@@ -468,7 +471,7 @@ Current status:
 
 Next step:
 
-- Task 106 - Treatment Plan and Timeline Compact Detailed Presentation.
+- Task 107 - Pilot Forms and Secondary Interaction Consistency Pass.
 
 ---
 

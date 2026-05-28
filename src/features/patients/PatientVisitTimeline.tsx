@@ -4,16 +4,10 @@ import {
   Badge,
   Button,
   ButtonLink,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   EmptyState,
   ErrorState,
   InlineNotice,
   LoadingState,
-  MetricTile,
 } from '../../components/ui'
 import { classNames } from '../../lib/classNames'
 import {
@@ -96,6 +90,35 @@ function hasFollowUpSignal(visit: VisitCompletionDraft) {
   )
 }
 
+function getTextExcerpt(text: string, maxLength = 140) {
+  const normalizedText = text.trim()
+
+  if (!normalizedText) {
+    return ''
+  }
+
+  return normalizedText.length > maxLength
+    ? `${normalizedText.slice(0, maxLength - 3).trim()}...`
+    : normalizedText
+}
+
+function TimelineMetaItem({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
+  return (
+    <div className="min-w-0 rounded-md border border-slate-200 bg-white px-3 py-2.5">
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-1 text-sm font-medium text-slate-900">{value}</dd>
+    </div>
+  )
+}
+
 function VisitTimelineItem({
   isHighlighted,
   patientId,
@@ -114,6 +137,12 @@ function VisitTimelineItem({
   const followUpSchedulingReason = hasRecommendation
     ? visit.recommendation
     : getNextStepLabel(visit.nextStep)
+  const noteExcerpt = hasClinicalNote
+    ? getTextExcerpt(visit.clinicalNote, 160)
+    : 'No clinical note recorded for this completed visit.'
+  const recommendationExcerpt = hasRecommendation
+    ? getTextExcerpt(visit.recommendation, 160)
+    : 'No recommendation recorded.'
 
   return (
     <li
@@ -121,214 +150,166 @@ function VisitTimelineItem({
       data-testid="completed-visit-card"
       id={`visit-${visit.id}`}
     >
-      <span className="absolute left-0 top-2 h-3 w-3 rounded-full border-2 border-white bg-teal-700 shadow ring-2 ring-teal-100" />
-      <Card
+      <span className="absolute left-0 top-4 h-3 w-3 rounded-full border-2 border-white bg-teal-700 shadow ring-2 ring-teal-100" />
+      <article
         className={classNames(
-          'border-slate-200 bg-white shadow-sm',
-          isHighlighted ? 'border-amber-300 bg-amber-50/40 ring-2 ring-amber-100' : '',
+          'rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5',
+          isHighlighted
+            ? 'border-amber-300 bg-amber-50/40 ring-2 ring-amber-100'
+            : '',
         )}
       >
-        <CardHeader>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="text-xl">
-                  Completed visit - {formatPatientDate(getVisitDisplayDate(visit))}
-                </CardTitle>
-                <Badge variant="success">Completed</Badge>
-                {visit.appointmentId ? (
-                  <Badge variant="info">Appointment-linked</Badge>
-                ) : null}
-                {hasFollowUp ? (
-                  <Badge variant="warning">
-                    {hasNextStep ? getNextStepLabel(visit.nextStep) : 'Recommendation recorded'}
-                  </Badge>
-                ) : null}
-              </div>
-              <CardDescription>
-                Completed {formatPatientDateTime(visit.completedAt)} by{' '}
-                {providerLabel}.
-              </CardDescription>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Completed visit
+              </span>
+              <Badge variant="success">Completed</Badge>
+              {visit.appointmentId ? (
+                <Badge variant="info">Appointment-linked</Badge>
+              ) : null}
+              {hasFollowUp ? (
+                <Badge variant="warning">
+                  {hasNextStep
+                    ? getNextStepLabel(visit.nextStep)
+                    : 'Recommendation recorded'}
+                </Badge>
+              ) : null}
             </div>
-            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-              <Badge variant={visit.procedures.length > 0 ? 'info' : 'neutral'}>
-                {visit.procedures.length}{' '}
-                {visit.procedures.length === 1 ? 'procedure' : 'procedures'}
-              </Badge>
-              <ButtonLink
-                className="min-h-10 w-full sm:w-auto"
-                size="sm"
-                to={getPatientVisitDetailPath(patientId, visit.id)}
-                variant="secondary"
-              >
-                View details
-              </ButtonLink>
-            </div>
+            <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">
+              {formatPatientDate(getVisitDisplayDate(visit))}
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Completed {formatPatientDateTime(visit.completedAt)} by{' '}
+              {providerLabel}.
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4 sm:space-y-5">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <MetricTile
-              data-testid="completed-visit-procedure-summary"
-              label="Performed work"
-              value={procedureSummary}
-              description={
-                visit.procedures.length > 0
-                  ? 'Procedures recorded during Visit Completion.'
-                  : 'No procedures were recorded; review the note and next step.'
-              }
-              tone={visit.procedures.length > 0 ? 'info' : 'default'}
-            />
-            <MetricTile
-              data-testid="completed-visit-next-step"
-              label="Next step"
-              value={getNextStepLabel(visit.nextStep)}
-              description="Captured from the completed visit."
-              tone={hasNextStep ? 'success' : 'default'}
-            />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <MetricTile
-              label="Visit source"
-              value={visit.appointmentId ? 'Appointment-linked' : 'Direct visit completion'}
-              description={
-                visit.appointmentId
-                  ? 'Started from a scheduled appointment.'
-                  : 'Started from the patient record without appointment context.'
-              }
-              tone={visit.appointmentId ? 'info' : 'default'}
-            />
-            <MetricTile
-              label="Provider"
-              value={providerLabel}
-              description="Completed-by profile when available to the current role."
-              tone={visit.completedByName ? 'success' : 'default'}
-            />
-          </div>
-
-          {visit.procedures.length > 0 ? (
-            <div
-              className="rounded-md border border-slate-200 bg-slate-50/70 p-4"
-              data-testid="completed-visit-procedures"
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+            <Badge variant={visit.procedures.length > 0 ? 'info' : 'neutral'}>
+              {visit.procedures.length}{' '}
+              {visit.procedures.length === 1 ? 'procedure' : 'procedures'}
+            </Badge>
+            <ButtonLink
+              className="min-h-10 w-full sm:w-auto"
+              size="sm"
+              to={getPatientVisitDetailPath(patientId, visit.id)}
+              variant="secondary"
             >
-              <div className="text-sm font-semibold text-slate-950">
-                Performed procedures
-              </div>
-              <ul className="mt-2 space-y-2">
-                {visit.procedures.map((procedure) => (
-                  <li
-                    className="rounded-md border border-slate-200 bg-white px-3 py-2"
-                    key={procedure.id}
-                  >
-                    <div className="text-sm font-semibold text-slate-950">
-                      {procedure.procedureName}
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
-                      {procedure.toothOrRegion ? (
-                        <span>{procedure.toothOrRegion}</span>
-                      ) : null}
-                      {procedure.quantityOrDuration ? (
-                        <span>{procedure.quantityOrDuration}</span>
-                      ) : null}
-                    </div>
-                    {procedure.note ? (
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        {procedure.note}
-                      </p>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <InlineNotice variant="neutral">
-              No procedures were recorded for this visit. Check the clinical
-              note, recommendation, and next step for the completed record.
-            </InlineNotice>
-          )}
+              View details
+            </ButtonLink>
+          </div>
+        </div>
 
-          <div className="grid gap-3 lg:grid-cols-2">
+        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+          <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
             <div
-              className="rounded-md border border-slate-200 bg-white p-4"
+              className="text-sm font-semibold text-slate-950"
+              data-testid="completed-visit-procedure-summary"
+            >
+              Performed work
+            </div>
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+              {procedureSummary}
+            </p>
+            <div
+              className="mt-4 rounded-md border border-slate-200 bg-white px-3 py-3"
               data-testid="completed-visit-clinical-note"
             >
-              <div className="text-sm font-semibold text-slate-950">
-                Clinical note
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Clinical note excerpt
               </div>
-              <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
-                {hasClinicalNote
-                  ? visit.clinicalNote
-                  : 'No clinical note recorded for this completed visit.'}
-              </p>
-            </div>
-            <div
-              className="rounded-md border border-slate-200 bg-white p-4"
-              data-testid="completed-visit-recommendation"
-            >
-              <div className="text-sm font-semibold text-slate-950">
-                Recommendation
-              </div>
-              <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
-                {hasRecommendation
-                  ? visit.recommendation
-                  : 'No recommendation recorded.'}
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                {noteExcerpt}
               </p>
             </div>
           </div>
 
-          {hasFollowUp ? (
+          <div className="space-y-3">
+            <dl className="grid gap-3">
+              <TimelineMetaItem label="Provider" value={providerLabel} />
+              <TimelineMetaItem
+                label="Visit source"
+                value={
+                  visit.appointmentId
+                    ? 'Appointment-linked'
+                    : 'Direct visit completion'
+                }
+              />
+              <div data-testid="completed-visit-next-step">
+                <TimelineMetaItem
+                  label="Next step"
+                  value={getNextStepLabel(visit.nextStep)}
+                />
+              </div>
+            </dl>
             <div
-              className="rounded-md border border-amber-200 bg-amber-50/40 p-4 sm:p-5"
-              data-testid="completed-visit-follow-up"
+              className="rounded-md border border-slate-200 bg-white px-3 py-3"
+              data-testid="completed-visit-recommendation"
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Recommendation
+              </div>
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                {recommendationExcerpt}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {hasFollowUp ? (
+          <div
+            className="mt-4 rounded-lg border border-amber-200 bg-amber-50/40 p-4"
+            data-testid="completed-visit-follow-up"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="text-sm font-semibold text-slate-950">
                     Recommended follow-up
                   </div>
                   {hasNextStep ? (
-                    <Badge variant="warning">{getNextStepLabel(visit.nextStep)}</Badge>
+                    <Badge variant="warning">
+                      {getNextStepLabel(visit.nextStep)}
+                    </Badge>
                   ) : null}
                 </div>
-                <ButtonLink
-                  size="sm"
-                  to={getPatientFollowUpSchedulingPath(
-                    patientId,
-                    followUpSchedulingReason,
-                  )}
-                  variant="secondary"
-                >
-                  Schedule follow-up
-                </ButtonLink>
-              </div>
-              {hasRecommendation ? (
-                <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
-                  {visit.recommendation}
+                <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                  {recommendationExcerpt}
                 </p>
-              ) : null}
-              <p className="mt-2 text-sm leading-5 text-slate-600">
-                Display-only guidance from Visit Completion. No appointment or
-                treatment plan item was created automatically.
-              </p>
+                <p className="mt-2 text-sm leading-5 text-slate-600">
+                  Display-only guidance from Visit Completion. No appointment or
+                  treatment plan item was created automatically.
+                </p>
+              </div>
+              <ButtonLink
+                size="sm"
+                to={getPatientFollowUpSchedulingPath(
+                  patientId,
+                  followUpSchedulingReason,
+                )}
+                variant="secondary"
+              >
+                Schedule follow-up
+              </ButtonLink>
             </div>
-          ) : null}
+          </div>
+        ) : null}
 
-          {visit.warnings.map((warning) => (
-            <InlineNotice
-              key={`${visit.id}-${warning.code}-${warning.message}`}
-              data-testid="completed-visit-warning"
-              variant={
-                warning.code === 'clinical_note_unavailable'
-                  ? 'warning'
-                  : 'info'
-              }
-            >
-              {warning.message}
-            </InlineNotice>
-          ))}
-        </CardContent>
-      </Card>
+        {visit.warnings.map((warning) => (
+          <InlineNotice
+            key={`${visit.id}-${warning.code}-${warning.message}`}
+            data-testid="completed-visit-warning"
+            variant={
+              warning.code === 'clinical_note_unavailable'
+                ? 'warning'
+                : 'info'
+            }
+          >
+            {warning.message}
+          </InlineNotice>
+        ))}
+      </article>
     </li>
   )
 }
@@ -410,8 +391,7 @@ export function PatientVisitTimeline({
   }, [errorMessage, highlightedVisitId, isLoading, visits])
 
   const totalProcedures = useMemo(
-    () =>
-      visits.reduce((total, visit) => total + visit.procedures.length, 0),
+    () => visits.reduce((total, visit) => total + visit.procedures.length, 0),
     [visits],
   )
 
@@ -444,22 +424,25 @@ export function PatientVisitTimeline({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <MetricTile
-          label="Completed visits"
-          value={String(visits.length)}
-          description="Newest completed visits are shown first."
-          tone="success"
-        />
-        <MetricTile
+      <div
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+        data-testid="patient-timeline-summary"
+      >
+        <TimelineMetaItem label="Completed visits" value={String(visits.length)} />
+        <TimelineMetaItem
           label="Recorded procedures"
           value={String(totalProcedures)}
-          description="Total procedures across completed visits."
-          tone={totalProcedures > 0 ? 'info' : 'default'}
+        />
+        <TimelineMetaItem
+          label="Most recent event"
+          value={formatPatientDate(getVisitDisplayDate(visits[0]))}
         />
       </div>
 
-      <ol className="space-y-5 border-l border-slate-200 pl-4 sm:pl-5">
+      <ol
+        className="space-y-4 border-l border-slate-200 pl-4 sm:pl-5"
+        data-testid="patient-timeline-event-list"
+      >
         {visits.map((visit) => (
           <VisitTimelineItem
             isHighlighted={highlightedVisitId === visit.id}

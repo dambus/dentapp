@@ -111,42 +111,57 @@ export function PatientFullRecord({
     }
 
     return (
-      <div
+      <section
+        className="space-y-4"
         data-testid="patient-full-record-workspace"
         id="patient-treatment-plans-section"
       >
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold tracking-tight text-slate-950">
+              Treatment plan
+            </h2>
+            <Badge variant="neutral">Detailed section</Badge>
+          </div>
+          <p className="max-w-3xl text-sm leading-6 text-slate-600">
+            Structured clinical planning for the patient. Plan-level actions
+            stay with the plan header, while row actions stay with the relevant
+            planned treatment.
+          </p>
+        </div>
         <TreatmentPlansSection
           patientId={patient.id}
           canManageTreatmentPlans={canManageTreatmentPlans}
           isPatientArchived={isPatientArchived}
         />
-      </div>
+      </section>
     )
   }
 
   if (activeSection === 'timeline') {
     return (
-      <Card
-        className="scroll-mt-6 border-slate-200"
+      <section
+        className="scroll-mt-6 space-y-4"
         data-testid="patient-full-record-workspace"
         id="patient-timeline-section"
       >
-        <CardHeader>
+        <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <CardTitle>Timeline</CardTitle>
+            <h2 className="text-xl font-semibold tracking-tight text-slate-950">
+              Timeline
+            </h2>
             <Badge variant="neutral">Visit history</Badge>
           </div>
-          <CardDescription>
-            Completed clinical visits for this patient.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PatientVisitTimeline
-            highlightedVisitId={highlightedVisitId}
-            patientId={patient.id}
-          />
-        </CardContent>
-      </Card>
+          <p className="max-w-3xl text-sm leading-6 text-slate-600">
+            Compact chronological view of completed visits. Open visit detail
+            only when the full clinical review is needed.
+          </p>
+        </div>
+        <PatientVisitTimeline
+          highlightedVisitId={highlightedVisitId}
+          patientId={patient.id}
+        />
+      </section>
     )
   }
 

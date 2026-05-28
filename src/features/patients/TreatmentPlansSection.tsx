@@ -1,6 +1,8 @@
+import { PencilLine, Plus } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 
 import {
+  ActionMenu,
   Badge,
   Button,
   Card,
@@ -165,6 +167,14 @@ function getWriteErrorMessage(error: string | undefined) {
 
 function getItemCountLabel(count: number) {
   return `${count} planned item${count === 1 ? '' : 's'}`
+}
+
+function getVisiblePlanBadgeLabel(count: number) {
+  return count === 1 ? '1 active plan' : `${count} active plans`
+}
+
+function getItemOrderLabel(sortOrder: number) {
+  return `#${sortOrder + 1}`
 }
 
 function getPlanInput(plan: TreatmentPlan): TreatmentPlanInput {
@@ -583,6 +593,7 @@ export function TreatmentPlansSection({
           : [nextPlan, ...currentPlans]
       })
     }
+
     if (savedItem) {
       setPlans((currentPlans) =>
         currentPlans.map((plan) => {
@@ -607,6 +618,7 @@ export function TreatmentPlansSection({
         }),
       )
     }
+
     setIsCreatingPlan(false)
     setEditingPlanId(null)
     setAddingItemPlanId(null)
@@ -651,23 +663,37 @@ export function TreatmentPlansSection({
     await runWrite(() => archiveTreatmentPlanItem(patientId, plan.id, item.id))
   }
 
+  const currentPlan = sortedPlans[0] ?? null
+  const showPrimaryAction =
+    canMutate &&
+    !isCreatingPlan &&
+    !editingPlanId &&
+    !addingItemPlanId &&
+    !editingItemId
+  const showCreatePlanAction = showPrimaryAction && currentPlan === null
+  const showAddTreatmentAction = showPrimaryAction && currentPlan !== null
+
   return (
-    <Card>
+    <Card data-testid="patient-treatment-plan-workspace">
       <CardHeader>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle>Treatment Plan</CardTitle>
               <Badge variant={canMutate ? 'success' : 'neutral'}>
                 {canMutate ? 'Editable' : 'Read-only'}
               </Badge>
+              <Badge variant="neutral">
+                {getVisiblePlanBadgeLabel(sortedPlans.length)}
+              </Badge>
             </div>
-            <CardDescription>
-              Patient-scoped clinical planning records and planned treatment
-              items.
+            <CardDescription className="max-w-3xl">
+              Patient-scoped clinical planning records and planned treatments.
+              Use the newest plan first, then open item-level actions only where
+              the plan actually needs to change.
             </CardDescription>
           </div>
-          {canMutate && !isCreatingPlan ? (
+          {showCreatePlanAction ? (
             <Button
               data-testid="treatment-plan-create-action"
               onClick={() => {
@@ -680,8 +706,22 @@ export function TreatmentPlansSection({
             >
               Create treatment plan
             </Button>
+          ) : showAddTreatmentAction ? (
+            <Button
+              data-testid="treatment-plan-item-add-action"
+              onClick={() => {
+                setAddingItemPlanId(currentPlan.id)
+                setEditingPlanId(null)
+                setEditingItemId(null)
+                setIsCreatingPlan(false)
+              }}
+              size="sm"
+            >
+              <Plus aria-hidden className="h-4 w-4" />
+              Add treatment
+            </Button>
           ) : (
-            <Badge variant="info">Planning record</Badge>
+            <Badge variant="info">Planning workspace</Badge>
           )}
         </div>
       </CardHeader>
@@ -742,9 +782,9 @@ export function TreatmentPlansSection({
           />
         ) : (
           <div className="space-y-4 sm:space-y-5">
-            {sortedPlans.map((plan) => (
-              <section
-                className="rounded-md border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+            {sortedPlans.map((plan, planIndex) => (
+              <article
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
                 data-testid="patient-treatment-plan-detail"
                 key={plan.id}
               >
@@ -757,176 +797,206 @@ export function TreatmentPlansSection({
                     onSubmit={(input) => void handleUpdatePlan(plan, input)}
                   />
                 ) : (
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-semibold text-slate-950">
+                  <div className="space-y-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="info">
+                            {planIndex === 0 ? 'Current plan' : 'Plan record'}
+                          </Badge>
+                          <Badge variant={statusBadgeVariants[plan.status]}>
+                            {getPlanStatusLabel(plan.status)}
+                          </Badge>
+                          <Badge variant="neutral">
+                            {getItemCountLabel(plan.items.length)}
+                          </Badge>
+                        </div>
+                        <h3 className="mt-3 text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">
                           {plan.title}
                         </h3>
-                        <Badge variant={statusBadgeVariants[plan.status]}>
-                          {getPlanStatusLabel(plan.status)}
-                        </Badge>
+                        {plan.description ? (
+                          <p className="mt-2 max-w-4xl whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                            {plan.description}
+                          </p>
+                        ) : (
+                          <p className="mt-2 text-sm leading-6 text-slate-500">
+                            No clinical objective recorded.
+                          </p>
+                        )}
+                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500">
+                          <span>Created {formatPatientDate(plan.createdAt)}</span>
+                          <span>{getItemCountLabel(plan.items.length)}</span>
+                        </div>
                       </div>
-                      {plan.description ? (
-                        <p className="mt-2 max-w-4xl whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                          {plan.description}
-                        </p>
-                      ) : (
-                        <p className="mt-2 text-sm leading-6 text-slate-500">
-                          No clinical objective recorded.
-                        </p>
-                      )}
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                      {canMutate ? (
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 lg:justify-end">
+                          <Button
+                            data-testid="treatment-plan-edit-action"
+                            onClick={() => {
+                              setEditingPlanId(plan.id)
+                              setIsCreatingPlan(false)
+                              setAddingItemPlanId(null)
+                              setEditingItemId(null)
+                            }}
+                            size="sm"
+                            variant="tertiary"
+                          >
+                            <PencilLine aria-hidden className="h-4 w-4" />
+                            Edit plan
+                          </Button>
+                          <ActionMenu
+                            items={[
+                              {
+                                label: 'Archive plan',
+                                onSelect: () => void handleArchivePlan(plan),
+                                tone: 'danger',
+                              },
+                            ]}
+                            label="Treatment plan actions"
+                            menuClassName="w-48"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-950">
+                            Planned treatments
+                          </div>
+                          <p className="mt-1 text-sm leading-6 text-slate-600">
+                            Compact clinical list for the current plan. Item
+                            actions apply only to the row where they appear.
+                          </p>
+                        </div>
                         <Badge variant="neutral">
                           {getItemCountLabel(plan.items.length)}
                         </Badge>
-                        <span>Created {formatPatientDate(plan.createdAt)}</span>
                       </div>
-                    </div>
-                    {canMutate ? (
-                      <div className="flex shrink-0 flex-wrap items-center gap-2">
-                        <Button
-                          data-testid="treatment-plan-edit-action"
-                          onClick={() => {
-                            setEditingPlanId(plan.id)
-                            setIsCreatingPlan(false)
-                            setAddingItemPlanId(null)
-                            setEditingItemId(null)
-                          }}
-                          size="sm"
-                          variant="secondary"
-                        >
-                          Edit plan
-                        </Button>
-                        <Button
-                          data-testid="treatment-plan-archive-action"
-                          onClick={() => void handleArchivePlan(plan)}
-                          size="sm"
-                          variant="secondary"
-                        >
-                          Archive plan
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
-                )}
 
-                <div className="mt-5">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-950">
-                      Planned items
-                      <Badge variant="neutral">Clinical planning</Badge>
-                    </div>
-                    {canMutate && addingItemPlanId !== plan.id ? (
-                      <Button
-                        data-testid="treatment-plan-item-add-action"
-                        onClick={() => {
-                          setAddingItemPlanId(plan.id)
-                          setEditingItemId(null)
-                        }}
-                        size="sm"
-                        variant="secondary"
-                      >
-                        Add item
-                      </Button>
-                    ) : null}
-                  </div>
+                      {addingItemPlanId === plan.id && canMutate ? (
+                        <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+                          <div className="mb-3 flex flex-wrap items-center gap-2">
+                            <Badge variant="info">New planned treatment</Badge>
+                            <span className="text-sm text-slate-600">
+                              Add a clinically scoped treatment row to this plan.
+                            </span>
+                          </div>
+                          <ItemForm
+                            initialValue={getNewItemInput(plan)}
+                            isSubmitting={isSubmitting}
+                            mode="create"
+                            onCancel={() => setAddingItemPlanId(null)}
+                            onSubmit={(input) => void handleCreateItem(plan, input)}
+                          />
+                        </div>
+                      ) : null}
 
-                  {addingItemPlanId === plan.id && canMutate ? (
-                    <div className="mt-3">
-                      <ItemForm
-                        initialValue={getNewItemInput(plan)}
-                        isSubmitting={isSubmitting}
-                        mode="create"
-                        onCancel={() => setAddingItemPlanId(null)}
-                        onSubmit={(input) => void handleCreateItem(plan, input)}
-                      />
-                    </div>
-                  ) : null}
-
-                  {plan.items.length === 0 ? (
-                    <div className="mt-3 rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-                      Treatment plan exists but has no planned items.
-                    </div>
-                  ) : (
-                    <div className="mt-3 space-y-2.5">
-                      {plan.items.map((item) => (
-                        <article
-                          className="rounded-md border border-slate-200 bg-slate-50 p-3 sm:p-3.5"
-                          data-testid="treatment-plan-item-row"
-                          key={item.id}
+                      {plan.items.length === 0 ? (
+                        <div className="mt-4 rounded-md border border-dashed border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-600">
+                          Treatment plan exists but has no planned items.
+                        </div>
+                      ) : (
+                        <ol
+                          className="mt-4 space-y-3"
+                          data-testid="patient-treatment-plan-item-list"
                         >
-                          {editingItemId === item.id && canMutate ? (
-                            <ItemForm
-                              initialValue={getItemInput(item)}
-                              isSubmitting={isSubmitting}
-                              mode="edit"
-                              onCancel={() => setEditingItemId(null)}
-                              onSubmit={(input) =>
-                                void handleUpdateItem(plan, item, input)
-                              }
-                            />
-                          ) : (
-                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                              <div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <h4 className="text-sm font-semibold text-slate-950">
-                                    {item.title}
-                                  </h4>
-                                  <Badge
-                                    variant={statusBadgeVariants[item.status]}
-                                  >
-                                    {getItemStatusLabel(item.status)}
-                                  </Badge>
-                                  {item.toothNumber ? (
-                                    <Badge variant="neutral">
-                                      Tooth {item.toothNumber}
-                                    </Badge>
+                          {plan.items.map((item) => (
+                            <li
+                              className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm"
+                              data-testid="treatment-plan-item-row"
+                              key={item.id}
+                            >
+                              {editingItemId === item.id && canMutate ? (
+                                <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                                    <Badge variant="info">Edit treatment row</Badge>
+                                    <span className="text-sm text-slate-600">
+                                      Update only this planned treatment item.
+                                    </span>
+                                  </div>
+                                  <ItemForm
+                                    initialValue={getItemInput(item)}
+                                    isSubmitting={isSubmitting}
+                                    mode="edit"
+                                    onCancel={() => setEditingItemId(null)}
+                                    onSubmit={(input) =>
+                                      void handleUpdateItem(plan, item, input)
+                                    }
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                  <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        {getItemOrderLabel(item.sortOrder)}
+                                      </span>
+                                      <h4 className="text-sm font-semibold text-slate-950 sm:text-base">
+                                        {item.title}
+                                      </h4>
+                                      <Badge
+                                        variant={statusBadgeVariants[item.status]}
+                                      >
+                                        {getItemStatusLabel(item.status)}
+                                      </Badge>
+                                      {item.toothNumber ? (
+                                        <Badge variant="neutral">
+                                          Tooth {item.toothNumber}
+                                        </Badge>
+                                      ) : null}
+                                    </div>
+                                    {item.description ? (
+                                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                                        {item.description}
+                                      </p>
+                                    ) : (
+                                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                                        No item notes recorded.
+                                      </p>
+                                    )}
+                                  </div>
+                                  {canMutate ? (
+                                    <div className="flex shrink-0 flex-wrap items-center gap-1 sm:gap-2">
+                                      <Button
+                                        data-testid="treatment-plan-item-edit-action"
+                                        onClick={() => {
+                                          setEditingItemId(item.id)
+                                          setAddingItemPlanId(null)
+                                          setEditingPlanId(null)
+                                          setIsCreatingPlan(false)
+                                        }}
+                                        size="sm"
+                                        variant="tertiary"
+                                      >
+                                        <PencilLine aria-hidden className="h-4 w-4" />
+                                        Edit item
+                                      </Button>
+                                      <ActionMenu
+                                        items={[
+                                          {
+                                            label: 'Archive item',
+                                            onSelect: () =>
+                                              void handleArchiveItem(plan, item),
+                                            tone: 'danger',
+                                          },
+                                        ]}
+                                        label="Treatment item actions"
+                                        menuClassName="w-44"
+                                      />
+                                    </div>
                                   ) : null}
                                 </div>
-                                {item.description ? (
-                                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                                    {item.description}
-                                  </p>
-                                ) : (
-                                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                                    No item notes recorded.
-                                  </p>
-                                )}
-                              </div>
-                              {canMutate ? (
-                                <div className="flex shrink-0 flex-wrap items-center gap-2">
-                                  <Button
-                                    data-testid="treatment-plan-item-edit-action"
-                                    onClick={() => {
-                                      setEditingItemId(item.id)
-                                      setAddingItemPlanId(null)
-                                    }}
-                                    size="sm"
-                                    variant="secondary"
-                                  >
-                                    Edit item
-                                  </Button>
-                                  <Button
-                                    data-testid="treatment-plan-item-archive-action"
-                                    onClick={() =>
-                                      void handleArchiveItem(plan, item)
-                                    }
-                                    size="sm"
-                                    variant="secondary"
-                                  >
-                                    Archive item
-                                  </Button>
-                                </div>
-                              ) : null}
-                            </div>
-                          )}
-                        </article>
-                      ))}
+                              )}
+                            </li>
+                          ))}
+                        </ol>
+                      )}
                     </div>
-                  )}
-                </div>
-              </section>
+                  </div>
+                )}
+              </article>
             ))}
           </div>
         )}
