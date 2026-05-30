@@ -1,4 +1,5 @@
 import { signOut } from '../features/auth/authService'
+import { AgentPanel } from '../features/agent/AgentPanel'
 import type { CurrentProfileResult } from '../features/auth/useCurrentProfile'
 import { currentDemoUser } from '../lib/demoAuth'
 import { routePaths } from '../routes/routePaths'
@@ -93,6 +94,7 @@ export function TopBar({ currentProfile, onOpenMobileMenu }: TopBarProps) {
           <span className="hidden max-w-80 truncate rounded-md border border-amber-200 bg-amber-50 px-3 py-2 font-medium text-amber-800 xl:inline-flex">
             {authLabel}
           </span>
+          <AgentPanel />
           {isSignedIn ? (
             <Button size="sm" variant="ghost" onClick={handleSignOut}>
               Log out
