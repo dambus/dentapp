@@ -2,6 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { useAgent } from "./useAgent";
 import { useCurrentProfile } from "../auth/useCurrentProfile";
 
+type PendingNote = {
+  patientId: string;
+  visitId: string | null;
+  noteDate: string;
+  content: string;
+};
+
 const QUICK_PROMPTS = [
   "Ko dolazi danas?",
   "Pripremi jutarnji briefing",
@@ -11,10 +18,30 @@ const QUICK_PROMPTS = [
 export function AgentPanel() {
   const { profile } = useCurrentProfile();
   const clinicId = profile?.clinicId ?? "";
-  const { messages, isLoading, error, send, clear } = useAgent(clinicId);
+  const profileId = profile?.id ?? "";
+  const { messages, isLoading, error, send, clear, proposal } = useAgent(clinicId, profileId);
   const [input, setInput] = useState("");
   const [open, setOpen] = useState(false);
+  const [pendingNote, setPendingNote] = useState<PendingNote | null>(null);
+  const [dataChanged, setDataChanged] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = () => setDataChanged(true);
+    window.addEventListener("agent:data-changed", handler);
+    return () => window.removeEventListener("agent:data-changed", handler);
+  }, []);
+
+  useEffect(() => {
+    if (proposal) {
+      setPendingNote({
+        patientId: proposal.patient_id,
+        visitId: proposal.visit_id,
+        noteDate: proposal.note_date,
+        content: proposal.content,
+      });
+    }
+  }, [proposal]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -70,6 +97,15 @@ export function AgentPanel() {
             </div>
           </div>
 
+          {dataChanged && (
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full px-3 py-2 bg-amber-50 text-amber-700 text-xs font-medium
+                         border-b border-amber-200 hover:bg-amber-100 transition-colors text-left">
+              ↻ Podaci su ažurirani — klikni da osvežiš stranicu
+            </button>
+          )}
+
           <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
             {messages.length === 0 && (
               <div className="flex flex-col gap-2 mt-2">
@@ -100,6 +136,23 @@ export function AgentPanel() {
                     .replace(/### (.*?)(\n|$)/g, '<strong style="font-size:13px">$1</strong><br/>')
                     .replace(/\n/g, '<br/>')
                 }} />
+                {m.role === "assistant" && m.content.includes("CONFIRM_REQUIRED") && pendingNote && (
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => {
+                        send(`Potvrdi — upiši napomenu za pacijenta ${pendingNote.patientId}`);
+                        setPendingNote(null);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700">
+                      ✓ Potvrdi i upiši
+                    </button>
+                    <button
+                      onClick={() => setPendingNote(null)}
+                      className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs hover:bg-gray-50">
+                      Otkaži
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
 

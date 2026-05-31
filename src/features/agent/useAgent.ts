@@ -1,10 +1,11 @@
 import { useState, useCallback } from "react";
-import { sendAgentMessage, type AgentMessage } from "./agentService";
+import { sendAgentMessage, type AgentMessage, type ProposalData } from "./agentService";
 
-export function useAgent(clinicId: string) {
+export function useAgent(clinicId: string, profileId: string) {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [proposal, setProposal] = useState<ProposalData | null>(null);
 
   const send = useCallback(async (text: string) => {
     const userMsg: AgentMessage = { role: "user", content: text };
@@ -14,8 +15,12 @@ export function useAgent(clinicId: string) {
     setError(null);
 
     try {
-      const reply = await sendAgentMessage(next, clinicId);
+      const { reply, proposal: newProposal } = await sendAgentMessage(next, clinicId, profileId);
       setMessages(prev => [...prev, { role: "assistant", content: reply }]);
+      setProposal(newProposal);
+      if (newProposal === null && reply) {
+        window.dispatchEvent(new CustomEvent("agent:data-changed"));
+      }
     } catch {
       setError("Agent trenutno nije dostupan.");
     } finally {
@@ -23,7 +28,10 @@ export function useAgent(clinicId: string) {
     }
   }, [messages, clinicId]);
 
-  const clear = useCallback(() => setMessages([]), []);
+  const clear = useCallback(() => {
+    setMessages([]);
+    setProposal(null);
+  }, []);
 
-  return { messages, isLoading, error, send, clear };
+  return { messages, isLoading, error, send, clear, proposal };
 }
